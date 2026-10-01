@@ -61,7 +61,7 @@ export default function Explorar({ loaderData }: Route.ComponentProps) {
         />
         <button
           type="submit"
-          className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-strong"
+          className="shrink-0 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
         >
           Buscar
         </button>

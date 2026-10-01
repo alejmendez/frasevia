@@ -6,7 +6,19 @@
    Una paleta cálida de papel y tinta, en vez del gris-azulado habitual. La idea
    es que la aplicación se sienta como una biblioteca: tarjetas con borde fino,
    títulos con serif y mucho aire. Sin dependencias extra más allá de Tailwind.
+
+   Modo noche: los componentes nunca escriben un color literal, siempre un
+   nombre (`bg-paper`, `text-ink`, `border-line`). El tema noche no añade
+   utilidades `dark:` a cada elemento, redefine las mismas variables de `@theme`
+   en `.dark`, de modo que las dos paletas no pueden quedar descuadradas.
    ========================================================================== */
+
+/* La variante `dark:` sigue la clase que pone `app/lib/theme.ts` en `<html>`,
+   no la preferencia del sistema, para que el interruptor mande sobre él. Solo
+   se usa para mostrar y ocultar elementos (el icono y la etiqueta del
+   interruptor), nunca para decidir un color: de eso se encarga el bloque `.dark`
+   de más abajo. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans:
@@ -41,25 +53,88 @@
   --color-danger: #9c2c1f;
   --color-danger-muted: #f9e3e0;
 
+  /* Acento sólido y texto sobre acento sólido.
+     Van aparte de `--color-brand` porque ese color cumple dos papeles que en
+     modo noche piden decisiones opuestas: se lee como texto sobre papel (y ahí
+     tiene que ser claro) y también como fondo de botón (y ahí tiene que ser
+     oscuro para llevar texto claro). Separarlos evita tener que forzar un
+     mismo color a cumplir los dos trabajos. */
+  --color-brand-solid: #0f5f5a;
+  --color-brand-solid-hover: #0a4743;
+  --color-on-solid: #fffdfa;
+
   --radius-card: 0.875rem;
 }
 
-html {
-  color-scheme: light;
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  :root {
+    /* El filo de las tarjetas: un píxel, no una sombra difusa. En modo luz
+       apenas se percibe; en modo noche se invierte a un filo claro, porque una
+       sombra negra sobre fondo negro no separa nada.
+
+       Va antes que `.dark` a propósito: los dos selectores tienen la misma
+       especificidad, así que en `<html>` gana el último, y ese tiene que ser el
+       modo noche. */
+    --card-edge: rgb(34 30 25 / 0.04);
+  }
+
+  /* Modo noche ------------------------------------------------------------
+     El mismo eje cálido, dado la vuelta: casi negro con un punto de papel, no
+     un gris azulado. Los acentos se aclaran para que sigan leyéndose sobre
+     fondo oscuro, y los fondos sólidos se aclaran también para que el botón
+     principal siga siendo el elemento con más peso de la pantalla, como lo es
+     en modo luz. Ningún valor es negro o blanco puro: los dos matan la
+     profundidad. */
+  .dark {
+    color-scheme: dark;
+
+    --color-paper: #16130f;
+    --color-paper-raised: #1d1a15;
+    --color-paper-sunken: #26211a;
+
+    --color-ink: #f0e9dc;
+    --color-ink-soft: #bdb2a1;
+    --color-ink-faint: #8f8577;
+
+    --color-line: #2b2620;
+    --color-line-strong: #4a4237;
+
+    --color-brand: #5ec4b7;
+    --color-brand-strong: #86d6cb;
+    --color-brand-muted: #1c3b37;
+    --color-accent: #e08a5f;
+    --color-accent-muted: #3a251b;
+
+    --color-success: #7cc98d;
+    --color-success-muted: #1e3326;
+    --color-danger: #f0907f;
+    --color-danger-muted: #3a201c;
+
+    --color-brand-solid: #45b0a3;
+    --color-brand-solid-hover: #57c4b6;
+    --color-on-solid: #0f1513;
+
+    --card-edge: rgb(255 255 255 / 0.05);
+  }
 }
 
 body {
   @apply bg-paper text-ink font-sans antialiased;
-  /* Textura sutil de papel: dos gradientes muy tenues que no distraen. */
+  /* Textura sutil de papel: dos gradientes muy tenues que no distraen. Se
+     escriben con `color-mix` para que sigan a los acentos de cada tema. */
   background-image:
     radial-gradient(
       circle at 15% 12%,
-      rgb(176 82 42 / 0.04),
+      color-mix(in oklab, var(--color-accent) 4%, transparent),
       transparent 45%
     ),
     radial-gradient(
       circle at 85% 0%,
-      rgb(15 95 90 / 0.05),
+      color-mix(in oklab, var(--color-brand) 5%, transparent),
       transparent 40%
     );
   background-attachment: fixed;

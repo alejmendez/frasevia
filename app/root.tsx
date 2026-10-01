@@ -10,8 +10,10 @@ import {
   ScrollRestoration,
   useNavigation,
 } from "react-router";
+import { ThemeToggle } from "~/components/theme-toggle";
 import { cx } from "~/components/ui";
 import { AuthProvider, useAuth } from "~/lib/auth-context";
+import { THEME_BOOTSTRAP } from "~/lib/theme";
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -31,12 +33,24 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    // El script de abajo añade `class="dark"` a `<html>` antes de que hidrate
+    // React, así que el atributo se avisa para que la hidratación no proteste.
+    <html lang="es" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* El color de la barra del navegador en móvil. Lo reescribe
+            `app/lib/theme.ts` cada vez que cambia el tema. */}
+        <meta name="theme-color" content="#faf7f1" />
         <Meta />
         <Links />
+        {/* Antes que cualquier script de la aplicación: es lo único que puede
+            dejar el tema puesto antes de que el navegador pinte el fondo.
+            El contenido es una constante de `app/lib/theme.ts`, escrita en
+            tiempo de compilación y sin datos de nadie, por eso el
+            `dangerouslySetInnerHTML`. */}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constante propia, sin entrada externa */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body className="min-h-dvh">
         {children}
@@ -118,6 +132,7 @@ function SiteHeader() {
         </nav>
 
         <div className="order-2 ml-auto flex items-center gap-2 sm:order-3">
+          <ThemeToggle />
           <AccountArea status={status} email={user?.email ?? null} />
         </div>
       </div>
@@ -167,7 +182,7 @@ function AccountArea({
         </Link>
         <Link
           to="/crear-cuenta"
-          className="rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-strong"
+          className="rounded-lg bg-brand-solid px-3.5 py-2 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
         >
           Crear cuenta
         </Link>
@@ -235,7 +250,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <div className="mt-8 flex justify-center gap-3">
         <Link
           to="/"
-          className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-strong"
+          className="rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
         >
           Volver al inicio
         </Link>
