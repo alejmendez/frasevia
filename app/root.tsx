@@ -11,7 +11,7 @@ import {
   useNavigation,
 } from "react-router";
 import { ThemeToggle } from "~/components/theme-toggle";
-import { cx } from "~/components/ui";
+import { cx, LoadingState } from "~/components/ui";
 import { AuthProvider, useAuth } from "~/lib/auth-context";
 import { THEME_BOOTSTRAP } from "~/lib/theme";
 import type { Route } from "./+types/root";
@@ -73,6 +73,19 @@ export default function App() {
       </div>
     </AuthProvider>
   );
+}
+
+/**
+ * Estado de carga de la aplicación.
+ *
+ * La aplicación no se renderiza en el servidor (modo SPA, todo el HTML se
+ * genera al compilar), así que este es el único `HydrateFallback` permitido: el
+ * enrutador rechaza los que se declaren en rutas hijas. Sale dentro del
+ * `Layout`, de modo que la barra y el pie ya están colocados y la transición a
+ * la página real no salta.
+ */
+export function HydrateFallback() {
+  return <LoadingState label="Abriendo Frasevia…" />;
 }
 
 const PUBLIC_LINKS = [

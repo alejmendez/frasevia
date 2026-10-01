@@ -1,0 +1,92 @@
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Permite publicar a mano desde la pestaña Actions, por si hace falta.
+  workflow_dispatch:
+
+# Pages concede el despliegue concurrente; sin esto se cancela a medias.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Compilar el sitio
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # GitHub Pages sirve un repositorio de usuario en la raíz del dominio
+      # (`usuario.github.io`) y cualquier otro en una subcarpeta con el nombre
+      # del repositorio. De ahí sale `BASE_PATH`, que leen a la vez
+      # `react-router.config.ts` (para el `basename`) y
+      # `scripts/prepare-pages.mjs` (para las rutas de los assets).
+      - name: Calcular la ruta del sitio
+        run: |
+          name="${{ github.event.repository.name }}"
+          if [[ "$name" == *.github.io ]]; then
+            echo "BASE_PATH=/" >> "$GITHUB_ENV"
+          else
+            echo "BASE_PATH=/$name" >> "$GITHUB_ENV"
+          fi
+
+      # Vite incrusta estas variables al compilar, así que llegan como
+      # argumentos y no como secretos en una capa de imagen. Son las claves
+      # publicables: el sitio se sirve sin servidor y todo el filtrado lo hacen
+      # las políticas RLS de Supabase.
+      - name: Variables de entorno
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          {
+            echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Pruebas
+        run: npm run test
+
+      - name: Compilar
+        run: npm run build:pages
+
+      - name: Subir el sitio
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # El artefacto es el repositorio publicado, y su raíz equivale a la
+          # ruta del sitio. `404.html` lo copia `prepare-pages.mjs`.
+          path: build/client
+
+  deploy:
+    name: Desplegar
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

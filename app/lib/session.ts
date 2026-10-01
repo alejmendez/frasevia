@@ -65,3 +65,32 @@ export function safeRedirectTo(
 
   return value;
 }
+
+/**
+ * Quita el prefijo con el que se publica el sitio de una ruta.
+ *
+ * `safeRedirectTo` devuelve la ruta tal como venía en la URL, y en un sitio
+ * publicado en una subcarpeta eso incluye el prefijo: `loginPath` construye el
+ * `redirectTo` con `url.pathname`, que lo lleva. Pero `navigate()` y `Link` lo
+ * vuelven a anteponer, así que hay que quitarlo o la persona acabaría en
+ * `/frasevia/frasevia/biblioteca`.
+ *
+ * Solo quita una ocurrencia y solo si coincide con el prefijo completo, de modo
+ * que una ruta que empiece por texto parecido (`/fraseviafoo`) no se toca. El
+ * resultado sigue empezando por `/`, porque `safeRedirectTo` ya lo garantiza.
+ */
+export function stripBasePath(value: string, basePath: string): string {
+  if (!basePath) {
+    return value;
+  }
+
+  if (value === basePath) {
+    return "/";
+  }
+
+  if (value.startsWith(`${basePath}/`)) {
+    return value.slice(basePath.length);
+  }
+
+  return value;
+}

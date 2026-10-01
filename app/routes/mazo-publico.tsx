@@ -16,7 +16,7 @@ import {
   Tag,
 } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
-import { getPublicDeckBySlug } from "~/lib/decks.server";
+import { getPublicDeckBySlug } from "~/lib/decks";
 import { CARD_KIND_LABEL, cardCountLabel } from "~/lib/format";
 import { getSupabaseBrowser } from "~/lib/supabase";
 import type { Card as DeckCard } from "~/lib/types";
@@ -33,7 +33,13 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
+/**
+ * El mazo se lee desde el navegador.
+ *
+ * La lectura es pública (RLS, clave publicable) y no hay render en servidor, así
+ * que no hay motivo para pedirlo por otra vía.
+ */
+export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   return getPublicDeckBySlug(params.slug);
 }
 

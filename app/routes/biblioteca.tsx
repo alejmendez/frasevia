@@ -4,7 +4,6 @@ import {
   ButtonLink,
   ConfigNotice,
   EmptyState,
-  LoadingState,
   Page,
   PageHeader,
   ProgressBar,
@@ -34,10 +33,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
   const { decks, error } = await listMyDecks(session.supabase, session.userId);
   return { status: "ready" as const, decks, error };
-}
-
-export function HydrateFallback() {
-  return <LoadingState label="Abriendo tu biblioteca…" />;
 }
 
 /** Barra de avance con lo aprendido sobre el total de tarjetas del mazo. */

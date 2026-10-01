@@ -6,7 +6,6 @@ import {
   ConfigNotice,
   Field,
   inputClass,
-  LoadingState,
   Page,
   PageHeader,
   Select,
@@ -32,10 +31,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   }
 
   return { status: "ready" as const, userId: session.userId };
-}
-
-export function HydrateFallback() {
-  return <LoadingState label="Comprobando tu sesión…" />;
 }
 
 interface Errors {

@@ -5,7 +5,6 @@ import {
   Card,
   ConfigNotice,
   EmptyState,
-  LoadingState,
   Page,
   PageHeader,
   ProgressBar,
@@ -34,10 +33,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
   const { rows, error } = await listMyProgress(session.supabase);
   return { status: "ready" as const, rows, error };
-}
-
-export function HydrateFallback() {
-  return <LoadingState label="Leyendo tu progreso…" />;
 }
 
 const STATE_TONE: Record<ProgressState, "neutral" | "brand" | "accent"> = {

@@ -13,8 +13,10 @@ import { describe, expect, it } from "vitest";
  * se ven correctas.
  *
  * Por eso los módulos compartidos se llaman `session.ts`, `decks.ts` y
- * `supabase.ts`, y no con sufijo. La única excepción admitida es
- * `supabase.server.ts`, que sí es exclusivo del servidor.
+ * `supabase.ts`, y no con sufijo. Tampoco queda ya ningún `*.server.ts`: la
+ * aplicación se compila en modo SPA y se publica sin servidor, así que el
+ * código de servidor tendría que mudarse al cliente o desaparecer. Lo que
+ * impide reintroducirlo lo vigila `app/lib/static.test.ts`.
  */
 function collectFiles(dir: string): string[] {
   const entries = readdirSync(dir, { withFileTypes: true });

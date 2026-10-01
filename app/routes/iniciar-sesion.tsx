@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useHref, useNavigate, useSearchParams } from "react-router";
 import {
   Alert,
   Button,
@@ -9,7 +9,7 @@ import {
   Page,
 } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
-import { safeRedirectTo } from "~/lib/session";
+import { safeRedirectTo, stripBasePath } from "~/lib/session";
 import { getSupabaseBrowser } from "~/lib/supabase";
 
 export function meta() {
@@ -28,7 +28,16 @@ export default function IniciarSesion() {
   const [searchParams] = useSearchParams();
   const { status: authStatus } = useAuth();
   const navigate = useNavigate();
-  const redirectTo = safeRedirectTo(searchParams.get("redirectTo"));
+
+  // `useHref("/")` devuelve la raíz ya con el prefijo del sitio (`/frasevia/`
+  // si se publica en una subcarpeta, `/` si va a la raíz del dominio). De ahí se
+  // saca el prefijo para quitarle a `redirectTo` lo que `navigate` va a volver a
+  // anteponer.
+  const basePath = useHref("/").replace(/\/$/, "");
+  const redirectTo = stripBasePath(
+    safeRedirectTo(searchParams.get("redirectTo")),
+    basePath,
+  );
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

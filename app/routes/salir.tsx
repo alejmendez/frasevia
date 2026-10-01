@@ -7,6 +7,10 @@ import { getSupabaseBrowser } from "~/lib/supabase";
  * Ruta sin interfaz propia a la que apunta el formulario del navbar. Como la
  * sesión vive en el navegador, el cierre se ejecuta en `clientAction` y después
  * se vuelve a la portada.
+ *
+ * Si alguien abre `/salir` directamente no hay acción que ejecutar: la ruta no
+ * declara `clientLoader` ni componente, así que el enrutador no encuentra nada
+ * que renderizar en esa URL y cae en el `ErrorBoundary` raíz con el 404.
  */
 export async function clientAction() {
   const supabase = getSupabaseBrowser();
@@ -14,13 +18,5 @@ export async function clientAction() {
     await supabase.auth.signOut();
   }
 
-  return redirect("/");
-}
-
-/**
- * Si alguien abre `/salir` directamente no hay nada que hacer aquí: se envía a la
- * portada en lugar de mostrar una página en blanco.
- */
-export function loader() {
   return redirect("/");
 }

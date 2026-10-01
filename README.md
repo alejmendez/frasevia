@@ -21,18 +21,24 @@ estudiar → ver el progreso.
 
 | Pieza | Elección |
 | --- | --- |
-| Aplicación | React Router 8 en modo Framework (SSR) + Vite 8 |
+| Aplicación | React Router 8 en modo Framework (SPA) + Vite 8 |
 | Lenguaje | TypeScript |
 | Estilos | Tailwind CSS v4 |
 | Datos, Auth y RLS | Supabase (PostgreSQL) |
+| Alojamiento | GitHub Pages (archivos estáticos) |
 | Lint y formato | Biome |
 | Pruebas | Vitest (lógica) + pgTAP (permisos, vía Supabase CLI) |
 
 El proyecto conserva la configuración de React Router que ya traía el
-repositorio: modo Framework, `ssr: true` y Tailwind v4. Las páginas públicas se
-renderizan en el servidor; las que dependen de la sesión usan el patrón mixto
-que recomienda la documentación de React Router (`loader` para lo público,
-`clientLoader` / `clientAction` para lo autenticado).
+repositorio: modo Framework y Tailwind v4. Lo que cambió es `ssr: false`: la
+aplicación se compila a un único `index.html` y **todos** los datos viajan en
+`clientLoader` / `clientAction`, sin ninguna función de servidor. Es lo que
+permite publicarla en GitHub Pages sin infraestructura, y no costó nada
+particular porque la sesión de Supabase ya vivía en el navegador.
+
+`app/lib/static.test.ts` vigila que no se reintroduzca un `loader` de servidor:
+en modo SPA React Router los rechaza al compilar, y conviene enterarse en una
+prueba y no a mitad de un despliegue.
 
 ## Puesta en marcha
 
@@ -109,25 +115,47 @@ En **Authentication → URL Configuration**:
 Si el proyecto exige confirmar el correo antes de entrar, el formulario de
 registro lo avisa en vez de dar por hecho que la cuenta ya está lista.
 
-### 3. Publicar
+### 3. Publicar en GitHub Pages
 
-Para que la aplicación funcione basta con el esquema y las variables. El build
-de producción es el mismo:
+`main` publica solo. El flujo está en `.github/workflows/pages.yml`:
+
+1. Calcula `BASE_PATH` a partir del nombre del repositorio: `/` si es un
+   repositorio de usuario (`usuario.github.io`) y `/<repositorio>` si no.
+2. Compila con `npm run build:pages`, que además ejecuta
+   `scripts/prepare-pages.mjs`.
+3. Sube `build/client` como artefacto y lo despliega.
+
+Antes del primer despliegue hay que:
+
+- **Settings → Pages → Source: GitHub Actions**.
+- Añadir `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` en
+  **Settings → Secrets and variables → Actions** (el workflow las lee de ahí).
+  Sin ellas el sitio arranca igual, pero muestra el aviso de «falta configurar»
+  y no guarda nada.
+- En Supabase, agregar el dominio real a las **Redirect URLs** y a la lista
+  blanca de correo.
+
+Para probarlo en local, imitando lo que hace Pages:
 
 ```bash
-npm run build
-npm run start
+BASE_PATH=/frasevia npm run build:pages
+npx sirv-cli build/client --single
+# y abrir http://localhost:4180/frasevia/
 ```
 
-Con Docker, las variables se pasan como argumentos de compilación:
+Dos detalles de Pages que conviene tener presentes:
 
-```bash
-docker build -t frasevia \
-  --build-arg VITE_SUPABASE_URL=https://tuproyecto.supabase.co \
-  --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
-  -t frasevia .
-docker run -p 3000:3000 frasevia
-```
+- **No hay reglas de reescritura.** Una ruta como `/frasevia/biblioteca` no
+  corresponde a ningún archivo, así que Pages devuelve el `404.html`, que es
+  una copia del shell de la aplicación. El enrutador del cliente recibe la URL
+  real y decide qué página mostrar. Por eso una URL inexistente responde 200 y
+  termina en la página de «no encontrada» de la propia aplicación, en vez de en
+  el 404 de Pages.
+- **Los assets llevan el prefijo de la subcarpeta.** Vite emite sus rutas con
+  `base: "/"`, y `scripts/prepare-pages.mjs` las antepone después de compilar.
+  No se arregla con `base` de Vite porque, en modo SPA, ese valor hace que
+  React Router no llegue a escribir `index.html` (react-router#15350). Si algún
+  día el sitio se publica en la raíz del dominio, el script no hace nada.
 
 ## Seguridad
 
@@ -225,20 +253,21 @@ avisiesten nada.
 
 Por eso los módulos compartidos se llaman `session.ts`, `decks.ts` y
 `supabase.ts`, y no con sufijo. `app/lib/naming.test.ts` falla si alguien vuelve a
-usar `.client.ts`. El único sufijo que sí se usa es `.server.ts`, exclusivo del
-servidor: `supabase.server.ts`, que solo se importa desde `loader`.
+usar `.client.ts`. Ya no queda ningún `.server.ts`: sin servidor de por medio, el
+código de servidor tendría que mudarse al cliente o desaparecer, y
+`app/lib/static.test.ts` vigila que no vuelvan los `loader` de servidor.
 
 ## Scripts
 
 | Comando | Qué hace |
 | --- | --- |
 | `npm run dev` | Servidor de desarrollo con HMR |
-| `npm run build` | Build de producción |
-| `npm run start` | Sirve el build |
+| `npm run build` | Build de producción (SPA) |
+| `npm run build:pages` | Build + el paso de preparación para GitHub Pages |
 | `npm run typecheck` | Genera los tipos de ruta y corre `tsc` |
 | `npm run lint` | Biome (lint y formato) |
 | `npm run test` | Vitest |
 | `npm run check` | Todo lo anterior, en orden |
 
-Hay CI en `.github/workflows/ci.yml`: corre lint, tipos, pruebas y build en cada
-push y pull request.
+Hay dos flujos en GitHub: `ci.yml` corre lint, tipos, pruebas y build en cada
+push y pull request, y `pages.yml` publica el sitio.

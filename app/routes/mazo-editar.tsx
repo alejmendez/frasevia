@@ -9,7 +9,6 @@ import {
   ConfigNotice,
   Field,
   inputClass,
-  LoadingState,
   Page,
   PageHeader,
   Select,
@@ -58,10 +57,6 @@ export async function clientLoader({
   }
 
   return { status: "ready" as const, deck, cards };
-}
-
-export function HydrateFallback() {
-  return <LoadingState label="Abriendo el editor…" />;
 }
 
 type ActionResult =

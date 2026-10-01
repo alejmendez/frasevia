@@ -8,7 +8,7 @@ import {
   PageHeader,
 } from "~/components/ui";
 import { DeckTile } from "~/features/decks/deck-tile";
-import { listPublicDecks } from "~/lib/decks.server";
+import { listPublicDecks } from "~/lib/decks";
 import type { Route } from "./+types/explorar";
 
 export function meta() {
@@ -22,7 +22,13 @@ export function meta() {
   ];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+/**
+ * El catálogo se lee desde el navegador.
+ *
+ * La lectura es pública (RLS, clave publicable) y no hay render en servidor, así
+ * que no hay motivo para pedirlo por otra vía.
+ */
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const search = new URL(request.url).searchParams.get("q") ?? "";
 
   const result = await listPublicDecks({ search });

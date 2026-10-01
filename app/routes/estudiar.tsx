@@ -7,7 +7,6 @@ import {
   Card,
   ConfigNotice,
   inputClass,
-  LoadingState,
   Page,
   ProgressBar,
   Tag,
@@ -81,10 +80,6 @@ export async function clientLoader({
   }
 
   return { status: "ready" as const, deck, cards, progress };
-}
-
-export function HydrateFallback() {
-  return <LoadingState label="Preparando la sesión…" />;
 }
 
 /**
