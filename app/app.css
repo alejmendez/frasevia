@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Base visual de Frasevia
+   --------------------------------------------------------------------------
+   Una paleta cálida de papel y tinta, en vez del gris-azulado habitual. La idea
+   es que la aplicación se sienta como una biblioteca: tarjetas con borde fino,
+   títulos con serif y mucho aire. Sin dependencias extra más allá de Tailwind.
+   ========================================================================== */
+
+@theme {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  --font-display: "Fraunces", ui-serif, Georgia, Cambria, serif;
+
+  /* Superficies */
+  --color-paper: #faf7f1;
+  --color-paper-raised: #fffdfa;
+  --color-paper-sunken: #f2ece1;
+
+  /* Texto */
+  --color-ink: #221e19;
+  --color-ink-soft: #5d564b;
+  --color-ink-faint: #8b8175;
+
+  /* Líneas y bordes */
+  --color-line: #e3d9c8;
+  --color-line-strong: #cdbfa8;
+
+  /* Acentos */
+  --color-brand: #0f5f5a;
+  --color-brand-strong: #0a4743;
+  --color-brand-muted: #e0edeb;
+  --color-accent: #b0522a;
+  --color-accent-muted: #f7e6dc;
+
+  /* Estados */
+  --color-success: #2f6b3c;
+  --color-success-muted: #e3f0e4;
+  --color-danger: #9c2c1f;
+  --color-danger-muted: #f9e3e0;
+
+  --radius-card: 0.875rem;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-paper text-ink font-sans antialiased;
+  /* Textura sutil de papel: dos gradientes muy tenues que no distraen. */
+  background-image:
+    radial-gradient(
+      circle at 15% 12%,
+      rgb(176 82 42 / 0.04),
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 85% 0%,
+      rgb(15 95 90 / 0.05),
+      transparent 40%
+    );
+  background-attachment: fixed;
+}
+
+/* Foco visible y consistente en toda la aplicación. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  @apply outline-2 outline-offset-2 outline-brand;
+}
+
+/* Los controles de formulario heredan la tipografía del documento. */
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+/* Respetar la preferencia de menos movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

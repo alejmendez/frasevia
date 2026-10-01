@@ -1,0 +1,36 @@
+# Configuración local de Supabase para Frasevia.
+# Útil para `supabase start`, `supabase db reset` y `supabase test db`.
+
+project_id = "frasevia"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+schema_paths = ["./supabase/migrations"]
+
+[db.seed]
+enabled = true
+sql_paths = ["./supabase/seed.sql"]
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+# En desarrollo la app corre en el puerto 5173 de Vite.
+additional_redirect_urls = ["http://localhost:5173"]
+
+[auth.email]
+enable_signup = true
+enable_password_recovery = true
+
+[storage]
+enabled = false
