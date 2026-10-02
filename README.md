@@ -117,6 +117,52 @@ En **Authentication → URL Configuration**:
 - **Authentication → Providers → Email**: activa el correo y contraseña, y deja
   habilitada la recuperación de contraseña (lo usa `/recuperar-contrasena`).
 
+- **Authentication → Providers → Google** (opcional, pero hay que activarlo para
+  que el botón de las pantallas de acceso y de registro funcione): pon el
+  **Client ID** y el **Client Secret** de Google Cloud, y en Google pon la
+  **Authorized redirect URI**:
+
+  ```
+  https://<project-ref>.supabase.co/auth/v1/callback
+  ```
+
+  No hace falta ninguna clave en `.env`: el diálogo OAuth lo lleva Supabase y el
+  canje del código ocurre en el navegador.
+
+  El botón se muestra **solo si el proveedor está encendido**: la pantalla de
+  acceso consulta `/auth/v1/settings` (público, enumera los proveedores) y
+  consulta en vivo. Al activarlo en el panel, el botón aparece sin compilar ni
+  republicar. La comprobación está en `app/lib/google-auth.ts` y hay una razón
+  detrás: `signInWithOAuth` no consulta nada, solo lanza al navegador, así que
+  con el proveedor apagado el error es un `400` con un JSON crudo en el dominio
+  de Supabase que no se puede interceptar desde la aplicación.
+
+#### Una particularidad de la vuelta de Google
+
+Google devuelve a la persona a la **raíz del sitio**, no a la ruta que quería
+abrir. No es descuido: en GitHub Pages la raíz es la única dirección que
+responde con un `200` (todo lo demás se sirve con `404.html`), y además es la
+única que se puede dejar en la lista blanca de Supabase sin añadir una entrada
+por cada ruta de la aplicación. La ruta pretendida se guarda en
+`localStorage` antes de saltar y se recupera al volver
+(`app/lib/auth-redirect.ts`).
+
+Por lo tanto, en **Redirect URLs** hay que añadir la raíz **con el prefijo**:
+
+```
+http://localhost:5173/            # desarrollo, sitio en la raíz del dominio
+https://usuario.github.io/frasevia/   # Pages en una subcarpeta
+https://usuario.github.io/            # Pages en la raíz del dominio
+```
+
+La CSP no necesita cambios: el canje del código es una petición al origen de
+Supabase, que ya está en `connect-src`.
+
+Un detalle al que conviene estar atento: si la cuenta se creó con Google y luego
+se intenta entrar con correo y contraseña, Supabase no tiene ninguna contraseña
+para esa cuenta. Es el camino que hace que «antes entraba y ahora no»: o se entra
+con Google, o se usa **Authentication → Users** en el panel para ponerla.
+
 Si el proyecto exige confirmar el correo antes de entrar, el formulario de
 registro lo avisa en vez de dar por hecho que la cuenta ya está lista.
 

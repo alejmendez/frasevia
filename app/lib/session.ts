@@ -40,30 +40,43 @@ export function loginPath(request: Request): string {
 }
 
 /**
- * Recorta un `redirectTo` que viene de la URL.
+ * Dice si un valor es una ruta interna de la aplicación.
  *
- * Solo se aceptan rutas internas: si no, la aplicación mandaría a la persona
- * fuera del sitio (open redirect) a través de un enlace de acceso legítimo.
+ * Es la comprobación que evita un *open redirect*: si se acepta un destino
+ * externo, un enlace de acceso legítimo se convierte en una trampilla para
+ * mandar a la persona a `https://ejemplo.com`. Aquí vive sola, sin destino por
+ * defecto, para que la usen tanto `safeRedirectTo` como el acceso con Google,
+ * que también acaba en un `navigate`.
  */
-export function safeRedirectTo(
-  value: string | null | undefined,
-  fallback = "/biblioteca",
-): string {
+export function internalPath(value: string | null | undefined): string | null {
   if (!value) {
-    return fallback;
+    return null;
   }
 
   if (!value.startsWith("/")) {
-    return fallback;
+    return null;
   }
 
   // "//evil.com" es un protocolo-relativo: el navegador lo trataría como
   // una URL externa, así que se descarta.
   if (value.startsWith("//") || value.startsWith("/\\")) {
-    return fallback;
+    return null;
   }
 
   return value;
+}
+
+/**
+ * Recorta un `redirectTo` que viene de la URL.
+ *
+ * Solo se aceptan rutas internas (ver `internalPath`); lo que no lo es se cambia
+ * por el destino de siempre.
+ */
+export function safeRedirectTo(
+  value: string | null | undefined,
+  fallback = "/biblioteca",
+): string {
+  return internalPath(value) ?? fallback;
 }
 
 /**

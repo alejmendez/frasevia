@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useHref, useNavigate, useSearchParams } from "react-router";
+import { GoogleSignIn } from "~/components/google-sign-in";
 import {
   Alert,
   Button,
@@ -9,6 +10,7 @@ import {
   Page,
 } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
+import { forgetRedirect } from "~/lib/auth-redirect";
 import { safeRedirectTo, stripBasePath } from "~/lib/session";
 import { getSupabaseBrowser } from "~/lib/supabase";
 
@@ -38,6 +40,10 @@ export default function IniciarSesion() {
     safeRedirectTo(searchParams.get("redirectTo")),
     basePath,
   );
+
+  // `root.tsx` manda aquí cuando Google devuelve a la persona sin dejarla
+  // entrar: canceló el consentimiento, o el proveedor no está habilitado.
+  const oauthFailed = searchParams.get("error") === "oauth";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -78,6 +84,9 @@ export default function IniciarSesion() {
     }
 
     // La sesión ya quedó guardada; se vuelve a la ruta que la persona quería.
+    // El destino pendiente de Google se descarta: aquí ya se sabe a dónde ir, y
+    // dejarlo puesto haría que la próxima entrada saltase a un sitio viejo.
+    forgetRedirect();
     navigate(redirectTo, { replace: true });
   }
 
@@ -89,6 +98,15 @@ export default function IniciarSesion() {
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        {oauthFailed ? (
+          <Alert variant="warning" title="No se completó el acceso con Google">
+            <p>
+              Puede que se haya cancelado el permiso, o que el acceso con Google
+              no esté habilitado en el proyecto. Inténtalo otra vez o entra con
+              tu correo y contraseña.
+            </p>
+          </Alert>
+        ) : null}
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         <Field label="Correo electrónico" htmlFor="email" required>
@@ -121,6 +139,8 @@ export default function IniciarSesion() {
           {pending ? "Entrando…" : "Iniciar sesión"}
         </Button>
       </form>
+
+      <GoogleSignIn redirectTo={redirectTo} label="Continuar con Google" />
 
       <div className="mt-6 space-y-2 text-sm">
         <p>

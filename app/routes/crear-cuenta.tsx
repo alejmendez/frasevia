@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useHref, useNavigate, useSearchParams } from "react-router";
+import { GoogleSignIn } from "~/components/google-sign-in";
 import {
   Alert,
   Button,
@@ -9,6 +10,7 @@ import {
   Page,
 } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
+import { forgetRedirect } from "~/lib/auth-redirect";
 import { safeRedirectTo, stripBasePath } from "~/lib/session";
 import { getSupabaseBrowser } from "~/lib/supabase";
 
@@ -86,6 +88,7 @@ export default function CrearCuenta() {
       return;
     }
 
+    forgetRedirect();
     navigate(redirectTo, { replace: true });
   }
 
@@ -137,6 +140,8 @@ export default function CrearCuenta() {
           {pending ? "Creando la cuenta…" : "Crear la cuenta"}
         </Button>
       </form>
+
+      <GoogleSignIn redirectTo={redirectTo} label="Registrarse con Google" />
 
       <p className="mt-6 text-sm text-ink-soft">
         ¿Ya tienes cuenta?{" "}

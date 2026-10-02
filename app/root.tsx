@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Form,
   isRouteErrorResponse,
@@ -8,11 +9,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigate,
   useNavigation,
 } from "react-router";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { cx, LoadingState } from "~/components/ui";
 import { AuthProvider, useAuth } from "~/lib/auth-context";
+import { takeRedirect } from "~/lib/auth-redirect";
 import { buildCsp } from "~/lib/csp";
 import { THEME_BOOTSTRAP } from "~/lib/theme";
 import type { Route } from "./+types/root";
@@ -77,6 +80,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
+      <GoogleReturn />
       <div className="flex min-h-dvh flex-col">
         <SiteHeader />
         <main className="flex-1">
@@ -86,6 +90,72 @@ export default function App() {
       </div>
     </AuthProvider>
   );
+}
+
+/**
+ * Recoge a la persona que vuelve de Google.
+ *
+ * Google la deja en la raíz del sitio, que es la única dirección que GitHub
+ * Pages responde con un 200, así que la ruta que quería abrir no puede venir en
+ * la URL. Se guardó antes de saltar (`app/lib/auth-redirect.ts`) y aquí se
+ * recupera, una vez que se sabe que ya hay sesión: ir antes lanzaría a una ruta
+ * privada antes de tiempo y su `clientLoader` la devolvería al acceso, en un
+ * bucle.
+ *
+ * También recoge el otro final, que es volver sin haber entrado porque la
+ * persona canceló el consentimiento o porque el proveedor no está habilitado.
+ * Eso no se puede distinguir de una visita normal mientras no haya sesión, así
+ * que se envía a la pantalla de acceso, que lo explica, en lugar de dejar a la
+ * persona en la portada sin saber qué pasó.
+ */
+function GoogleReturn() {
+  const { status } = useAuth();
+  const navigate = useNavigate();
+
+  // Se lee durante el primer render, antes de que ningún efecto pueda tocar la
+  // URL: el cliente de Supabase limpia los parámetros de autorización del
+  // historial en cuanto canjea el código, y para entonces este valor ya tiene
+  // que estar guardado.
+  const [oauthError] = useState(readOAuthError);
+
+  useEffect(() => {
+    if (status === "loading") {
+      return;
+    }
+
+    if (status === "authenticated") {
+      const target = takeRedirect();
+      if (target) {
+        navigate(target, { replace: true });
+      }
+      return;
+    }
+
+    if (oauthError) {
+      const search = new URLSearchParams({ error: "oauth" });
+      const target = takeRedirect();
+
+      // Se conserva el destino para que entrar por correo termine donde
+      // habría terminado el acceso con Google. No hace falta pasarlo por
+      // `safeRedirectTo`: `takeRedirect` ya lo validó al leerlo.
+      if (target) {
+        search.set("redirectTo", target);
+      }
+
+      navigate(`/iniciar-sesion?${search}`, { replace: true });
+    }
+  }, [status, oauthError, navigate]);
+
+  return null;
+}
+
+/** El error con el que Google devuelve a la persona, si es que vuelve con uno. */
+function readOAuthError(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return new URLSearchParams(window.location.search).get("error");
 }
 
 /**
