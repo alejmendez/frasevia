@@ -83,7 +83,12 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
         title="Mi biblioteca"
         description="Los mazos que creaste y las copias que hiciste de mazos públicos."
         actions={
-          <ButtonLink to="/biblioteca/mazos/nuevo">Crear un mazo</ButtonLink>
+          <>
+            <ButtonLink to="/biblioteca/mazos/nuevo-ia" variant="secondary">
+              Crear con IA
+            </ButtonLink>
+            <ButtonLink to="/biblioteca/mazos/nuevo">Crear un mazo</ButtonLink>
+          </>
         }
       />
 
@@ -101,10 +106,13 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
           description="Crea un mazo con tus propias palabras y frases, o copia uno de los mazos públicos para modificarlo a tu gusto."
           action={
             <>
-              <ButtonLink to="/biblioteca/mazos/nuevo">
-                Crear un mazo
+              <ButtonLink to="/biblioteca/mazos/nuevo-ia">
+                Crear un mazo con IA
               </ButtonLink>
-              <ButtonLink to="/explorar" variant="secondary">
+              <ButtonLink to="/biblioteca/mazos/nuevo" variant="secondary">
+                Crear un mazo a mano
+              </ButtonLink>
+              <ButtonLink to="/explorar" variant="ghost">
                 Explorar mazos
               </ButtonLink>
             </>

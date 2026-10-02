@@ -211,6 +211,13 @@ export const textareaClass = cx(
   "min-h-24 resize-y leading-relaxed",
 );
 
+export function Textarea({
+  className,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea className={cx(textareaClass, className)} {...props} />;
+}
+
 export function Select({
   className,
   ...props
