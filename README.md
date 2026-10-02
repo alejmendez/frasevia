@@ -11,9 +11,14 @@ se crean los propios y se registra el progreso de estudio.
 - El modelo guarda el par de idiomas en cada mazo, así que más adelante se
   pueden agregar otros pares sin cambiar las tablas.
 
-No incluye generación de contenido con IA, pagos ni funciones sociales. El
-objetivo de este MVP es el circuito completo: descubrir → copiar o crear →
-estudiar → ver el progreso.
+No incluye pagos ni funciones sociales. El objetivo del MVP es el circuito
+completo: descubrir → copiar o crear → estudiar → ver el progreso.
+
+La generación de tarjetas con IA sí está, y es **opcional**: se puede crear un
+mazo entero a partir de un concepto, pero solo si quien está usa pone su propia
+clave de un proveedor. La aplicación no trae claves ni paga por las peticiones.
+Ver [Generación con IA](#generación-con-ia) para el detalle, incluida la parte
+de seguridad, que es lo más delicado de todo esto.
 
 ---
 
@@ -157,6 +162,114 @@ Dos detalles de Pages que conviene tener presentes:
   React Router no llegue a escribir `index.html` (react-router#15350). Si algún
   día el sitio se publica en la raíz del dominio, el script no hace nada.
 
+## Generación con IA
+
+`/biblioteca/mazos/nuevo-ia` crea un mazo entero a partir de un concepto
+escrito en una frase. Hay dos caminos y los dos terminan en la misma pantalla de
+revisión.
+
+### Camino 1: importar, sin clave ni cuenta
+
+Copias un prompt a tu asistente —Claude, Gemini, ChatGPT, MiniMax, el que
+tengas abierto— y pegas aquí el JSON que te devuelva.
+
+Es el camino recomendado por defecto, y no por cortesía: **no necesita clave, ni
+CORS, ni cuenta, ni cuesta nada.** Funciona con cualquier modelo que la persona
+ya tenga, y las tarjetas nunca pasan por ningún servicio nuestro porque la
+generación ocurre entera en la conversación que ya tenía abierta.
+
+### Camino 2: generar aquí, con clave de OpenRouter
+
+Si prefieres que el mazo se genere dentro de la aplicación, pones una clave de
+OpenRouter en tu navegador y la petición sale de tu equipo directamente a
+OpenRouter. La aplicación **no tiene claves propias** y no paga por las
+peticiones: pagas tú, a tu cuenta y con tus límites.
+
+La clave **no pasa por nuestra infraestructura**, así que no se puede ver ni
+registrar. Eso no es una comodidad, es la consecuencia de publicar en GitHub Pages
+sin servidor, y resulta ser la mejor garantía de privacidad disponible.
+
+### Dónde se guarda la clave, y por qué no una cookie
+
+En `localStorage`, y no es una decisión de gusto:
+
+| Opción | Por qué no |
+| --- | --- |
+| Cookie `httpOnly` | El navegador no puede leerla, así que no puede usarla para firmar la petición; y sin servidor, tampoco hay nadie que la lea. No sirve para nada. |
+| Cookie legible por JS | Idéntica a `localStorage` en seguridad, y además se envía sola en cada petición a nuestro dominio, que algún día podría existir. |
+| `localStorage` | Lo que hay. Se borra con un botón y sobrevive a las recargas. |
+
+Es el patrón *bring your own key*. Y quien prefiera no guardar nada, usa el modo
+de importar y no deja ninguna clave en el navegador.
+
+### Lo que `localStorage` no protege
+
+Conviene decirlo sin rodeos: `localStorage` **no** es un almacén de secretos.
+Cualquier JavaScript que corra en la página puede leer lo que hay dentro. La
+protección real es de dos capas:
+
+1. **Restringir la clave en OpenRouter**, por presupuesto y por sitio de
+   referencia. Es lo único que sobrevive a que alguien la lea.
+2. **Que no haya JavaScript de terceros ni XSS.** La aplicación no carga scripts
+   de terceros y nunca interpreta con `innerHTML` nada que venga de un modelo. Y
+   como defensa de fondo, `app/lib/csp.ts` monta una `connect-src` que solo deja
+   salir a Supabase y a `openrouter.ai`: una clave robada por un XSS no tiene a
+   dónde ir.
+
+Verificado en el navegador: un `fetch` a un origen ajeno falla con `TypeError`, uno
+a `https://openrouter.ai` pasa.
+
+### Por qué solo OpenRouter
+
+La llamada sale del navegador, así que el servicio tiene que responder con
+cabeceras CORS. Se comprobó uno por uno, en el navegador y no en la documentación:
+
+| Servicio | Desde el navegador | Comprobación |
+| --- | --- | --- |
+| `openrouter.ai` | Sí | Responde, incluido el catálogo de modelos |
+| `api.anthropic.com` | Sí | Pide una cabecera especial, pero responde |
+| `generativelanguage.googleapis.com` | Sí | Solo su endpoint nativo |
+| `api.minimax.io` | **No** | `TypeError` en el navegador y `401` desde Node: no manda cabeceras CORS |
+| `api.openai.com` | No fiable | Su preflight ha devuelto `403` y `404` |
+
+Un `401` o un `400` en esas pruebas es buena señal: significa que el preflight
+pasó y llegó al servidor. Un fallo de CORS nunca devuelve un estado HTTP.
+
+Quedan tres que en teoría funcionan, pero cada uno obliga a mantener su propio
+formato de petición y de respuesta, y ninguno cubre todos los modelos. OpenRouter
+los cubre a todos con **un** formato, el de OpenAI, que ya es un estándar de facto:
+una clave da acceso a GPT, Claude, Gemini y MiniMax. Por eso MiniMax no aparece
+como opción propia, aunque se pueda usar desde dentro de la aplicación.
+
+> **Ojo con las credenciales de Claude Code.** No son una clave de API: son
+> credenciales de suscripción, pensadas para la terminal, y usarlas desde una web
+> no está permitido. Y en realidad no hacen falta aquí, porque el modo de importar
+> ya usa la IA que tengas abierta.
+
+### El catálogo de modelos se pide al momento
+
+`GET https://openrouter.ai/api/v1/models` es público —no necesita clave— y
+devolvía 464 modelos. Se consulta al abrir la pantalla en vez de escribirlos en el
+código, porque `google/gemini-3.8-flash` no existía hace poco y los que se
+existían se van: una lista fija se queda vieja sin avisar.
+
+El catálogo también dice qué modelos aceptan `response_format`, que es lo que
+permite pedir JSON en limpio. A los que no, no se les manda ese campo, porque
+OpenRouter responde `400` si se lo mandas a un modelo que no lo admite.
+
+### Interpretar la respuesta
+
+Un modelo al que se le pide JSON devuelve JSON *casi* siempre, pero lo envuelve en
+un bloque de código, le pone prosa delante o llama `meaning` a `meaning_es`. Como
+las dos vías de entrada pasan por el mismo lector, esa tolerancia se paga una vez:
+`app/features/ai/draft.ts` acepta un array suelto, quita los bloques de código,
+reconoce varios nombres por campo y **recorta los textos a los límites de la base
+de datos** antes de insertar. Si un significado pasara de los 400 caracteres, el
+`insert` fallaría entero y se perderían también las tarjetas que estaban bien.
+
+Tarjeta sin término o sin traducción: se descarta y se sigue. Si al final no queda
+ninguna, se explica en pantalla en vez de guardar un mazo vacío.
+
 ## Seguridad
 
 Las reglas de acceso viven **en la base de datos**, no en los componentes. La
@@ -212,17 +325,35 @@ supabase test db
 app/
 ├── components/        # UI compartida: botones, campos, avisos, diálogo de confirmación
 ├── features/
+│   ├── ai/            # proveedores, claves en el navegador, prompt e interpretación
 │   ├── decks/         # tarjetas de mazo, previsualización del slug
 │   └── study/         # motor de estudio (puro) + sus pruebas
-├── lib/               # clientes de Supabase, sesión, consultas, tipos, formato
+├── lib/               # clientes de Supabase, sesión, consultas, tipos, CSP, formato
 ├── routes/            # un módulo por ruta
-├── root.tsx           # documento, navegación y estado de autenticación
+├── root.tsx           # documento, navegación, CSP y estado de autenticación
 └── routes.ts          # mapa de rutas
 supabase/
 ├── migrations/        # esquema, RLS y funciones seguras
 ├── tests/             # pruebas pgTAP de permisos
 └── seed.sql           # mazos oficiales
 ```
+
+### Un aviso sobre `redirect()` y `navigate()`
+
+`redirect()` existe para que lo capture el enrutador, y el enrutador solo lo
+captura dentro de un `loader` o un `action`. Lanzarlo desde un manejador de
+evento —un `onClick` o un `onSubmit`— no lo captura nadie: la página se queda
+donde está y la `Response` asoma como error sin capturar en la consola.
+
+Se comprobó en el navegador. El caso grave es cuando el guardado ya ocurrió, que
+es lo que pasaba en `mazo-nuevo.tsx`: el mazo se insertaba, la pantalla se
+quedaba como si nada, y pulsar «Crear» otra vez dejaba un duplicado en la
+biblioteca. Ahora usa `navigate()`.
+
+Como el sitio se publica sin servidor, casi todo el trabajo ocurre en manejadores
+de evento y el patrón se copia de un archivo a otro con facilidad.
+`app/lib/navigation.test.ts` lo vigila: busca `throw redirect(` fuera de un
+`clientLoader` o `clientAction`, ignorando comentarios y cadenas.
 
 ### El motor de estudio
 
