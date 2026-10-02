@@ -1,5 +1,6 @@
 import { buildOAuthReturnUrl, rememberRedirect } from "./auth-redirect";
 import { getSupabaseConfig } from "./env";
+import { type MessageKey, t } from "./locale";
 import { getSupabaseBrowser } from "./supabase";
 
 /**
@@ -25,12 +26,14 @@ export type GoogleAccessResult = { ok: true } | { ok: false; message: string };
  * Lo habitual no es que salte ninguno: si el proveedor está bien configurado,
  * Google es quien devuelve el fallo a la vuelta y lo trata `root.tsx`. Estos
  * cubren los fallos que se ven sin llegar a salir del sitio.
+ *
+ * La clave es el mensaje crudo de Supabase y el valor una clave de traducción:
+ * el idioma se decide al pintar el error, no al construirlo.
  */
-const FRIENDLY_ERRORS: Record<string, string> = {
-  "Invalid request: unable to parse URL":
-    "No se pudo preparar el acceso con Google. Revisa VITE_SUPABASE_URL.",
-  "fetch failed": "No se pudo contactar con Supabase. Revisa tu conexión.",
-  NetworkError: "No se pudo contactar con Supabase. Revisa tu conexión.",
+const FRIENDLY_ERRORS: Record<string, MessageKey> = {
+  "Invalid request: unable to parse URL": "google.errorParseUrl",
+  "fetch failed": "google.errorNetwork",
+  NetworkError: "google.errorNetwork",
 };
 
 /**
@@ -53,7 +56,7 @@ export async function startGoogleAccess(options: {
   if (!supabase) {
     return {
       ok: false,
-      message: "Falta configurar Supabase en tus variables de entorno.",
+      message: t("common.noSupabaseEnv"),
     };
   }
 
@@ -68,9 +71,12 @@ export async function startGoogleAccess(options: {
   });
 
   if (error) {
+    const friendly = FRIENDLY_ERRORS[error.message];
     return {
       ok: false,
-      message: FRIENDLY_ERRORS[error.message] ?? error.message,
+      // Un mensaje de Supabase que no está en la tabla se devuelve tal cual: es
+      // texto de terceros y traducirlo a mano sería inventarse lo que dice.
+      message: friendly ? t(friendly) : error.message,
     };
   }
 

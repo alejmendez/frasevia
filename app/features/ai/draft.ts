@@ -14,6 +14,7 @@
  * entero; es preferible recortar el texto largo aquí y avisar en pantalla.
  */
 
+import { t } from "~/lib/locale";
 import type { CardKind } from "~/lib/types";
 
 /** Límites copiados de los `check` de `cards` en la migración inicial. */
@@ -267,18 +268,14 @@ export function parseDeckDraft(raw: string): DeckDraft {
   const slice = sliceJson(text);
 
   if (slice === null) {
-    throw new DraftError(
-      "El modelo no devolvió nada con forma de mazo. Prueba con otro modelo o a reiterar la petición.",
-    );
+    throw new DraftError(t("draft.notADeck"));
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(slice);
   } catch {
-    throw new DraftError(
-      "La respuesta del modelo estaba cortada o mal formada. Prueba otra vez.",
-    );
+    throw new DraftError(t("draft.malformed"));
   }
 
   // Un array suelto se interpreta como la lista de tarjetas.
@@ -314,9 +311,7 @@ export function parseDeckDraft(raw: string): DeckDraft {
   }
 
   if (cards.length === 0) {
-    throw new DraftError(
-      "El modelo respondió, pero ninguna tarjeta tenía término y traducción a la vez. Prueba otra vez.",
-    );
+    throw new DraftError(t("draft.noUsableCards"));
   }
 
   const title = clip(pick(root, "title", "titulo", "name"), TITLE_MAX);
@@ -324,8 +319,9 @@ export function parseDeckDraft(raw: string): DeckDraft {
   return {
     // Un mazo sin título no se puede guardar: `decks_title_length` exige al
     // menos un carácter. Se inventa uno a partir del concepto para no perder
-    // las tarjetas, que es lo que costó.
-    title: title === "" ? "Mazo generado con IA" : title,
+    // las tarjetas, que es lo que costó. Va en el idioma que se está usando: es
+    // un título nuevo, no uno traducción de otro.
+    title: title === "" ? t("draft.defaultTitle") : title,
     description: clip(pick(root, "description", "descripcion"), MEANING_MAX),
     level: optional(pick(root, "level", "nivel"), 60),
     cards,

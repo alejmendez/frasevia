@@ -12,12 +12,14 @@ import {
 import { DeckTile } from "~/features/decks/deck-tile";
 import type { LibraryDeck } from "~/lib/decks";
 import { listMyDecks } from "~/lib/decks";
-import { formatRelativeTime, PROGRESS_LABEL } from "~/lib/format";
+import { formatRelativeTime } from "~/lib/format";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
 import type { Route } from "./+types/biblioteca";
 
 export function meta() {
-  return [{ title: "Mi biblioteca — Frasevia" }];
+  return [{ title: t("biblioteca.metaTitle") }];
 }
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -37,6 +39,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
 /** Barra de avance con lo aprendido sobre el total de tarjetas del mazo. */
 function DeckProgress({ deck }: { deck: LibraryDeck }) {
+  const tr = useT();
   const learned = deck.progress?.mastered_count ?? 0;
   const practicing = deck.progress?.learning_count ?? 0;
   const studied = learned + practicing;
@@ -45,8 +48,8 @@ function DeckProgress({ deck }: { deck: LibraryDeck }) {
     return (
       <p className="text-xs text-ink-faint">
         {deck.card_count === 0
-          ? "Sin tarjetas todavía"
-          : "Sin practicar todavía"}
+          ? tr("biblioteca.noCards")
+          : tr("biblioteca.notPracticed")}
       </p>
     );
   }
@@ -56,11 +59,14 @@ function DeckProgress({ deck }: { deck: LibraryDeck }) {
       <ProgressBar
         value={learned}
         total={deck.card_count}
-        label={`${learned} de ${deck.card_count} tarjetas aprendidas en ${deck.title}`}
+        label={tr("biblioteca.progressAria", {
+          learned,
+          total: deck.card_count,
+          deck: deck.title,
+        })}
       />
       <p className="text-xs text-ink-faint">
-        {learned} aprendida{learned === 1 ? "" : "s"} · {practicing}{" "}
-        {PROGRESS_LABEL.learning.toLowerCase()}
+        {tr("biblioteca.progressLine", { learned, learning: practicing })}
         {deck.progress?.last_studied_at
           ? ` · ${formatRelativeTime(deck.progress.last_studied_at)}`
           : ""}
@@ -70,6 +76,8 @@ function DeckProgress({ deck }: { deck: LibraryDeck }) {
 }
 
 export default function Biblioteca({ loaderData }: Route.ComponentProps) {
+  const tr = useT();
+
   if (loaderData.status === "unconfigured") {
     return <ConfigNotice />;
   }
@@ -79,22 +87,24 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
   return (
     <Page>
       <PageHeader
-        eyebrow="Tu espacio"
-        title="Mi biblioteca"
-        description="Los mazos que creaste y las copias que hiciste de mazos públicos."
+        eyebrow={tr("biblioteca.eyebrow")}
+        title={tr("biblioteca.title")}
+        description={tr("biblioteca.description")}
         actions={
           <>
             <ButtonLink to="/biblioteca/mazos/nuevo-ia" variant="secondary">
-              Crear con IA
+              {tr("biblioteca.createWithAi")}
             </ButtonLink>
-            <ButtonLink to="/biblioteca/mazos/nuevo">Crear un mazo</ButtonLink>
+            <ButtonLink to="/biblioteca/mazos/nuevo">
+              {tr("biblioteca.createDeck")}
+            </ButtonLink>
           </>
         }
       />
 
       {error ? (
         <div className="mb-6">
-          <Alert variant="error" title="No se pudo cargar tu biblioteca">
+          <Alert variant="error" title={tr("biblioteca.loadErrorTitle")}>
             {error}
           </Alert>
         </div>
@@ -102,18 +112,18 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
 
       {decks.length === 0 && !error ? (
         <EmptyState
-          title="Tu biblioteca está vacía"
-          description="Crea un mazo con tus propias palabras y frases, o copia uno de los mazos públicos para modificarlo a tu gusto."
+          title={tr("biblioteca.emptyTitle")}
+          description={tr("biblioteca.emptyDescription")}
           action={
             <>
               <ButtonLink to="/biblioteca/mazos/nuevo-ia">
-                Crear un mazo con IA
+                {tr("biblioteca.createWithAiLong")}
               </ButtonLink>
               <ButtonLink to="/biblioteca/mazos/nuevo" variant="secondary">
-                Crear un mazo a mano
+                {tr("biblioteca.createManual")}
               </ButtonLink>
               <ButtonLink to="/explorar" variant="ghost">
-                Explorar mazos
+                {tr("inicio.ctaExplore")}
               </ButtonLink>
             </>
           }
@@ -137,7 +147,7 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
                     <DeckProgress deck={deck} />
                     <div className="flex flex-wrap items-center gap-2">
                       {deck.is_official ? (
-                        <Tag tone="brand">Oficial</Tag>
+                        <Tag tone="brand">{tr("biblioteca.official")}</Tag>
                       ) : (
                         <Tag
                           tone={
@@ -145,22 +155,24 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
                           }
                         >
                           {deck.visibility === "public"
-                            ? "Publicado"
-                            : "Privado"}
+                            ? tr("biblioteca.published")
+                            : tr("biblioteca.private")}
                         </Tag>
                       )}
-                      {deck.source_deck_id ? <Tag>Copiado</Tag> : null}
+                      {deck.source_deck_id ? (
+                        <Tag>{tr("biblioteca.copied")}</Tag>
+                      ) : null}
                       <Link
                         to={`/biblioteca/mazos/${deck.id}/editar`}
                         className="text-xs text-brand hover:underline"
                       >
-                        Editar
+                        {tr("biblioteca.edit")}
                       </Link>
                       <Link
                         to={`/estudiar/${deck.id}`}
                         className="text-xs text-brand hover:underline"
                       >
-                        Estudiar
+                        {tr("biblioteca.study")}
                       </Link>
                     </div>
                   </div>

@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { Card, Tag } from "~/components/ui";
-import { cardCountLabel, VISIBILITY_LABEL } from "~/lib/format";
+import { cardCountLabel, visibilityLabel } from "~/lib/format";
+import { useT } from "~/lib/locale-context";
 import type { Deck } from "~/lib/types";
 
 /**
@@ -27,6 +28,8 @@ export function DeckTile({
    */
   href?: string;
 }) {
+  const t = useT();
+
   return (
     <Card
       as="article"
@@ -42,13 +45,15 @@ export function DeckTile({
             {deck.title}
           </Link>
         </h3>
-        {deck.is_official ? <Tag tone="brand">Oficial</Tag> : null}
+        {deck.is_official ? (
+          <Tag tone="brand">{t("biblioteca.official")}</Tag>
+        ) : null}
       </div>
 
       {deck.description ? (
         <p className="line-clamp-3 text-sm text-ink-soft">{deck.description}</p>
       ) : (
-        <p className="text-sm text-ink-faint">Sin descripción.</p>
+        <p className="text-sm text-ink-faint">{t("deck.noDescription")}</p>
       )}
 
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-ink-faint">
@@ -58,17 +63,14 @@ export function DeckTile({
           · {deck.source_language} → {deck.target_language}
         </span>
         {!deck.is_official ? (
-          <span>
-            ·{" "}
-            {deck.visibility === "public"
-              ? VISIBILITY_LABEL.public
-              : VISIBILITY_LABEL.private}
-          </span>
+          <span>· {visibilityLabel(deck.visibility)}</span>
         ) : null}
       </div>
 
       {authorName ? (
-        <p className="text-xs text-ink-faint">Por {authorName}</p>
+        <p className="text-xs text-ink-faint">
+          {t("deck.by", { author: authorName })}
+        </p>
       ) : null}
 
       {footer}

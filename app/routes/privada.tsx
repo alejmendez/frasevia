@@ -1,10 +1,11 @@
 import { Outlet, redirect } from "react-router";
 import { ConfigNotice } from "~/components/ui";
+import { t } from "~/lib/locale";
 import { getSession, loginPath } from "~/lib/session";
 import type { Route } from "./+types/privada";
 
 export function meta() {
-  return [{ title: "Mi biblioteca — Frasevia" }];
+  return [{ title: t("biblioteca.metaTitle") }];
 }
 
 /**

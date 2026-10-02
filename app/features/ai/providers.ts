@@ -29,21 +29,29 @@
  * cualquier otro porque quien genera es la IA que ya tiene la persona abierta.
  */
 
+import { t } from "~/lib/locale";
+
 /** Configuración de la generación directa. */
 export const PROVIDER = {
   id: "openrouter" as const,
   label: "OpenRouter",
-  blurb:
-    "Una sola clave da acceso a GPT, Claude, Gemini, MiniMax y muchos más.",
   keyUrl: "https://openrouter.ai/keys",
-  keyName: "API key de OpenRouter",
   keyStorageKey: "frasevia.ai.key.openrouter",
   /** Modelo que se propone. Se cambia al elegir otro en el selector. */
   defaultModel: "openai/gpt-4o-mini",
-  /** Cómo limitar la clave para que no sirva en otro sitio. */
-  scoping:
-    "En OpenRouter, la clave se puede limitar por presupuesto y por sitio de " +
-    "referencia; activar las dos deja una clave robada sin margen de daño.",
 } as const;
+
+/**
+ * Textos del proveedor, ya traducidos.
+ *
+ * Eran parte de `PROVIDER` y ahora son funciones porque se pintan: el nombre de
+ * la clave, la descripción y el consejo de seguridad salen en pantalla, y
+ * leerlos del catálogo al renderizar es lo que hace que cambien con el idioma.
+ * Lo que no es texto —el id, la URL y la clave de almacenamiento— sí sigue siendo
+ * una constante.
+ */
+export const providerBlurb = () => t("provider.blurb");
+export const providerKeyName = () => t("provider.keyName");
+export const providerScoping = () => t("provider.scoping");
 
 export type Provider = typeof PROVIDER;

@@ -1,20 +1,18 @@
 import { ButtonLink, Card, Tag } from "~/components/ui";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 
-const PILLARS = [
-  {
-    title: "Tarjetas con contexto",
-    body: "Cada palabra o frase trae su ejemplo, su traducción y una nota de uso, para que el contexto llegue antes que la definición.",
-  },
-  {
-    title: "Cuatro formas de practicar",
-    body: "Explorar, elegir el significado, completar la frase y repaso. Cambia de modo cuando el contenido no da para uno en concreto.",
-  },
-  {
-    title: "Sesiones cortas",
-    body: "Tantos elementos como quieras y un resumen al final. Sin rachas obligatorias: avanzas cuando puedes volver.",
-  },
-];
+const PILLARS = ["inicio.pillar1", "inicio.pillar2", "inicio.pillar3"] as const;
 
+/**
+ * Tarjetas de muestra de la portada.
+ *
+ * El término y el ejemplo van en inglés y el significado y la traducción en
+ * español, y eso no cambia con el idioma de la interfaz: es contenido de
+ * ejemplo, no un rótulo. Traducirlo al inglés sería hacer una tarjeta que no
+ * enseña nada, porque se vería que el «significado» de una frase inglesa es la
+ * misma frase inglesa.
+ */
 const EXAMPLES = [
   {
     term: "Could you clarify what you mean by that?",
@@ -38,39 +36,38 @@ const EXAMPLES = [
 
 export function meta() {
   return [
-    { title: "Frasevia — aprende inglés con frases útiles" },
+    { title: t("inicio.metaTitle") },
     {
       name: "description",
-      content:
-        "Mazos de inglés con ejemplos reales para personas hispanohablantes. Explora, crea tus propios mazos y registra tu progreso.",
+      content: t("inicio.metaDescription"),
     },
   ];
 }
 
 export default function Inicio() {
+  const tr = useT();
+
   return (
     <div>
       {/* Hero ------------------------------------------------------------- */}
       <section className="border-b border-line">
         <div className="mx-auto w-full max-w-5xl px-5 py-16 sm:px-8 sm:py-24">
           <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">
-            Inglés desde el español
+            {tr("inicio.eyebrow")}
           </p>
           <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.1] text-ink sm:text-6xl">
-            Aprende inglés con frases que
-            <span className="text-brand"> alguien dijo de verdad</span>.
+            {tr("inicio.titleLead")}
+            <span className="text-brand">{tr("inicio.titleAccent")}</span>.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
-            Frasevia reúne palabras, frases y reglas sencillas con ejemplos
-            naturales y su traducción. Crea tus propios mazos, compártelos y
-            practica a tu ritmo, sin rachas que te presionen.
+            {tr("inicio.body")}
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <ButtonLink to="/explorar" variant="primary">
-              Explorar mazos
+              {tr("inicio.ctaExplore")}
             </ButtonLink>
             <ButtonLink to="/crear-cuenta" variant="secondary">
-              Crear una cuenta
+              {tr("inicio.ctaSignUp")}
             </ButtonLink>
           </div>
         </div>
@@ -79,12 +76,9 @@ export default function Inicio() {
       {/* Ejemplos de tarjetas ---------------------------------------------- */}
       <section className="mx-auto w-full max-w-5xl px-5 py-16 sm:px-8">
         <h2 className="font-display text-2xl text-ink">
-          Así se ve una tarjeta
+          {tr("inicio.cardsTitle")}
         </h2>
-        <p className="mt-2 max-w-2xl text-ink-soft">
-          El término en inglés, su significado, la frase donde aparece y cómo
-          usarla. Todo en la misma pantalla.
-        </p>
+        <p className="mt-2 max-w-2xl text-ink-soft">{tr("inicio.cardsBody")}</p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {EXAMPLES.map((example) => (
@@ -105,12 +99,12 @@ export default function Inicio() {
         <div className="mx-auto w-full max-w-5xl px-5 py-16 sm:px-8">
           <div className="grid gap-8 md:grid-cols-3">
             {PILLARS.map((pillar) => (
-              <div key={pillar.title}>
+              <div key={pillar}>
                 <h3 className="font-display text-lg text-ink">
-                  {pillar.title}
+                  {tr(`${pillar}.title`)}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                  {pillar.body}
+                  {tr(`${pillar}.body`)}
                 </p>
               </div>
             ))}
@@ -122,18 +116,17 @@ export default function Inicio() {
       <section className="mx-auto w-full max-w-5xl px-5 py-16 sm:px-8">
         <Card className="text-center">
           <h2 className="font-display text-2xl text-ink">
-            Empieza con el mazo de las bases
+            {tr("inicio.startTitle")}
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-ink-soft">
-            Saludos, presentaciones, preguntas básicas, números, horarios y los
-            verbos que usas todos los días.
+            {tr("inicio.startBody")}
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
-            <Tag tone="brand">Inglés desde las bases</Tag>
-            <Tag tone="accent">Inglés para desarrolladores</Tag>
+            <Tag tone="brand">{tr("inicio.tagBasics")}</Tag>
+            <Tag tone="accent">{tr("inicio.tagDevs")}</Tag>
           </div>
           <div className="mt-6 flex justify-center">
-            <ButtonLink to="/explorar">Ver el catálogo</ButtonLink>
+            <ButtonLink to="/explorar">{tr("inicio.seeCatalog")}</ButtonLink>
           </div>
         </Card>
       </section>

@@ -11,13 +11,15 @@ import {
   Tag,
 } from "~/components/ui";
 import { listMyProgress } from "~/lib/decks";
-import { formatRelativeTime, PROGRESS_LABEL } from "~/lib/format";
+import { formatRelativeTime, progressLabel } from "~/lib/format";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
 import type { ProgressDetail, ProgressState } from "~/lib/types";
 import type { Route } from "./+types/progreso";
 
 export function meta() {
-  return [{ title: "Mi progreso — Frasevia" }];
+  return [{ title: t("progreso.metaTitle") }];
 }
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -42,6 +44,8 @@ const STATE_TONE: Record<ProgressState, "neutral" | "brand" | "accent"> = {
 };
 
 export default function Progreso({ loaderData }: Route.ComponentProps) {
+  const tr = useT();
+
   if (loaderData.status === "unconfigured") {
     return <ConfigNotice />;
   }
@@ -73,15 +77,17 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
   return (
     <Page>
       <PageHeader
-        eyebrow="Tu avance"
-        title="Mi progreso"
-        description="Lo que has practicado hasta ahora. No hay rachas ni plazos: la idea es ver qué ya se te queda y qué conviene repasar."
-        actions={<ButtonLink to="/biblioteca">Ir a la biblioteca</ButtonLink>}
+        eyebrow={tr("progreso.eyebrow")}
+        title={tr("progreso.title")}
+        description={tr("progreso.description")}
+        actions={
+          <ButtonLink to="/biblioteca">{tr("progreso.goLibrary")}</ButtonLink>
+        }
       />
 
       {error ? (
         <div className="mb-6">
-          <Alert variant="error" title="No se pudo cargar tu progreso">
+          <Alert variant="error" title={tr("progreso.loadErrorTitle")}>
             {error}
           </Alert>
         </div>
@@ -89,9 +95,13 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
 
       {totals.total === 0 && !error ? (
         <EmptyState
-          title="Todavía no hay progreso registrado"
-          description="Cuando practiques un mazo, aquí verás cuántas tarjetas tienes aprendidas, cuáles sigues practicando y cuándo fue la última sesión."
-          action={<ButtonLink to="/biblioteca">Elegir un mazo</ButtonLink>}
+          title={tr("progreso.emptyTitle")}
+          description={tr("progreso.emptyDescription")}
+          action={
+            <ButtonLink to="/biblioteca">
+              {tr("progreso.chooseDeck")}
+            </ButtonLink>
+          }
         />
       ) : (
         <div className="space-y-8">
@@ -99,7 +109,7 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
             <dl className="grid gap-5 sm:grid-cols-4">
               <div>
                 <dt className="text-xs tracking-wide text-ink-faint uppercase">
-                  Practicadas
+                  {tr("progreso.statPracticed")}
                 </dt>
                 <dd className="font-display text-3xl text-ink">
                   {totals.total}
@@ -107,7 +117,7 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <dt className="text-xs tracking-wide text-ink-faint uppercase">
-                  Aprendidas
+                  {tr("progreso.statLearned")}
                 </dt>
                 <dd className="font-display text-3xl text-brand">
                   {totals.mastered}
@@ -115,7 +125,7 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <dt className="text-xs tracking-wide text-ink-faint uppercase">
-                  Practicando
+                  {tr("progreso.statLearning")}
                 </dt>
                 <dd className="font-display text-3xl text-accent">
                   {totals.learning}
@@ -123,7 +133,7 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <dt className="text-xs tracking-wide text-ink-faint uppercase">
-                  Última sesión
+                  {tr("progreso.statLastSession")}
                 </dt>
                 <dd className="font-display text-lg text-ink">
                   {formatRelativeTime(lastStudied ?? null)}
@@ -135,7 +145,10 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
               <ProgressBar
                 value={totals.mastered}
                 total={totals.total}
-                label={`${totals.mastered} tarjetas aprendidas de ${totals.total}`}
+                label={tr("progreso.totalAria", {
+                  learned: totals.mastered,
+                  total: totals.total,
+                })}
               />
             </div>
           </Card>
@@ -155,7 +168,7 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
                     to={`/estudiar/${deckId}`}
                     className="text-sm text-brand hover:underline"
                   >
-                    Seguir practicando
+                    {tr("progreso.keepPracticing")}
                   </Link>
                 </div>
 
@@ -163,12 +176,17 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
                   <ProgressBar
                     value={learned}
                     total={deckRows.length}
-                    label={`${learned} de ${deckRows.length} tarjetas aprendidas en ${deckRows[0].deck_title}`}
+                    label={tr("biblioteca.progressAria", {
+                      learned,
+                      total: deckRows.length,
+                      deck: deckRows[0].deck_title,
+                    })}
                   />
                   <p className="mt-1.5 text-xs text-ink-faint">
-                    {learned} aprendida{learned === 1 ? "" : "s"} de{" "}
-                    {deckRows.length} practicada
-                    {deckRows.length === 1 ? "" : "s"}
+                    {tr("progreso.deckLine", {
+                      learned,
+                      total: deckRows.length,
+                    })}
                   </p>
                 </div>
 
@@ -184,11 +202,14 @@ export default function Progreso({ loaderData }: Route.ComponentProps) {
                         </div>
                         <div className="flex items-center gap-3 text-xs text-ink-faint">
                           <span>
-                            {row.correct_count}/{row.attempts} aciertos
+                            {tr("progreso.score", {
+                              correct: row.correct_count,
+                              attempts: row.attempts,
+                            })}
                           </span>
                           <span>{formatRelativeTime(row.last_studied_at)}</span>
                           <Tag tone={STATE_TONE[row.state]}>
-                            {PROGRESS_LABEL[row.state]}
+                            {progressLabel(row.state)}
                           </Tag>
                         </div>
                       </Card>

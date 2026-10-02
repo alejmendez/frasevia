@@ -12,11 +12,14 @@ import {
   useNavigate,
   useNavigation,
 } from "react-router";
+import { LanguageSwitcher } from "~/components/language-switcher";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { cx, LoadingState } from "~/components/ui";
 import { AuthProvider, useAuth } from "~/lib/auth-context";
 import { takeRedirect } from "~/lib/auth-redirect";
 import { buildCsp } from "~/lib/csp";
+import { LOCALE_BOOTSTRAP, t } from "~/lib/locale";
+import { LocaleProvider, useT } from "~/lib/locale-context";
 import { THEME_BOOTSTRAP } from "~/lib/theme";
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -67,9 +70,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
             `dangerouslySetInnerHTML`. */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constante propia, sin entrada externa */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        {/* El idioma va aparte porque no prepara nada visible: solo deja `lang`
+            en su sitio para que un lector de pantalla use la fonética
+            correcta desde el primer momento. El texto lo traduce
+            `app/lib/locale-context.tsx` al hidratar. */}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constante propia, sin entrada externa */}
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOTSTRAP }} />
       </head>
       <body className="min-h-dvh">
-        {children}
+        {/* El proveedor vive aquí y no en `App` para que también envuelva al
+            `ErrorBoundary` de la raíz: cuando una ruta revienta, el enrutador
+            sustituye `App` por ese componente y, con el idioma por debajo, la
+            pantalla de error saldría siempre en español. */}
+        <LocaleProvider>{children}</LocaleProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -168,20 +181,36 @@ function readOAuthError(): string | null {
  * la página real no salta.
  */
 export function HydrateFallback() {
-  return <LoadingState label="Abriendo Frasevia…" />;
+  // En la primera pasada sale en español, que es lo que trae el HTML compilado;
+  // el proveedor resuelve la preferencia enseguida y, si es otro idioma, ya no
+  // queda nada de esta pantalla en pantalla.
+  return <LoadingState label={t("app.opening")} />;
 }
 
-const PUBLIC_LINKS = [
-  { to: "/explorar", label: "Explorar" },
-  { to: "/progreso", label: "Mi progreso" },
-];
-
-const PRIVATE_LINKS = [{ to: "/biblioteca", label: "Mi biblioteca" }];
+/**
+ * Enlaces de la barra.
+ *
+ * Se calculan en cada render en vez de ser constantes porque sus etiquetas
+ * dependen del idioma. El destino no cambia nunca: cambiarlo para meter otro
+ * idioma en la URL significaría tener rutas duplicadas, y la preferencia de
+ * idioma es del navegador de cada persona, no algo que viva en el enlace.
+ */
+function navLinks() {
+  return {
+    public: [
+      { to: "/explorar", label: "nav.explore" },
+      { to: "/progreso", label: "nav.progress" },
+    ],
+    private: [{ to: "/biblioteca", label: "nav.library" }],
+  } as const;
+}
 
 function SiteHeader() {
+  const t = useT();
   const { status, user } = useAuth();
   const navigation = useNavigation();
   const isNavigating = navigation.state !== "idle";
+  const links = navLinks();
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur">
@@ -189,7 +218,7 @@ function SiteHeader() {
       {isNavigating ? (
         <div
           role="progressbar"
-          aria-label="Navegando"
+          aria-label={t("app.navigating")}
           className="h-0.5 w-full animate-pulse bg-brand/60"
         />
       ) : null}
@@ -203,11 +232,11 @@ function SiteHeader() {
         </Link>
 
         <nav
-          aria-label="Principal"
+          aria-label={t("nav.primary")}
           className="order-3 w-full sm:order-2 sm:w-auto"
         >
           <ul className="flex flex-wrap items-center gap-1 text-sm">
-            {[...PRIVATE_LINKS, ...PUBLIC_LINKS].map((link) => (
+            {[...links.private, ...links.public].map((link) => (
               <li key={link.to}>
                 <NavLink
                   to={link.to}
@@ -220,7 +249,7 @@ function SiteHeader() {
                     )
                   }
                 >
-                  {link.label}
+                  {t(link.label)}
                 </NavLink>
               </li>
             ))}
@@ -228,6 +257,7 @@ function SiteHeader() {
         </nav>
 
         <div className="order-2 ml-auto flex items-center gap-2 sm:order-3">
+          <LanguageSwitcher />
           <ThemeToggle />
           <AccountArea status={status} email={user?.email ?? null} />
         </div>
@@ -250,6 +280,8 @@ function AccountArea({
   status: ReturnType<typeof useAuth>["status"];
   email: string | null;
 }) {
+  const t = useT();
+
   if (status === "loading") {
     return (
       <span
@@ -262,7 +294,7 @@ function AccountArea({
   if (status === "unconfigured") {
     return (
       <span className="rounded-md border border-accent/30 bg-accent-muted px-2.5 py-1.5 text-xs font-medium text-accent">
-        Sin configurar
+        {t("account.unconfigured")}
       </span>
     );
   }
@@ -274,13 +306,13 @@ function AccountArea({
           to="/iniciar-sesion"
           className="rounded-lg px-3 py-2 text-sm text-ink-soft hover:bg-paper-sunken hover:text-ink"
         >
-          Iniciar sesión
+          {t("account.signIn")}
         </Link>
         <Link
           to="/crear-cuenta"
           className="rounded-lg bg-brand-solid px-3.5 py-2 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
         >
-          Crear cuenta
+          {t("account.signUp")}
         </Link>
       </>
     );
@@ -292,7 +324,7 @@ function AccountArea({
         className="hidden max-w-40 truncate text-sm text-ink-soft sm:inline"
         title={email ?? undefined}
       >
-        {email ?? "Tu cuenta"}
+        {email ?? t("account.yourAccount")}
       </span>
       {/* Cierre de sesión: un `fetcher.Form` para no recargar la página. */}
       <Form method="post" action="/salir">
@@ -300,7 +332,7 @@ function AccountArea({
           type="submit"
           className="rounded-lg border border-line-strong bg-paper-raised px-3 py-2 text-sm text-ink hover:bg-paper-sunken"
         >
-          Salir
+          {t("account.signOut")}
         </button>
       </Form>
     </>
@@ -308,12 +340,14 @@ function AccountArea({
 }
 
 function SiteFooter() {
+  const t = useT();
+
   return (
     <footer className="border-t border-line">
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-8 text-sm text-ink-faint sm:px-8">
-        <p>Frasevia — aprende inglés con frases que alguien dijo de verdad.</p>
+        <p>{t("footer.tagline")}</p>
         <Link to="/explorar" className="hover:text-ink">
-          Explorar mazos
+          {t("footer.exploreDecks")}
         </Link>
       </div>
     </footer>
@@ -321,16 +355,19 @@ function SiteFooter() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let title = "Algo salió mal";
-  let message = "Ocurrió un error inesperado.";
+  const t = useT();
+
+  let title = t("error.title");
+  let message = t("error.message");
   let status: number | undefined;
 
   if (isRouteErrorResponse(error)) {
     status = error.status;
-    title = error.status === 404 ? "No encontramos esta página" : "Error";
+    title =
+      error.status === 404 ? t("error.notFoundTitle") : t("error.shortTitle");
     message =
       error.status === 404
-        ? "Puede que la dirección esté mal escrita o que el contenido ya no esté disponible."
+        ? t("error.notFoundMessage")
         : error.statusText || message;
   } else if (import.meta.env.DEV && error instanceof Error) {
     message = error.message;
@@ -348,13 +385,13 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
           to="/"
           className="rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
         >
-          Volver al inicio
+          {t("error.backHome")}
         </Link>
         <Link
           to="/explorar"
           className="rounded-lg border border-line-strong bg-paper-raised px-4 py-2.5 text-sm text-ink hover:bg-paper-sunken"
         >
-          Explorar mazos
+          {t("footer.exploreDecks")}
         </Link>
       </div>
     </div>

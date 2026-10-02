@@ -17,6 +17,10 @@ import {
 } from "~/components/ui";
 import { slugPreview } from "~/features/decks/slug";
 import { getMyDeck } from "~/lib/decks";
+import { cardKindLabel, formatDate } from "~/lib/format";
+import { deckLanguages } from "~/lib/languages";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
 import type { Card } from "~/lib/types";
 import type { Route } from "./+types/mazo-editar";
@@ -25,8 +29,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   return [
     {
       title: loaderData?.deck
-        ? `Editar ${loaderData.deck.title}`
-        : "Editar mazo",
+        ? t("mazoEditar.metaDeck", { deck: loaderData.deck.title })
+        : t("mazoEditar.metaTitle"),
     },
   ];
 }
@@ -53,7 +57,7 @@ export async function clientLoader({
 
   if (!deck) {
     // RLS oculta los mazos ajenos: no revelamos si el id existe o no.
-    throw data({ message: "Mazo no encontrado" }, { status: 404 });
+    throw data({ message: t("estudiar.deckNotFound") }, { status: 404 });
   }
 
   return { status: "ready" as const, deck, cards };
@@ -93,7 +97,7 @@ export async function clientAction({
 
   const session = await getSession();
   if (session.status === "unconfigured") {
-    return actionFail("Falta configurar Supabase.", 503);
+    return actionFail(t("mazoEditar.noSupabaseShort"), 503);
   }
   if (session.status === "anonymous") {
     throw redirect(loginPath(request));
@@ -105,7 +109,7 @@ export async function clientAction({
     case "save-deck": {
       const title = String(formData.get("title") ?? "").trim();
       if (!title) {
-        return actionFail("El título no puede quedar vacío.");
+        return actionFail(t("mazoEditar.titleRequired"));
       }
 
       const { error } = await session.supabase
@@ -125,7 +129,7 @@ export async function clientAction({
         return actionFail(error.message);
       }
 
-      return actionOk("Mazo guardado.");
+      return actionOk(t("mazoEditar.deckSaved"));
     }
 
     case "save-cards": {
@@ -137,7 +141,7 @@ export async function clientAction({
       const meaning = String(formData.get("meaning_es") ?? "").trim();
 
       if (!term || !meaning) {
-        return actionFail("La tarjeta necesita un término y su significado.");
+        return actionFail(t("mazoEditar.cardNeedsFields"));
       }
 
       const { data: last } = await session.supabase
@@ -164,7 +168,7 @@ export async function clientAction({
         return actionFail(error.message);
       }
 
-      return actionOk("Tarjeta agregada.");
+      return actionOk(t("mazoEditar.cardAdded"));
     }
 
     case "delete-card": {
@@ -179,7 +183,7 @@ export async function clientAction({
         return actionFail(error.message);
       }
 
-      return actionOk("Tarjeta eliminada.");
+      return actionOk(t("mazoEditar.cardDeleted"));
     }
 
     case "delete-deck": {
@@ -197,7 +201,7 @@ export async function clientAction({
     }
 
     default:
-      return actionFail("Acción no reconocida.");
+      return actionFail(t("mazoEditar.unknownAction"));
   }
 }
 
@@ -296,14 +300,14 @@ async function saveCards(
   }
 
   if (updates.size === 0) {
-    return actionOk("No había cambios que guardar.");
+    return actionOk(t("mazoEditar.nothingToSave"));
   }
 
   const invalid = [...updates.entries()].find(
     ([, card]) => !card.term || !card.meaning_es,
   );
   if (invalid) {
-    return actionFail("Cada tarjeta necesita un término y su significado.");
+    return actionFail(t("mazoEditar.cardsNeedFields"));
   }
 
   // RLS impide tocar tarjetas de mazos ajenos, así que si algo falla es porque
@@ -323,24 +327,18 @@ async function saveCards(
     return actionFail(failure.error.message);
   }
 
-  return actionOk("Tarjetas guardadas.");
+  return actionOk(t("mazoEditar.cardsSaved"));
 }
-
-const LANGUAGES = [
-  { code: "es", label: "Español" },
-  { code: "en", label: "Inglés" },
-  { code: "pt", label: "Portugués" },
-  { code: "fr", label: "Francés" },
-  { code: "de", label: "Alemán" },
-];
 
 export default function MazoEditar({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
+  const tr = useT();
   const [isPublic, setIsPublic] = useState(
     loaderData.deck?.visibility === "public",
   );
+  const languages = deckLanguages();
 
   if (loaderData.status === "unconfigured") {
     return <ConfigNotice />;
@@ -356,23 +354,25 @@ export default function MazoEditar({
   return (
     <Page>
       <PageHeader
-        eyebrow="Biblioteca"
+        eyebrow={tr("mazoNuevo.eyebrow")}
         title={deck.title}
         description={
           <span className="flex flex-wrap items-center gap-2">
-            {deck.is_official ? <Tag tone="brand">Oficial</Tag> : null}
-            {deck.source_deck_id ? <Tag>Copia</Tag> : null}
+            {deck.is_official ? (
+              <Tag tone="brand">{tr("biblioteca.official")}</Tag>
+            ) : null}
+            {deck.source_deck_id ? <Tag>{tr("mazoEditar.copyTag")}</Tag> : null}
             <span className="text-sm">/mazos/{deck.slug}</span>
           </span>
         }
         actions={
           <>
             <ButtonLink to={`/estudiar/${deck.id}`} variant="secondary">
-              Estudiar
+              {tr("biblioteca.study")}
             </ButtonLink>
             {deck.visibility === "public" ? (
               <ButtonLink to={`/mazos/${deck.slug}`} variant="ghost">
-                Ver página pública
+                {tr("mazoEditar.publicPage")}
               </ButtonLink>
             ) : null}
           </>
@@ -389,13 +389,12 @@ export default function MazoEditar({
 
       {deck.is_official ? (
         <div className="mb-6">
-          <Alert variant="info" title="Mazo oficial de solo lectura">
-            El contenido oficial lo mantiene el equipo de Frasevia. Si quieres
-            cambiarlo,{" "}
+          <Alert variant="info" title={tr("mazoEditar.officialTitle")}>
+            {tr("mazoEditar.officialBody")}{" "}
             <a href="/mazos/ingles-desde-las-bases" className="underline">
-              haz una copia
+              {tr("mazoEditar.makeCopy")}
             </a>{" "}
-            y edítala en tu biblioteca.
+            {tr("mazoEditar.officialTail")}
           </Alert>
         </div>
       ) : null}
@@ -405,7 +404,9 @@ export default function MazoEditar({
         {/* Datos del mazo                                                  */}
         {/* -------------------------------------------------------------- */}
         <section>
-          <h2 className="font-display text-xl text-ink">Datos del mazo</h2>
+          <h2 className="font-display text-xl text-ink">
+            {tr("mazoEditar.deckData")}
+          </h2>
           <Form
             method="post"
             className="mt-4 space-y-5"
@@ -417,7 +418,7 @@ export default function MazoEditar({
           >
             <input type="hidden" name="intent" value="save-deck" />
 
-            <Field label="Título" htmlFor="title" required>
+            <Field label={tr("deckField.title")} htmlFor="title" required>
               <input
                 id="title"
                 name="title"
@@ -427,14 +428,14 @@ export default function MazoEditar({
                 className={inputClass}
               />
               <p className="text-xs text-ink-faint">
-                Dirección: /mazos/{slugPreview(deck.title)}
+                {tr("mazoNuevo.url", { slug: slugPreview(deck.title) })}
               </p>
             </Field>
 
             <Field
-              label="Descripción"
+              label={tr("deckField.description")}
               htmlFor="description"
-              hint="Aparece en el catálogo cuando el mazo es público."
+              hint={tr("deckField.descriptionHintPublic")}
             >
               <textarea
                 id="description"
@@ -445,13 +446,16 @@ export default function MazoEditar({
             </Field>
 
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Idioma de origen" htmlFor="source_language">
+              <Field
+                label={tr("deckField.sourceLanguage")}
+                htmlFor="source_language"
+              >
                 <Select
                   id="source_language"
                   name="source_language"
                   defaultValue={deck.source_language}
                 >
-                  {LANGUAGES.map((language) => (
+                  {languages.map((language) => (
                     <option key={language.code} value={language.code}>
                       {language.label}
                     </option>
@@ -459,13 +463,16 @@ export default function MazoEditar({
                 </Select>
               </Field>
 
-              <Field label="Idioma que se aprende" htmlFor="target_language">
+              <Field
+                label={tr("deckField.targetLanguage")}
+                htmlFor="target_language"
+              >
                 <Select
                   id="target_language"
                   name="target_language"
                   defaultValue={deck.target_language}
                 >
-                  {LANGUAGES.map((language) => (
+                  {languages.map((language) => (
                     <option key={language.code} value={language.code}>
                       {language.label}
                     </option>
@@ -476,20 +483,20 @@ export default function MazoEditar({
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field
-                label="Nivel aproximado"
+                label={tr("deckField.level")}
                 htmlFor="level"
-                hint="Una idea orientativa, no una certificación."
+                hint={tr("deckField.levelHint")}
               >
                 <input
                   id="level"
                   name="level"
                   defaultValue={deck.level ?? ""}
-                  placeholder="Principiante"
+                  placeholder={tr("mazoNuevo.levelPlaceholder")}
                   className={inputClass}
                 />
               </Field>
 
-              <Field label="Visibilidad" htmlFor="visibility">
+              <Field label={tr("deckField.visibility")} htmlFor="visibility">
                 <Select
                   id="visibility"
                   name="visibility"
@@ -498,20 +505,21 @@ export default function MazoEditar({
                     setIsPublic(event.target.value === "public")
                   }
                 >
-                  <option value="private">Privado, solo yo</option>
-                  <option value="public">Público, aparece en explorar</option>
+                  <option value="private">
+                    {tr("visibility.option.private")}
+                  </option>
+                  <option value="public">
+                    {tr("visibility.option.public")}
+                  </option>
                 </Select>
               </Field>
             </div>
 
             {isPublic ? (
-              <Alert variant="info">
-                Mientras sea público, cualquiera con el enlace puede leerlo y
-                copiarlo a su biblioteca.
-              </Alert>
+              <Alert variant="info">{tr("mazoEditar.publicNotice")}</Alert>
             ) : null}
 
-            <Button type="submit">Guardar mazo</Button>
+            <Button type="submit">{tr("mazoEditar.saveDeck")}</Button>
           </Form>
         </section>
 
@@ -520,7 +528,7 @@ export default function MazoEditar({
         {/* -------------------------------------------------------------- */}
         <section>
           <h2 className="font-display text-xl text-ink">
-            Tarjetas ({cards.length})
+            {tr("mazoEditar.cardsHeading", { count: cards.length })}
           </h2>
 
           {deck.is_official ? null : (
@@ -533,24 +541,25 @@ export default function MazoEditar({
                   {cards.map((card) => (
                     <CardEditor key={card.id} card={card} />
                   ))}
-                  <Button type="submit">Guardar tarjetas</Button>
+                  <Button type="submit">{tr("mazoEditar.saveCards")}</Button>
                 </Form>
               ) : (
                 <p className="mt-4 text-sm text-ink-soft">
-                  Este mazo todavía no tiene tarjetas. Agrega la primera con el
-                  formulario de arriba.
+                  {tr("mazoEditar.noCardsYet")}
                 </p>
               )}
 
               <div className="mt-8 border-t border-line pt-6">
                 <ConfirmSubmit
                   intent="delete-deck"
-                  title={`¿Eliminar «${deck.title}»?`}
-                  description="Se borra el mazo, sus tarjetas y el progreso que registraste en ellas. No se puede deshacer."
-                  confirmLabel="Eliminar el mazo"
+                  title={tr("mazoEditar.deleteDeckTitle", {
+                    title: deck.title,
+                  })}
+                  description={tr("mazoEditar.deleteDeckBody")}
+                  confirmLabel={tr("mazoEditar.deleteDeckConfirm")}
                   triggerClassName="text-sm text-danger hover:underline"
                 >
-                  Eliminar este mazo
+                  {tr("mazoEditar.deleteDeckTrigger")}
                 </ConfirmSubmit>
               </div>
             </>
@@ -562,20 +571,28 @@ export default function MazoEditar({
 }
 
 function AddCardForm() {
+  const tr = useT();
+
   return (
     <Form
       method="post"
       className="mt-4 rounded-card border border-line bg-paper-sunken/50 p-5"
     >
       <input type="hidden" name="intent" value="add-card" />
-      <h3 className="text-sm font-semibold text-ink">Agregar una tarjeta</h3>
+      <h3 className="text-sm font-semibold text-ink">
+        {tr("mazoEditar.addCardTitle")}
+      </h3>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Término en inglés" htmlFor="new-term" required>
+        <Field label={tr("mazoEditar.fieldTerm")} htmlFor="new-term" required>
           <input id="new-term" name="term" required className={inputClass} />
         </Field>
 
-        <Field label="Significado en español" htmlFor="new-meaning" required>
+        <Field
+          label={tr("mazoEditar.fieldMeaning")}
+          htmlFor="new-meaning"
+          required
+        >
           <input
             id="new-meaning"
             name="meaning_es"
@@ -584,34 +601,38 @@ function AddCardForm() {
           />
         </Field>
 
-        <Field label="Tipo" htmlFor="new-kind">
+        <Field label={tr("mazoEditar.fieldKind")} htmlFor="new-kind">
           <Select id="new-kind" name="kind" defaultValue="word">
-            <option value="word">Palabra</option>
-            <option value="phrase">Frase</option>
-            <option value="question">Pregunta</option>
-            <option value="rule">Regla</option>
+            <option value="word">{cardKindLabel("word")}</option>
+            <option value="phrase">{cardKindLabel("phrase")}</option>
+            <option value="question">{cardKindLabel("question")}</option>
+            <option value="rule">{cardKindLabel("rule")}</option>
           </Select>
         </Field>
 
-        <Field label="Etiquetas" htmlFor="new-tags" hint="Separadas por comas.">
+        <Field
+          label={tr("mazoEditar.fieldTags")}
+          htmlFor="new-tags"
+          hint={tr("mazoEditar.tagsHint")}
+        >
           <input id="new-tags" name="tags" className={inputClass} />
         </Field>
       </div>
 
       <div className="mt-4 grid gap-4">
-        <Field label="Ejemplo en inglés" htmlFor="new-example-en">
+        <Field label={tr("mazoEditar.fieldExampleEn")} htmlFor="new-example-en">
           <input id="new-example-en" name="example_en" className={inputClass} />
         </Field>
-        <Field label="Traducción del ejemplo" htmlFor="new-example-es">
+        <Field label={tr("mazoEditar.fieldExampleEs")} htmlFor="new-example-es">
           <input id="new-example-es" name="example_es" className={inputClass} />
         </Field>
-        <Field label="Nota de uso" htmlFor="new-usage-note">
+        <Field label={tr("mazoEditar.fieldUsageNote")} htmlFor="new-usage-note">
           <input id="new-usage-note" name="usage_note" className={inputClass} />
         </Field>
       </div>
 
       <div className="mt-4">
-        <Button type="submit">Agregar tarjeta</Button>
+        <Button type="submit">{tr("mazoEditar.addCardSubmit")}</Button>
       </div>
     </Form>
   );
@@ -619,18 +640,20 @@ function AddCardForm() {
 
 function CardEditor({ card }: { card: Card }) {
   const prefix = `card:${card.id}`;
+  const tr = useT();
 
   return (
     <fieldset className="rounded-card border border-line bg-paper-raised p-5">
       <legend className="px-1 text-xs text-ink-faint">
-        Tarjeta creada el{" "}
-        {new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(
-          new Date(card.created_at),
-        )}
+        {tr("mazoEditar.createdOn", { date: formatDate(card.created_at) })}
       </legend>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Término en inglés" htmlFor={`${prefix}-term`} required>
+        <Field
+          label={tr("mazoEditar.fieldTerm")}
+          htmlFor={`${prefix}-term`}
+          required
+        >
           <input
             id={`${prefix}-term`}
             name={`${prefix}:term`}
@@ -641,7 +664,7 @@ function CardEditor({ card }: { card: Card }) {
         </Field>
 
         <Field
-          label="Significado en español"
+          label={tr("mazoEditar.fieldMeaning")}
           htmlFor={`${prefix}-meaning`}
           required
         >
@@ -654,23 +677,23 @@ function CardEditor({ card }: { card: Card }) {
           />
         </Field>
 
-        <Field label="Tipo" htmlFor={`${prefix}-kind`}>
+        <Field label={tr("mazoEditar.fieldKind")} htmlFor={`${prefix}-kind`}>
           <Select
             id={`${prefix}-kind`}
             name={`${prefix}:kind`}
             defaultValue={card.kind}
           >
-            <option value="word">Palabra</option>
-            <option value="phrase">Frase</option>
-            <option value="question">Pregunta</option>
-            <option value="rule">Regla</option>
+            <option value="word">{cardKindLabel("word")}</option>
+            <option value="phrase">{cardKindLabel("phrase")}</option>
+            <option value="question">{cardKindLabel("question")}</option>
+            <option value="rule">{cardKindLabel("rule")}</option>
           </Select>
         </Field>
 
         <Field
-          label="Etiquetas"
+          label={tr("mazoEditar.fieldTags")}
           htmlFor={`${prefix}-tags`}
-          hint="Separadas por comas."
+          hint={tr("mazoEditar.tagsHint")}
         >
           <input
             id={`${prefix}-tags`}
@@ -682,7 +705,10 @@ function CardEditor({ card }: { card: Card }) {
       </div>
 
       <div className="mt-4 grid gap-4">
-        <Field label="Ejemplo en inglés" htmlFor={`${prefix}-example-en`}>
+        <Field
+          label={tr("mazoEditar.fieldExampleEn")}
+          htmlFor={`${prefix}-example-en`}
+        >
           <input
             id={`${prefix}-example-en`}
             name={`${prefix}:example_en`}
@@ -690,7 +716,10 @@ function CardEditor({ card }: { card: Card }) {
             className={inputClass}
           />
         </Field>
-        <Field label="Traducción del ejemplo" htmlFor={`${prefix}-example-es`}>
+        <Field
+          label={tr("mazoEditar.fieldExampleEs")}
+          htmlFor={`${prefix}-example-es`}
+        >
           <input
             id={`${prefix}-example-es`}
             name={`${prefix}:example_es`}
@@ -698,7 +727,10 @@ function CardEditor({ card }: { card: Card }) {
             className={inputClass}
           />
         </Field>
-        <Field label="Nota de uso" htmlFor={`${prefix}-usage-note`}>
+        <Field
+          label={tr("mazoEditar.fieldUsageNote")}
+          htmlFor={`${prefix}-usage-note`}
+        >
           <input
             id={`${prefix}-usage-note`}
             name={`${prefix}:usage_note`}
@@ -712,12 +744,12 @@ function CardEditor({ card }: { card: Card }) {
         <ConfirmSubmit
           intent="delete-card"
           fields={{ cardId: card.id }}
-          title="¿Eliminar esta tarjeta?"
-          description="Se borra la tarjeta y el progreso que registraste en ella."
-          confirmLabel="Eliminar"
+          title={tr("mazoEditar.deleteCardTitle")}
+          description={tr("mazoEditar.deleteCardBody")}
+          confirmLabel={tr("common.delete")}
           triggerClassName="text-sm text-danger hover:underline"
         >
-          Eliminar esta tarjeta
+          {tr("mazoEditar.deleteCardTrigger")}
         </ConfirmSubmit>
       </div>
     </fieldset>

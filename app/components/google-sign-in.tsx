@@ -6,6 +6,7 @@ import {
   googleAvailability,
   startGoogleAccess,
 } from "~/lib/google-auth";
+import { useT } from "~/lib/locale-context";
 
 import { Alert, Button } from "./ui";
 
@@ -29,6 +30,7 @@ export function GoogleSignIn({
   redirectTo: string;
   label: string;
 }) {
+  const t = useT();
   const homeHref = useHref("/");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -67,10 +69,7 @@ export function GoogleSignIn({
     return (
       <div className="mt-6">
         <Divider />
-        <p className="mt-4 text-sm text-ink-soft">
-          El acceso con Google no está disponible por ahora. Puedes entrar con
-          tu correo y contraseña.
-        </p>
+        <p className="mt-4 text-sm text-ink-soft">{t("google.disabled")}</p>
       </div>
     );
   }
@@ -95,24 +94,23 @@ export function GoogleSignIn({
           className="w-full"
         >
           <GoogleMark />
-          {pending ? "Abriendo Google…" : label}
+          {pending ? t("google.opening") : label}
         </Button>
       </div>
 
-      <p className="mt-3 text-xs text-ink-faint">
-        Google comparte solo tu correo y tu nombre. Frasevia no accede a tus
-        correos ni a tus contactos.
-      </p>
+      <p className="mt-3 text-xs text-ink-faint">{t("google.privacy")}</p>
     </div>
   );
 }
 
 /** Separador con la «o» en medio, entre el formulario y el acceso con Google. */
 function Divider() {
+  const t = useT();
+
   return (
     <div className="flex items-center gap-3 text-xs text-ink-faint">
       <span aria-hidden="true" className="h-px flex-1 bg-line" />
-      o
+      {t("google.divider")}
       <span aria-hidden="true" className="h-px flex-1 bg-line" />
     </div>
   );

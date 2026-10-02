@@ -34,11 +34,14 @@ import {
 } from "~/features/ai/models";
 import { buildStandalonePrompt } from "~/features/ai/prompt";
 import { PROVIDER } from "~/features/ai/providers";
+import { deckLanguages } from "~/lib/languages";
+import { type MessageKey, t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
 import type { Route } from "./+types/mazo-ia";
 
 export function meta() {
-  return [{ title: "Crear un mazo con IA — Frasevia" }];
+  return [{ title: t("mazoIa.metaTitle") }];
 }
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -55,15 +58,20 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   return { status: "ready" as const, userId: session.userId };
 }
 
-const LANGUAGES = [
-  { code: "es", label: "Español" },
-  { code: "en", label: "Inglés" },
-  { code: "pt", label: "Portugués" },
-  { code: "fr", label: "Francés" },
-  { code: "de", label: "Alemán" },
+/**
+ * Niveles que se ofrecen al encargar un mazo.
+ *
+ * El `value` es lo que se guarda en la base de datos y va en el prompt, así que
+ * es un código neutro y no el texto de la etiqueta. Si se guardara «Principiante»
+ * o «Beginner», un mazo creado en una interfaz acabaría con un nivel en el otro
+ * idioma, y el editor —que lo muestra tal cual— lo dejaría así.
+ */
+const LEVELS: { value: string; key: MessageKey }[] = [
+  { value: "beginner", key: "level.beginner" },
+  { value: "intermediate", key: "level.intermediate" },
+  { value: "advanced", key: "level.advanced" },
+  { value: "unspecified", key: "level.unspecified" },
 ];
-
-const LEVELS = ["Principiante", "Intermedio", "Avanzado", "Sin nivel concreto"];
 
 /** Tope de la caja al pedir, para no gastar de más por un error de tecleo. */
 const COUNT_MIN = 4;
@@ -76,6 +84,8 @@ type Mode = "generar" | "importar";
 
 export default function MazoIa({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
+  const tr = useT();
+  const languages = deckLanguages();
 
   const [mode, setMode] = useState<Mode>("generar");
   const [concept, setConcept] = useState("");
@@ -119,7 +129,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       setModelsError(
         cause instanceof ModelListError
           ? cause.message
-          : "No se pudo cargar el catálogo de modelos.",
+          : t("mazoIa.modelsLoadFailed"),
       );
     } finally {
       setLoadingModels(false);
@@ -198,7 +208,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       setError(
         cause instanceof GenerationError || cause instanceof DraftError
           ? cause.message
-          : "Algo falló al generar el mazo. Prueba con otro modelo.",
+          : t("mazoIa.generateFailed"),
       );
     } finally {
       setBusy(false);
@@ -219,9 +229,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       adopt(parseDeckDraft(imported));
     } catch (cause) {
       setError(
-        cause instanceof DraftError
-          ? cause.message
-          : "No se pudo leer lo que pegaste.",
+        cause instanceof DraftError ? cause.message : t("mazoIa.importFailed"),
       );
     }
   }
@@ -250,7 +258,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
     }
 
     if (title.trim() === "") {
-      setError("Ponle un título al mazo.");
+      setError(t("mazoNuevo.titleRequired"));
       return;
     }
 
@@ -259,7 +267,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
 
     const session = await getSession();
     if (session.status !== "ready") {
-      setError("Tu sesión expiró. Vuelve a iniciar sesión.");
+      setError(t("mazoNuevo.sessionExpired"));
       setSaving(false);
       return;
     }
@@ -279,7 +287,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       .single();
 
     if (deckError || !newDeck) {
-      setError(deckError?.message ?? "No se pudo crear el mazo.");
+      setError(deckError?.message ?? t("mazoNuevo.createFailed"));
       setSaving(false);
       return;
     }
@@ -300,10 +308,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       // Se deshace el mazo entero: si solo fallaran las tarjetas, reintentar
       // crearía un mazo duplicado en la biblioteca.
       await session.supabase.from("decks").delete().eq("id", newDeck.id);
-      setError(
-        `No se pudieron guardar las tarjetas (${cardsError.message}). El mazo no ` +
-          "se creó, así que puedes intentarlo de nuevo.",
-      );
+      setError(t("mazoIa.cardsSaveFailed", { message: cardsError.message }));
       setSaving(false);
       return;
     }
@@ -321,9 +326,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      setError(
-        "El navegador no dejó copiar. Selecciona el texto del recuadro y cópialo a mano.",
-      );
+      setError(t("mazoIa.clipboardFailed"));
     }
   }
 
@@ -331,9 +334,12 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
     return (
       <Page className="max-w-3xl">
         <PageHeader
-          eyebrow="Biblioteca"
-          title="Revisa las tarjetas"
-          description={`Quedan ${kept.length} de ${deck.cards.length}. Quita las que no te sirvan y guárdalas: después podrás editar cada una en el editor del mazo.`}
+          eyebrow={tr("mazoNuevo.eyebrow")}
+          title={tr("mazoIa.reviewTitle")}
+          description={tr("mazoIa.reviewDescription", {
+            kept: kept.length,
+            total: deck.cards.length,
+          })}
         />
         <DeckReview
           deck={deck}
@@ -366,14 +372,14 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
   return (
     <Page className="max-w-3xl">
       <PageHeader
-        eyebrow="Biblioteca"
-        title="Crear un mazo con IA"
-        description="Describe un concepto y te devuelve las tarjetas. Puedes generar aquí con una clave de OpenRouter, o copiar un prompt a tu propio asistente y pegar el resultado. Los dos caminos terminan igual."
+        eyebrow={tr("mazoNuevo.eyebrow")}
+        title={tr("mazoIa.title")}
+        description={tr("mazoIa.description")}
       />
 
       {error ? (
         <div className="mb-6">
-          <Alert variant="error" title="No se pudo continuar">
+          <Alert variant="error" title={tr("mazoIa.errorTitle")}>
             {error}
           </Alert>
         </div>
@@ -381,7 +387,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
 
       <div
         role="tablist"
-        aria-label="Cómo obtener las tarjetas"
+        aria-label={tr("mazoIa.tabsLabel")}
         className="mb-6 flex flex-wrap gap-2"
       >
         <Button
@@ -394,7 +400,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
             setError(null);
           }}
         >
-          Generar aquí
+          {tr("mazoIa.tabGenerate")}
         </Button>
         <Button
           type="button"
@@ -406,39 +412,41 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
             setError(null);
           }}
         >
-          Importar desde mi asistente
+          {tr("mazoIa.tabImport")}
         </Button>
       </div>
 
       <div className="space-y-6">
         <Card as="section" className="space-y-5">
           <div>
-            <SectionTitle as="h3">1. El concepto</SectionTitle>
+            <SectionTitle as="h3">{tr("mazoIa.stepConcept")}</SectionTitle>
             <p className="mt-1 text-sm text-ink-soft">
-              Cuanto más concreto, mejor. «Verbos para negociar plazos» da
-              mejores tarjetas que «inglés de negocios».
+              {tr("mazoIa.stepConceptBody")}
             </p>
           </div>
 
           <Field
-            label="¿Sobre qué quieres un mazo?"
+            label={tr("mazoIa.fieldConcept")}
             htmlFor="concept"
             required
-            hint="Una frase basta. Puedes pegar un texto más largo si quieres."
+            hint={tr("mazoIa.conceptHint")}
           >
             <Textarea
               id="concept"
               value={concept}
               onChange={(event) => setConcept(event.target.value)}
-              placeholder="Frases para pedir un aplazamiento en una reunión de trabajo"
+              placeholder={tr("mazoIa.conceptPlaceholder")}
             />
           </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
-              label="Cuántas tarjetas"
+              label={tr("mazoIa.fieldCardCount")}
               htmlFor="cardCount"
-              hint={`Entre ${COUNT_MIN} y ${COUNT_MAX}.`}
+              hint={tr("mazoIa.cardCountHint", {
+                min: COUNT_MIN,
+                max: COUNT_MAX,
+              })}
             >
               <input
                 id="cardCount"
@@ -458,16 +466,20 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
               />
             </Field>
 
-            <Field label="Nivel" htmlFor="level" hint="Opcional.">
+            <Field
+              label={tr("mazoIa.fieldLevel")}
+              htmlFor="level"
+              hint={tr("mazoIa.levelHint")}
+            >
               <Select
                 id="level"
                 value={level}
                 onChange={(event) => setLevel(event.target.value)}
               >
-                <option value="">Sin especificar</option>
+                <option value="">{tr("mazoIa.levelUnspecified")}</option>
                 {LEVELS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                  <option key={option.value} value={option.value}>
+                    {tr(option.key)}
                   </option>
                 ))}
               </Select>
@@ -475,13 +487,16 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Idioma de la tarjeta" htmlFor="source_language">
+            <Field
+              label={tr("deckField.cardLanguage")}
+              htmlFor="source_language"
+            >
               <Select
                 id="source_language"
                 value={sourceLanguage}
                 onChange={(event) => setSourceLanguage(event.target.value)}
               >
-                {LANGUAGES.map((language) => (
+                {languages.map((language) => (
                   <option key={language.code} value={language.code}>
                     {language.label}
                   </option>
@@ -489,13 +504,16 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
               </Select>
             </Field>
 
-            <Field label="Idioma de la traducción" htmlFor="target_language">
+            <Field
+              label={tr("deckField.translationLanguage")}
+              htmlFor="target_language"
+            >
               <Select
                 id="target_language"
                 value={targetLanguage}
                 onChange={(event) => setTargetLanguage(event.target.value)}
               >
-                {LANGUAGES.map((language) => (
+                {languages.map((language) => (
                   <option key={language.code} value={language.code}>
                     {language.label}
                   </option>
@@ -512,10 +530,9 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
               className="mt-0.5 size-4 accent-[var(--brand)]"
             />
             <span className="text-sm text-ink">
-              Pedir ejemplo y nota de uso en cada tarjeta
+              {tr("mazoIa.extrasLabel")}
               <span className="mt-0.5 block text-xs text-ink-faint">
-                Cuesta más tokens y tarda algo más, pero las tarjetas sirven
-                mucho mejor para practicar.
+                {tr("mazoIa.extrasHint")}
               </span>
             </span>
           </label>
@@ -589,22 +606,22 @@ function GeneratePanel({
   onGenerate,
   onCancel,
 }: GeneratePanelProps) {
+  const tr = useT();
+
   return (
     <Card as="section" className="space-y-5">
       <div>
-        <SectionTitle as="h3">2. El modelo</SectionTitle>
+        <SectionTitle as="h3">{tr("mazoIa.stepModel")}</SectionTitle>
         <p className="mt-1 text-sm text-ink-soft">
-          El catálogo se pide a OpenRouter al abrir, así que no hay una lista
-          escrita en el código que se quede vieja. También incluye los modelos
-          de Google, Anthropic y MiniMax, sin claves de esos servicios.
+          {tr("mazoIa.stepModelBody")}
         </p>
       </div>
 
       <Field
-        label="Modelo"
+        label={tr("mazoIa.fieldModel")}
         htmlFor="model"
         required
-        hint="Si el catálogo no carga, escribe el identificador a mano: se acepta cualquier texto."
+        hint={tr("mazoIa.modelHint")}
       >
         <input
           id="model"
@@ -617,7 +634,7 @@ function GeneratePanel({
       </Field>
 
       {modelsError ? (
-        <Alert variant="warning" title="No se pudo cargar el catálogo">
+        <Alert variant="warning" title={tr("mazoIa.modelsErrorTitle")}>
           <p>{modelsError}</p>
           <p className="mt-1">
             <button
@@ -625,7 +642,7 @@ function GeneratePanel({
               onClick={onRetryModels}
               className="font-semibold underline"
             >
-              Intentar otra vez
+              {tr("mazoIa.retry")}
             </button>
           </p>
         </Alert>
@@ -634,7 +651,7 @@ function GeneratePanel({
       {models !== null ? (
         <details className="rounded-lg border border-line bg-paper-sunken px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium text-ink">
-            Ver los {models.length} modelos disponibles
+            {tr("mazoIa.showModels", { count: models.length })}
           </summary>
 
           <div className="mt-3 space-y-2">
@@ -642,8 +659,8 @@ function GeneratePanel({
               type="search"
               value={modelQuery}
               onChange={(event) => onModelQuery(event.target.value)}
-              placeholder="Filtrar: gemini, claude, minimax, gpt…"
-              aria-label="Filtrar modelos"
+              placeholder={tr("mazoIa.filterModelsPlaceholder")}
+              aria-label={tr("mazoIa.filterModelsLabel")}
               className={inputClass}
             />
 
@@ -669,9 +686,9 @@ function GeneratePanel({
                     {item.supportsJsonMode ? null : (
                       <span
                         className="shrink-0 text-[10px] text-ink-faint"
-                        title="No admite salida en JSON. La respuesta llega con texto alrededor y se lee igual."
+                        title={tr("mazoIa.noJsonTitle")}
                       >
-                        sin JSON
+                        {tr("mazoIa.noJson")}
                       </span>
                     )}
                   </button>
@@ -680,7 +697,7 @@ function GeneratePanel({
 
               {visibleModels.length === 0 ? (
                 <li className="px-2.5 py-2 text-sm text-ink-faint">
-                  Ningún modelo coincide con «{modelQuery}».
+                  {tr("mazoIa.noModelMatch", { query: modelQuery })}
                 </li>
               ) : null}
             </ul>
@@ -688,57 +705,50 @@ function GeneratePanel({
         </details>
       ) : loadingModels ? (
         <p className="text-sm text-ink-faint" role="status">
-          Cargando el catálogo de modelos…
+          {tr("mazoIa.loadingModels")}
         </p>
       ) : null}
 
       {!keyReady ? (
-        <Alert variant="warning" title="Falta la clave de OpenRouter">
+        <Alert variant="warning" title={tr("mazoIa.missingKeyTitle")}>
           <p>
-            Sin clave no se puede generar desde aquí. Se guarda en este
-            navegador y no pasa por ningún servidor nuestro.{" "}
+            {tr("mazoIa.missingKeyBody")}{" "}
             <Link to="/ajustes/ia" className="font-semibold underline">
-              Añadir la clave
+              {tr("mazoIa.addKey")}
             </Link>{" "}
-            o consíguela en{" "}
+            {tr("mazoIa.orGetIt")}{" "}
             <a
               href={PROVIDER.keyUrl}
               target="_blank"
               rel="noreferrer noopener"
               className="font-semibold underline"
             >
-              el panel de OpenRouter
+              {tr("mazoIa.openRouterPanel")}
             </a>
-            . Si prefieres no dar de alta nada, el modo de importar funciona sin
-            clave.
+            . {tr("mazoIa.importModeNote")}
           </p>
         </Alert>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" onClick={onGenerate} disabled={!canGenerate}>
-          {busy ? "Generando…" : "Generar tarjetas"}
+          {busy ? tr("mazoIa.generating") : tr("mazoIa.generateCards")}
         </Button>
 
         {busy ? (
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancelar
+            {tr("common.cancel")}
           </Button>
         ) : null}
 
         {keyReady ? null : (
           <span className="text-sm text-ink-faint">
-            Añade una clave, o cambia al modo de importar.
+            {tr("mazoIa.hintAddKey")}
           </span>
         )}
       </div>
 
-      {busy ? (
-        <Alert variant="info">
-          Pidiendo tarjetas a OpenRouter. Puede tardar unos segundos, y unos
-          pocos más si el modelo está pensando.
-        </Alert>
-      ) : null}
+      {busy ? <Alert variant="info">{tr("mazoIa.busyNote")}</Alert> : null}
     </Card>
   );
 }
@@ -765,26 +775,27 @@ function ImportPanel({
   canImport,
   onImport,
 }: ImportPanelProps) {
+  const tr = useT();
+
   return (
     <Card as="section" className="space-y-5">
       <div>
-        <SectionTitle as="h3">
-          2. Copia el prompt y pega la respuesta
-        </SectionTitle>
+        <SectionTitle as="h3">{tr("mazoIa.stepImport")}</SectionTitle>
         <p className="mt-1 text-sm text-ink-soft">
-          Aquí no hace falta ninguna clave ni cuenta: genera el JSON con la IA
-          que ya tengas abierta —Claude, Gemini, ChatGPT, MiniMax o la que sea—
-          y pégalo abajo.
+          {tr("mazoIa.stepImportBody")}
         </p>
       </div>
 
       <Alert variant="info">
         <ol className="list-decimal space-y-1 pl-4">
-          <li>Copia el prompt.</li>
-          <li>Pégalo en tu asistente y espera a que responda.</li>
+          <li>{tr("mazoIa.importStep1")}</li>
+          <li>{tr("mazoIa.importStep2")}</li>
+          {/* El tercer paso va en tres trozos porque lleva un `<strong>` en
+              medio, y el marcado no se puede meter en una clave de traducción. */}
           <li>
-            Copia <strong>solo el JSON</strong> que te devuelva, con o sin
-            bloque de código, y pégalo en el recuadro de abajo.
+            {tr("mazoIa.importStep3Lead")}{" "}
+            <strong>{tr("mazoIa.importStep3Strong")}</strong>{" "}
+            {tr("mazoIa.importStep3Tail")}
           </li>
         </ol>
       </Alert>
@@ -792,26 +803,26 @@ function ImportPanel({
       <Textarea
         readOnly
         rows={10}
-        aria-label="Prompt para copiar"
+        aria-label={tr("mazoIa.promptLabel")}
         value={prompt}
         className="font-mono text-xs"
       />
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant="secondary" onClick={onCopy}>
-          {copied ? "Copiado" : "Copiar el prompt"}
+          {copied ? tr("mazoIa.copied") : tr("mazoIa.copyPrompt")}
         </Button>
         {hasConcept ? null : (
           <span className="text-sm text-ink-faint">
-            Escribe el concepto arriba para que el prompt esté completo.
+            {tr("mazoIa.conceptNeeded")}
           </span>
         )}
       </div>
 
       <Field
-        label="La respuesta de tu asistente"
+        label={tr("mazoIa.fieldAssistant")}
         htmlFor="imported"
-        hint="Vale con el JSON solo o con el texto que lo rodea."
+        hint={tr("mazoIa.fieldAssistantHint")}
       >
         <Textarea
           id="imported"
@@ -824,11 +835,11 @@ function ImportPanel({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" onClick={onImport} disabled={!canImport}>
-          Leer las tarjetas
+          {tr("mazoIa.readCards")}
         </Button>
         {imported.trim() !== "" ? (
           <Button type="button" variant="ghost" onClick={() => onImported("")}>
-            Limpiar
+            {tr("explorar.clear")}
           </Button>
         ) : null}
       </div>

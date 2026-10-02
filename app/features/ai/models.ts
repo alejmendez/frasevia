@@ -15,6 +15,8 @@
  * que es lo que permite leerlo desde el navegador.
  */
 
+import { t } from "~/lib/locale";
+
 export interface ModelInfo {
   /** Identificador exacto, tal como lo espera la API. */
   id: string;
@@ -163,23 +165,19 @@ export async function listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     if (error instanceof Error && error.name === "AbortError") {
       throw error;
     }
-    throw new ModelListError(
-      "No se pudo contactar con OpenRouter para ver los modelos.",
-    );
+    throw new ModelListError(t("models.network"));
   }
 
   if (!response.ok) {
     throw new ModelListError(
-      `OpenRouter respondió con el estado ${response.status} al pedir el catálogo de modelos.`,
+      t("models.badStatus", { status: response.status }),
     );
   }
 
   const models = parseModelList(await response.json());
 
   if (models.length === 0) {
-    throw new ModelListError(
-      "OpenRouter no devolvió ningún modelo utilizable. Se puede escribir el identificador a mano.",
-    );
+    throw new ModelListError(t("models.empty"));
   }
 
   return limitModels(models);

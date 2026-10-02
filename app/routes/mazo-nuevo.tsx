@@ -13,11 +13,14 @@ import {
   textareaClass,
 } from "~/components/ui";
 import { slugPreview } from "~/features/decks/slug";
+import { deckLanguages } from "~/lib/languages";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
 import type { Route } from "./+types/mazo-nuevo";
 
 export function meta() {
-  return [{ title: "Crear un mazo — Frasevia" }];
+  return [{ title: t("mazoNuevo.metaTitle") }];
 }
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -40,16 +43,9 @@ interface Errors {
   cards?: string;
 }
 
-const LANGUAGES = [
-  { code: "es", label: "Español" },
-  { code: "en", label: "Inglés" },
-  { code: "pt", label: "Portugués" },
-  { code: "fr", label: "Francés" },
-  { code: "de", label: "Alemán" },
-];
-
 export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
+  const tr = useT();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState("");
@@ -62,6 +58,8 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  const languages = deckLanguages();
+
   if (loaderData.status === "unconfigured") {
     return <ConfigNotice />;
   }
@@ -72,14 +70,14 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
     setFormError(null);
 
     if (title.trim().length === 0) {
-      setErrors({ title: "Ponle un título al mazo." });
+      setErrors({ title: t("mazoNuevo.titleRequired") });
       return;
     }
 
     setPending(true);
     const session = await getSession();
     if (session.status !== "ready") {
-      setFormError("Tu sesión expiró. Vuelve a iniciar sesión.");
+      setFormError(t("mazoNuevo.sessionExpired"));
       setPending(false);
       return;
     }
@@ -99,7 +97,7 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
       .single();
 
     if (error || !deck) {
-      setFormError(error?.message ?? "No se pudo crear el mazo.");
+      setFormError(error?.message ?? t("mazoNuevo.createFailed"));
       setPending(false);
       return;
     }
@@ -122,8 +120,7 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
         // las tarjetas, reintentar crearía un mazo duplicado.
         await session.supabase.from("decks").delete().eq("id", deck.id);
         setFormError(
-          `No se pudieron crear las tarjetas iniciales (${cardsError.message}). ` +
-            "El mazo no se guardó, así que puedes corregir el texto e intentarlo de nuevo.",
+          t("mazoNuevo.seedFailed", { message: cardsError.message }),
         );
         setPending(false);
         return;
@@ -141,15 +138,15 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
   return (
     <Page className="max-w-2xl">
       <PageHeader
-        eyebrow="Biblioteca"
-        title="Crear un mazo"
-        description="Un mazo reúne tarjetas de un tema: palabras, frases o reglas. Puedes editarlo y publicarlo cuando quieras."
+        eyebrow={tr("mazoNuevo.eyebrow")}
+        title={tr("mazoNuevo.title")}
+        description={tr("mazoNuevo.description")}
         // La vía con IA está en la cabecera y no solo al final del formulario:
         // quien llega aquí queriendo IA es el caso más común de entrada
         // equivocada, y casi nunca ha desplazado la página hasta el enlace.
         actions={
           <ButtonLink to="/biblioteca/mazos/nuevo-ia" variant="secondary">
-            Crear con IA
+            {tr("biblioteca.createWithAi")}
           </ButtonLink>
         }
       />
@@ -157,7 +154,12 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
       <form onSubmit={handleSubmit} className="space-y-6">
         {formError ? <Alert variant="error">{formError}</Alert> : null}
 
-        <Field label="Título" htmlFor="title" required error={errors.title}>
+        <Field
+          label={tr("deckField.title")}
+          htmlFor="title"
+          required
+          error={errors.title}
+        >
           <input
             id="title"
             name="title"
@@ -165,20 +167,20 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
             maxLength={120}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="Inglés para reuniones de trabajo"
+            placeholder={tr("mazoNuevo.titlePlaceholder")}
             className={inputClass}
           />
           {title.trim() ? (
             <p className="text-xs text-ink-faint">
-              Dirección: /mazos/{slugPreview(title)}
+              {tr("mazoNuevo.url", { slug: slugPreview(title) })}
             </p>
           ) : null}
         </Field>
 
         <Field
-          label="Descripción"
+          label={tr("deckField.description")}
           htmlFor="description"
-          hint="Cuenta de qué trata el mazo. Aparece en el catálogo."
+          hint={tr("deckField.descriptionHint")}
         >
           <textarea
             id="description"
@@ -190,13 +192,16 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Idioma de origen" htmlFor="source_language">
+          <Field
+            label={tr("deckField.sourceLanguage")}
+            htmlFor="source_language"
+          >
             <Select
               id="source_language"
               value={sourceLanguage}
               onChange={(event) => setSourceLanguage(event.target.value)}
             >
-              {LANGUAGES.map((language) => (
+              {languages.map((language) => (
                 <option key={language.code} value={language.code}>
                   {language.label}
                 </option>
@@ -204,13 +209,16 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
             </Select>
           </Field>
 
-          <Field label="Idioma que se aprende" htmlFor="target_language">
+          <Field
+            label={tr("deckField.targetLanguage")}
+            htmlFor="target_language"
+          >
             <Select
               id="target_language"
               value={targetLanguage}
               onChange={(event) => setTargetLanguage(event.target.value)}
             >
-              {LANGUAGES.map((language) => (
+              {languages.map((language) => (
                 <option key={language.code} value={language.code}>
                   {language.label}
                 </option>
@@ -221,21 +229,21 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
-            label="Nivel aproximado"
+            label={tr("deckField.level")}
             htmlFor="level"
-            hint="Una idea orientativa, no una certificación."
+            hint={tr("deckField.levelHint")}
           >
             <input
               id="level"
               name="level"
               value={level}
               onChange={(event) => setLevel(event.target.value)}
-              placeholder="Principiante"
+              placeholder={tr("mazoNuevo.levelPlaceholder")}
               className={inputClass}
             />
           </Field>
 
-          <Field label="Visibilidad" htmlFor="visibility">
+          <Field label={tr("deckField.visibility")} htmlFor="visibility">
             <Select
               id="visibility"
               value={visibility}
@@ -243,16 +251,16 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
                 setVisibility(event.target.value as "private" | "public")
               }
             >
-              <option value="private">Privado, solo yo</option>
-              <option value="public">Público, aparece en explorar</option>
+              <option value="private">{tr("visibility.option.private")}</option>
+              <option value="public">{tr("visibility.option.public")}</option>
             </Select>
           </Field>
         </div>
 
         <Field
-          label="Primera tanda de tarjetas (opcional)"
+          label={tr("deckField.seed")}
           htmlFor="seed"
-          hint="Una tarjeta por línea, con el formato: término | significado en español | ejemplo en inglés | traducción del ejemplo"
+          hint={tr("deckField.seedHint")}
         >
           <textarea
             id="seed"
@@ -267,11 +275,11 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
 
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={pending}>
-            {pending ? "Creando…" : "Crear el mazo"}
+            {pending ? t("mazoNuevo.creating") : tr("mazoNuevo.submit")}
           </Button>
 
           <ButtonLink to="/biblioteca/mazos/nuevo-ia" variant="secondary">
-            O créalo con IA a partir de un concepto
+            {tr("mazoNuevo.orCreateWithAi")}
           </ButtonLink>
         </div>
       </form>

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
+import { useT } from "~/lib/locale-context";
+
 /**
  * Componentes de interfaz compartidos.
  *
@@ -284,7 +286,9 @@ export function EmptyState({
   );
 }
 
-export function LoadingState({ label = "Cargando…" }: { label?: string }) {
+export function LoadingState({ label }: { label?: string }) {
+  const t = useT();
+
   return (
     <div
       role="status"
@@ -295,7 +299,7 @@ export function LoadingState({ label = "Cargando…" }: { label?: string }) {
         aria-hidden="true"
         className="size-4 animate-spin rounded-full border-2 border-line-strong border-t-brand"
       />
-      {label}
+      {label ?? t("common.loading")}
     </div>
   );
 }
@@ -307,23 +311,20 @@ export function LoadingState({ label = "Cargando…" }: { label?: string }) {
  * deliberadamente explícito: la aplicación no simula que guardó nada.
  */
 export function ConfigNotice() {
+  const t = useT();
+
   return (
     <div className="mx-auto max-w-2xl px-5 py-16">
-      <Alert variant="warning" title="Falta configurar Supabase">
-        <p>
-          Frasevia necesita conexión a Supabase para leer mazos, guardar tu
-          biblioteca y registrar tu progreso. Todavía no puede hacerlo.
-        </p>
+      <Alert variant="warning" title={t("configNotice.title")}>
+        <p>{t("configNotice.body")}</p>
+        {/* El texto va troceado para poder poner `code` alrededor de los nombres
+            de archivo, que no se traducen. */}
         <p className="mt-2">
-          Copia <code className="font-mono">.env.example</code> a{" "}
-          <code className="font-mono">.env</code> y completa{" "}
-          <code className="font-mono">VITE_SUPABASE_URL</code> y{" "}
-          <code className="font-mono">VITE_SUPABASE_PUBLISHABLE_KEY</code>.
-          Después reinicia el servidor de desarrollo.
+          {t("configNotice.lead")}{" "}
+          <code className="font-mono">.env.example</code>{" "}
+          {t("configNotice.middle")} <code className="font-mono">.env</code>
         </p>
-        <p className="mt-2">
-          Mientras tanto puedes navegar la interfaz, pero nada se guarda.
-        </p>
+        <p className="mt-2">{t("configNotice.note")}</p>
       </Alert>
     </div>
   );

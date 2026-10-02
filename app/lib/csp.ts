@@ -57,10 +57,10 @@ function supabaseOrigin(url: string | undefined): string {
 /**
  * Monta la cabecera.
  *
- * `script-src` lleva `'unsafe-inline'` porque el script que pone el tema antes
- * de hidratar es en línea, y en desarrollo Vite inyecta más. Cuesta algo de
- * protección frente a XSS; la parte que de verdad importa aquí, que es
- * `connect-src`, no se ve afectada. Quitarlo exigiría pasar ese script a un
+ * `script-src` lleva `'unsafe-inline'` porque los scripts que ponen el tema y el
+ * idioma antes de hidratar son en línea, y en desarrollo Vite inyecta más. Cuesta
+ * algo de protección frente a XSS; la parte que de verdad importa aquí, que es
+ * `connect-src`, no se ve afectada. Quitarlo exigiría pasar esos scripts a un
  * hash o a un archivo, y está fuera de lo que hace falta para esta función.
  */
 export function buildCsp(supabaseUrl: string | undefined): string {

@@ -17,7 +17,9 @@ import {
 } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
 import { getPublicDeckBySlug } from "~/lib/decks";
-import { CARD_KIND_LABEL, cardCountLabel } from "~/lib/format";
+import { cardCountLabel, cardKindLabel } from "~/lib/format";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { getSupabaseBrowser } from "~/lib/supabase";
 import type { Card as DeckCard } from "~/lib/types";
 import type { Route } from "./+types/mazo-publico";
@@ -25,10 +27,10 @@ import type { Route } from "./+types/mazo-publico";
 export function meta({ loaderData }: Route.MetaArgs) {
   const deck = loaderData?.deck;
   return [
-    { title: deck ? `${deck.title} — Frasevia` : "Mazo — Frasevia" },
+    { title: deck ? `${deck.title} — Frasevia` : t("mazoPublico.metaTitle") },
     {
       name: "description",
-      content: deck?.description || "Vista previa de un mazo de Frasevia.",
+      content: deck?.description || t("mazoPublico.metaDescription"),
     },
   ];
 }
@@ -56,15 +58,12 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const sourceDeckId = formData.get("sourceDeckId");
 
   if (intent !== "copy" || typeof sourceDeckId !== "string") {
-    return data({ error: "Solicitud no reconocida." }, { status: 400 });
+    return data({ error: t("mazoPublico.badRequest") }, { status: 400 });
   }
 
   const supabase = getSupabaseBrowser();
   if (!supabase) {
-    return data(
-      { error: "Falta configurar Supabase en tus variables de entorno." },
-      { status: 503 },
-    );
+    return data({ error: t("common.noSupabaseEnv") }, { status: 503 });
   }
 
   const { data: authData } = await supabase.auth.getSession();
@@ -84,17 +83,23 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   return redirect(`/biblioteca/mazos/${newDeck?.id}/editar`);
 }
 
+/**
+ * Los errores de `copy_deck` llegan como texto de la función SQL, en el idioma
+ * en que se escribió esa función. Se comparan ahí para poder elegir el mensaje
+ * en el idioma de quien está leyendo, y lo que no se reconoce se devuelve tal
+ * cual: es texto de la base de datos y traducirlo sería inventarse lo que dice.
+ */
 function translateCopyError(message: string): string {
   if (message.includes("ya está en tu biblioteca")) {
-    return "Este mazo ya es tuyo. Ábrelo desde tu biblioteca.";
+    return t("mazoPublico.copyAlreadyYours");
   }
   if (message.includes("Solo puedes copiar mazos públicos")) {
-    return "Ese mazo no es público, así que no se puede copiar.";
+    return t("mazoPublico.copyNotPublic");
   }
   if (message.includes("no existe")) {
-    return "El mazo ya no está disponible.";
+    return t("mazoPublico.copyGone");
   }
-  return "No se pudo copiar el mazo. Inténtalo de nuevo.";
+  return t("mazoPublico.copyFailed");
 }
 
 const PREVIEW_LIMIT = 12;
@@ -107,6 +112,7 @@ export default function MazoPublico({
   const { status: authStatus } = useAuth();
   const navigation = useNavigation();
   const location = useLocation();
+  const tr = useT();
   const isCopying = navigation.state === "submitting";
 
   if (status === "unconfigured") {
@@ -116,7 +122,7 @@ export default function MazoPublico({
   if (status === "error") {
     return (
       <Page>
-        <Alert variant="error" title="No se pudo cargar el mazo">
+        <Alert variant="error" title={tr("mazoPublico.loadErrorTitle")}>
           {error}
         </Alert>
       </Page>
@@ -126,13 +132,11 @@ export default function MazoPublico({
   if (status === "not-found" || !deck) {
     return (
       <Page>
-        <Alert variant="error" title="Mazo no encontrado">
-          <p>
-            Puede que el mazo sea privado o que la dirección esté mal escrita.
-          </p>
+        <Alert variant="error" title={tr("mazoPublico.notFoundTitle")}>
+          <p>{tr("mazoPublico.notFoundBody")}</p>
           <p className="mt-2">
             <Link className="underline" to="/explorar">
-              Volver al catálogo
+              {tr("mazoPublico.backToCatalog")}
             </Link>
           </p>
         </Alert>
@@ -147,14 +151,16 @@ export default function MazoPublico({
     <Page>
       <p className="mb-4 text-sm">
         <Link to="/explorar" className="text-ink-soft hover:text-ink">
-          ← Explorar
+          {tr("mazoPublico.backToExplore")}
         </Link>
       </p>
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            {deck.is_official ? <Tag tone="brand">Oficial</Tag> : null}
+            {deck.is_official ? (
+              <Tag tone="brand">{tr("biblioteca.official")}</Tag>
+            ) : null}
             {deck.level ? <Tag tone="accent">{deck.level}</Tag> : null}
             <Tag>
               {deck.source_language} → {deck.target_language}
@@ -168,7 +174,9 @@ export default function MazoPublico({
           ) : null}
           <p className="mt-3 text-sm text-ink-faint">
             {cardCountLabel(deck.card_count)}
-            {deck.author_name ? ` · Por ${deck.author_name}` : ""}
+            {deck.author_name
+              ? ` · ${tr("deck.by", { author: deck.author_name })}`
+              : ""}
           </p>
         </div>
       </header>
@@ -182,26 +190,25 @@ export default function MazoPublico({
         ) : null}
 
         {authStatus === "unconfigured" ? (
-          <Alert variant="warning" title="Sin conexión a Supabase">
-            Necesitas configurar Supabase para copiar o estudiar este mazo.
+          <Alert variant="warning" title={tr("explorar.noSupabaseTitle")}>
+            {tr("mazoPublico.needsSupabase")}
           </Alert>
         ) : authStatus === "loading" ? (
           <p className="text-sm text-ink-faint" role="status">
-            Comprobando tu sesión…
+            {tr("mazoPublico.checkingSession")}
           </p>
         ) : authStatus === "anonymous" ? (
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-ink-soft">
-              Crea una cuenta para copiar este mazo a tu biblioteca y registrar
-              tu progreso.
+              {tr("mazoPublico.createPrompt")}
             </p>
             <ButtonLink
               to={`/crear-cuenta?redirectTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`}
             >
-              Crear una cuenta
+              {tr("mazoPublico.createAccount")}
             </ButtonLink>
             <ButtonLink to="/iniciar-sesion" variant="ghost">
-              Ya tengo cuenta
+              {tr("mazoPublico.alreadyAccount")}
             </ButtonLink>
           </div>
         ) : (
@@ -210,14 +217,16 @@ export default function MazoPublico({
               <input type="hidden" name="intent" value="copy" />
               <input type="hidden" name="sourceDeckId" value={deck.id} />
               <Button type="submit" disabled={isCopying}>
-                {isCopying ? "Copiando…" : "Copiar a mi biblioteca"}
+                {isCopying
+                  ? tr("mazoPublico.copying")
+                  : tr("mazoPublico.copyToLibrary")}
               </Button>
             </Form>
             <ButtonLink to={`/estudiar/${deck.id}`} variant="secondary">
-              Estudiar ahora
+              {tr("mazoPublico.studyNow")}
             </ButtonLink>
             <p className="text-xs text-ink-faint">
-              La copia es independiente: puedes editarla sin cambiar este mazo.
+              {tr("mazoPublico.copyNote")}
             </p>
           </div>
         )}
@@ -225,11 +234,13 @@ export default function MazoPublico({
 
       {/* Vista previa del contenido ---------------------------------------- */}
       <section className="mt-10">
-        <h2 className="font-display text-xl text-ink">Vista previa</h2>
+        <h2 className="font-display text-xl text-ink">
+          {tr("mazoPublico.previewTitle")}
+        </h2>
 
         {preview.length === 0 ? (
           <p className="mt-4 text-sm text-ink-soft">
-            Este mazo todavía no tiene tarjetas.
+            {tr("mazoPublico.noCards")}
           </p>
         ) : (
           <ul className="mt-5 grid gap-4 md:grid-cols-2">
@@ -238,7 +249,7 @@ export default function MazoPublico({
                 <Card className="h-full">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs text-ink-faint">
-                      {CARD_KIND_LABEL[card.kind]}
+                      {cardKindLabel(card.kind)}
                     </span>
                   </div>
                   <p className="font-display text-lg text-brand">{card.term}</p>
@@ -253,7 +264,9 @@ export default function MazoPublico({
                   ) : null}
                   {card.usage_note ? (
                     <p className="mt-3 text-xs text-ink-faint">
-                      <span className="font-medium text-ink-soft">Nota: </span>
+                      <span className="font-medium text-ink-soft">
+                        {tr("mazoPublico.note")}
+                      </span>
                       {card.usage_note}
                     </p>
                   ) : null}
@@ -265,8 +278,7 @@ export default function MazoPublico({
 
         {hidden > 0 ? (
           <p className="mt-5 text-sm text-ink-soft">
-            Y {hidden} {hidden === 1 ? "tarjeta más" : "tarjetas más"}. Crea una
-            cuenta o inicia sesión para verlas todas y estudiarlas.
+            {tr("mazoPublico.hiddenCards", { count: hidden })}
           </p>
         ) : null}
       </section>

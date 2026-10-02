@@ -14,8 +14,8 @@ import {
 import {
   buildSession,
   checkTypedAnswer,
-  MODE_DESCRIPTION,
-  MODE_LABEL,
+  modeDescription,
+  modeLabel,
   type PracticeItem,
   type PracticeResult,
   STUDY_MODES,
@@ -24,6 +24,8 @@ import {
 } from "~/features/study/engine";
 import { getMyDeck, getProgressForCards } from "~/lib/decks";
 import { cardCountLabel, percentLabel } from "~/lib/format";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
 import { type CardProgress, type StudyCard, toStudyCard } from "~/lib/types";
 import type { Route } from "./+types/estudiar";
@@ -32,8 +34,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   return [
     {
       title: loaderData?.deck
-        ? `Estudiar ${loaderData.deck.title}`
-        : "Estudiar",
+        ? t("estudiar.metaDeck", { deck: loaderData.deck.title })
+        : t("estudiar.metaTitle"),
     },
   ];
 }
@@ -67,7 +69,7 @@ export async function clientLoader({
   }
 
   if (!deck) {
-    throw data({ message: "Mazo no encontrado" }, { status: 404 });
+    throw data({ message: t("estudiar.deckNotFound") }, { status: 404 });
   }
 
   const { progress, error: progressError } = await getProgressForCards(
@@ -96,7 +98,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const session = await getSession();
   if (session.status !== "ready") {
     return data(
-      { ok: false as const, message: "Tu sesión expiró." },
+      { ok: false as const, message: t("estudiar.sessionExpired") },
       { status: 401 },
     );
   }
@@ -116,13 +118,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       .slice(0, 200);
   } catch {
     return data(
-      { ok: false as const, message: "No se pudo interpretar la sesión." },
+      { ok: false as const, message: t("estudiar.badResults") },
       { status: 400 },
     );
   }
 
   if (results.length === 0) {
-    return { ok: true as const, message: "No había nada que guardar." };
+    return { ok: true as const, message: t("estudiar.nothingToSave") };
   }
 
   const payload = results.map((result) => ({
@@ -142,12 +144,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     );
   }
 
-  return { ok: true as const, message: "Progreso guardado." };
+  return { ok: true as const, message: t("estudiar.saved") };
 }
 
 const SESSION_SIZE = 10;
 
 export default function Estudiar({ loaderData }: Route.ComponentProps) {
+  const tr = useT();
   const [mode, setMode] = useState<StudyMode>("elegir");
   const [sessionKey, setSessionKey] = useState(0);
 
@@ -162,14 +165,16 @@ export default function Estudiar({ loaderData }: Route.ComponentProps) {
     <Page>
       <p className="mb-4 text-sm">
         <Link to="/biblioteca" className="text-ink-soft hover:text-ink">
-          ← Mi biblioteca
+          {tr("estudiar.backLibrary")}
         </Link>
       </p>
 
       <header className="mb-8">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <h1 className="font-display text-3xl text-ink">{deck.title}</h1>
-          {deck.is_official ? <Tag tone="brand">Oficial</Tag> : null}
+          {deck.is_official ? (
+            <Tag tone="brand">{tr("biblioteca.official")}</Tag>
+          ) : null}
         </div>
         <p className="text-sm text-ink-soft">
           {cardCountLabel(deck.card_count)}
@@ -177,16 +182,16 @@ export default function Estudiar({ loaderData }: Route.ComponentProps) {
       </header>
 
       {studyCards.length === 0 ? (
-        <Alert variant="warning" title="Este mazo no tiene tarjetas">
+        <Alert variant="warning" title={tr("estudiar.emptyDeckTitle")}>
           <p>
-            No hay nada que practicar todavía.{" "}
+            {tr("estudiar.emptyDeckLead")}{" "}
             <Link
               to={`/biblioteca/mazos/${deck.id}/editar`}
               className="underline"
             >
-              Agrega tarjetas
+              {tr("estudiar.addCards")}
             </Link>{" "}
-            y vuelve a intentarlo.
+            {tr("estudiar.emptyDeckTail")}
           </p>
         </Alert>
       ) : (
@@ -219,6 +224,7 @@ function SessionRunner({
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<PracticeResult[]>([]);
   const [finished, setFinished] = useState(false);
+  const tr = useT();
   const saveFetcher = useFetcher<{ ok: boolean; message: string }>();
 
   const progressByCard = new Map(progress.map((item) => [item.card_id, item]));
@@ -264,7 +270,7 @@ function SessionRunner({
     <div>
       {plan.notice ? (
         <div className="mb-5">
-          <Alert variant="info" title="Ajustamos la práctica">
+          <Alert variant="info" title={tr("estudiar.adjustedTitle")}>
             {plan.notice}
           </Alert>
         </div>
@@ -275,14 +281,20 @@ function SessionRunner({
       <div className="mt-6">
         <div className="mb-2 flex items-center justify-between text-xs text-ink-faint">
           <span>
-            {index + 1} de {plan.items.length}
+            {tr("estudiar.counter", {
+              index: index + 1,
+              total: plan.items.length,
+            })}
           </span>
-          <span>{MODE_LABEL[plan.mode]}</span>
+          <span>{modeLabel(plan.mode)}</span>
         </div>
         <ProgressBar
           value={index}
           total={plan.items.length}
-          label={`Progreso de la sesión: ${index} de ${plan.items.length}`}
+          label={tr("estudiar.sessionAria", {
+            index,
+            total: plan.items.length,
+          })}
         />
       </div>
 
@@ -309,10 +321,12 @@ function ModePicker({
   mode: StudyMode;
   onChange: (mode: StudyMode) => void;
 }) {
+  const tr = useT();
+
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-medium text-ink">
-        Cómo quieres practicar
+        {tr("estudiar.modeLegend")}
       </legend>
       <div className="flex flex-wrap gap-2">
         {STUDY_MODES.map((option) => {
@@ -334,12 +348,12 @@ function ModePicker({
                 onChange={() => onChange(option)}
                 className="sr-only"
               />
-              {MODE_LABEL[option]}
+              {modeLabel(option)}
             </label>
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-ink-faint">{MODE_DESCRIPTION[mode]}</p>
+      <p className="mt-2 text-xs text-ink-faint">{modeDescription(mode)}</p>
     </fieldset>
   );
 }
@@ -354,12 +368,13 @@ function PracticeCard({
   progress: CardProgress | undefined;
   onAnswer: (correct: boolean, selfAssessed: boolean) => void;
 }) {
+  const tr = useT();
   const stateLabel =
     progress?.state === "mastered"
-      ? "Aprendida"
+      ? tr("estudiar.stateMastered")
       : progress?.attempts
-        ? "Practicando"
-        : "Nueva";
+        ? tr("estudiar.stateLearning")
+        : tr("estudiar.stateNew");
 
   return (
     <Card className="p-6">
@@ -369,7 +384,10 @@ function PracticeCard({
         </Tag>
         {progress?.attempts ? (
           <span className="text-xs text-ink-faint">
-            {progress.correct_count} de {progress.attempts} aciertos
+            {tr("estudiar.score", {
+              correct: progress.correct_count,
+              attempts: progress.attempts,
+            })}
           </span>
         ) : null}
       </div>
@@ -397,6 +415,8 @@ function Explore({
   item: Extract<PracticeItem, { kind: "explorar" }>;
   onAnswer: AnswerHandler;
 }) {
+  const tr = useT();
+
   return (
     <div>
       <p className="font-display text-2xl text-brand">{item.card.term}</p>
@@ -413,13 +433,17 @@ function Explore({
 
       {item.card.usageNote ? (
         <p className="mt-4 rounded-lg bg-paper-sunken px-4 py-3 text-sm text-ink-soft">
-          <span className="font-medium text-ink">Nota de uso: </span>
+          <span className="font-medium text-ink">
+            {tr("estudiar.usageNote")}
+          </span>
           {item.card.usageNote}
         </p>
       ) : null}
 
       <div className="mt-6">
-        <Button onClick={() => onAnswer(true, true)}>Seguir</Button>
+        <Button onClick={() => onAnswer(true, true)}>
+          {tr("estudiar.continue")}
+        </Button>
       </div>
     </div>
   );
@@ -434,6 +458,7 @@ function Review({
   onAnswer: AnswerHandler;
 }) {
   const [revealed, setRevealed] = useState(false);
+  const tr = useT();
 
   return (
     <div>
@@ -453,26 +478,32 @@ function Review({
         </div>
       ) : (
         <p className="mt-4 text-sm text-ink-faint">
-          Intenta recordar la traducción antes de revelarla.
+          {tr("estudiar.reviewHint")}
         </p>
       )}
 
       {revealed ? (
         <div className="mt-6">
-          <p className="mb-2 text-sm text-ink-soft">¿La sabías?</p>
+          <p className="mb-2 text-sm text-ink-soft">
+            {tr("estudiar.didYouKnow")}
+          </p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => onAnswer(true, true)}>Sí, la sabía</Button>
+            <Button onClick={() => onAnswer(true, true)}>
+              {tr("estudiar.knewIt")}
+            </Button>
             <Button variant="secondary" onClick={() => onAnswer(false, true)}>
-              Casi
+              {tr("estudiar.almost")}
             </Button>
             <Button variant="ghost" onClick={() => onAnswer(false, true)}>
-              No la sabía
+              {tr("estudiar.didNotKnow")}
             </Button>
           </div>
         </div>
       ) : (
         <div className="mt-6">
-          <Button onClick={() => setRevealed(true)}>Revelar respuesta</Button>
+          <Button onClick={() => setRevealed(true)}>
+            {tr("estudiar.reveal")}
+          </Button>
         </div>
       )}
     </div>
@@ -488,13 +519,14 @@ function ChooseMeaning({
   onAnswer: AnswerHandler;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const tr = useT();
   const answered = selected !== null;
   const isCorrect = selected === item.answerId;
 
   return (
     <div>
       <p className="font-display text-2xl text-brand">{item.card.term}</p>
-      <p className="mt-1 text-sm text-ink-soft">¿Qué significa en español?</p>
+      <p className="mt-1 text-sm text-ink-soft">{tr("estudiar.whatMeaning")}</p>
 
       <div className="mt-5 grid gap-2">
         {item.options.map((option) => {
@@ -527,11 +559,13 @@ function ChooseMeaning({
         <div className="mt-5">
           <Alert variant={isCorrect ? "success" : "error"}>
             {isCorrect
-              ? `Correcto: ${item.card.meaningEs}`
-              : `La respuesta era «${item.card.meaningEs}».`}
+              ? tr("estudiar.correctAnswer", { meaning: item.card.meaningEs })
+              : tr("estudiar.wasAnswer", { meaning: item.card.meaningEs })}
           </Alert>
           <div className="mt-4">
-            <Button onClick={() => onAnswer(isCorrect, false)}>Seguir</Button>
+            <Button onClick={() => onAnswer(isCorrect, false)}>
+              {tr("estudiar.continue")}
+            </Button>
           </div>
         </div>
       ) : null}
@@ -549,6 +583,7 @@ function FillTheBlank({
 }) {
   const [value, setValue] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const tr = useT();
   const isCorrect = checkTypedAnswer(value, item.answers);
   const [before = "", after = ""] = item.sentence.split("____");
 
@@ -559,9 +594,7 @@ function FillTheBlank({
         setSubmitted(true);
       }}
     >
-      <p className="text-sm text-ink-soft">
-        Completa la frase con la palabra o expresión que falta.
-      </p>
+      <p className="text-sm text-ink-soft">{tr("estudiar.fillInstruction")}</p>
 
       <p className="mt-4 rounded-lg bg-paper-sunken px-4 py-6 text-center font-display text-xl leading-relaxed text-ink">
         {/* `buildFillInTheBlank` siempre deja un solo hueco, así que basta
@@ -575,7 +608,7 @@ function FillTheBlank({
 
       <div className="mt-5">
         <label htmlFor="respuesta" className="sr-only">
-          Tu respuesta
+          {tr("estudiar.answerLabel")}
         </label>
         <input
           id="respuesta"
@@ -585,7 +618,7 @@ function FillTheBlank({
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}
-          placeholder="Escribe la respuesta en inglés"
+          placeholder={tr("estudiar.answerPlaceholder")}
           className={inputClass}
         />
       </div>
@@ -594,20 +627,22 @@ function FillTheBlank({
         <div className="mt-5">
           <Alert variant={isCorrect ? "success" : "error"}>
             {isCorrect
-              ? "¡Correcto! No importa si escribiste con mayúsculas o sin punto."
-              : `Era «${item.card.term}».`}
+              ? tr("estudiar.correctTyped")
+              : tr("estudiar.wasTerm", { term: item.card.term })}
           </Alert>
           {item.card.exampleEs ? (
             <p className="mt-3 text-sm text-ink-soft">{item.card.exampleEs}</p>
           ) : null}
           <div className="mt-4">
-            <Button onClick={() => onAnswer(isCorrect, false)}>Seguir</Button>
+            <Button onClick={() => onAnswer(isCorrect, false)}>
+              {tr("estudiar.continue")}
+            </Button>
           </div>
         </div>
       ) : (
         <div className="mt-5">
           <Button type="submit" disabled={value.trim() === ""}>
-            Comprobar
+            {tr("estudiar.check")}
           </Button>
         </div>
       )}
@@ -632,17 +667,20 @@ function SessionSummary({
   saveFetcher: SaveFetcher;
   onRestart: () => void;
 }) {
+  const tr = useT();
   const summary = summarize(results, cardsById);
   const saveFailed = saveFetcher.data?.ok === false;
 
   return (
     <Card>
-      <h2 className="font-display text-2xl text-ink">Sesión terminada</h2>
+      <h2 className="font-display text-2xl text-ink">
+        {tr("estudiar.sessionDone")}
+      </h2>
 
       <dl className="mt-5 grid gap-4 sm:grid-cols-3">
         <div>
           <dt className="text-xs tracking-wide text-ink-faint uppercase">
-            Practicados
+            {tr("estudiar.statPracticed")}
           </dt>
           <dd className="font-display text-3xl text-ink">
             {summary.practiced}
@@ -650,13 +688,13 @@ function SessionSummary({
         </div>
         <div>
           <dt className="text-xs tracking-wide text-ink-faint uppercase">
-            Aciertos
+            {tr("estudiar.statCorrect")}
           </dt>
           <dd className="font-display text-3xl text-ink">{summary.correct}</dd>
         </div>
         <div>
           <dt className="text-xs tracking-wide text-ink-faint uppercase">
-            Precisión
+            {tr("estudiar.statAccuracy")}
           </dt>
           <dd className="font-display text-3xl text-ink">
             {percentLabel(summary.accuracy)}
@@ -667,7 +705,7 @@ function SessionSummary({
       {summary.needsReview.length > 0 ? (
         <div className="mt-6 border-t border-line pt-4">
           <h3 className="text-sm font-semibold text-ink">
-            Para seguir practicando
+            {tr("estudiar.keepPracticingTitle")}
           </h3>
           <ul className="mt-2 space-y-1 text-sm text-ink-soft">
             {summary.needsReview.map((card) => (
@@ -681,21 +719,23 @@ function SessionSummary({
       ) : null}
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <Button onClick={onRestart}>Repetir la sesión</Button>
+        <Button onClick={onRestart}>{tr("estudiar.repeat")}</Button>
         <ButtonLink to="/progreso" variant="secondary">
-          Ver mi progreso
+          {tr("estudiar.seeProgress")}
         </ButtonLink>
         <ButtonLink to="/biblioteca" variant="ghost">
-          Volver a la biblioteca
+          {tr("estudiar.backToLibrary")}
         </ButtonLink>
       </div>
 
       <p className="mt-4 text-xs text-ink-faint" role="status">
         {saveFetcher.state !== "idle"
-          ? "Guardando tu progreso…"
+          ? tr("estudiar.savingProgress")
           : saveFailed
-            ? `No se pudo guardar: ${saveFetcher.data?.message}`
-            : "Progreso guardado."}
+            ? tr("estudiar.saveFailed", {
+                message: saveFetcher.data?.message ?? "",
+              })
+            : tr("estudiar.saved")}
       </p>
     </Card>
   );

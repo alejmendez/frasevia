@@ -1,3 +1,4 @@
+import { t } from "~/lib/locale";
 import {
   type CardProgress,
   MASTERY_CORRECT_COUNT,
@@ -21,19 +22,21 @@ export const STUDY_MODES = [
 
 export type StudyMode = (typeof STUDY_MODES)[number];
 
-export const MODE_LABEL: Record<StudyMode, string> = {
-  elegir: "Elegir el significado",
-  completar: "Completar la frase",
-  revisar: "Repaso",
-  explorar: "Explorar",
-};
+/**
+ * Etiquetas de los modos.
+ *
+ * Son funciones y no constantes porque dependen del idioma. Se resuelven al
+ * llamarlas, que es cuando el modo ya está elegido y la pantalla se está
+ * pintando: leerlas una vez al importar dejaría el modo congelado en el idioma
+ * que hubiera en ese momento.
+ */
+export function modeLabel(mode: StudyMode): string {
+  return t(`engine.mode.${mode}`);
+}
 
-export const MODE_DESCRIPTION: Record<StudyMode, string> = {
-  elegir: "Elige la traducción correcta entre cuatro opciones.",
-  completar: "Escribe la palabra o frase que falta en la oración.",
-  revisar: "Mira la tarjeta, revela la respuesta y di si la sabías.",
-  explorar: "Lee el contenido con su ejemplo y su nota de uso.",
-};
+export function modeDescription(mode: StudyMode): string {
+  return t(`engine.modeDescription.${mode}`);
+}
 
 /** Cantidad de distractores en la práctica de elección múltiple. */
 const OPTION_COUNT = 4;
@@ -70,7 +73,7 @@ export interface SessionPlan {
   /** Modo que pidió la persona. */
   requestedMode: StudyMode;
   items: PracticeItem[];
-  /** Explicación en español si el modo tuvo que cambiar. */
+  /** Explicación, en el idioma de la interfaz, si el modo tuvo que cambiar. */
   notice: string | null;
 }
 
@@ -340,24 +343,20 @@ export function resolveMode(
   cards: StudyCard[],
 ): { mode: StudyMode; notice: string | null } {
   if (cards.length === 0) {
-    return { mode: "revisar", notice: "Este mazo todavía no tiene tarjetas." };
+    return { mode: "revisar", notice: t("engine.notice.empty") };
   }
 
   if (requestedMode === "elegir" && !canUseChoiceMode(cards)) {
     return {
       mode: "revisar",
-      notice:
-        "Con tan pocas tarjetas no hay suficientes alternativas para " +
-        "elegir entre varias, así que hacemos un repaso.",
+      notice: t("engine.notice.tooFewForChoice"),
     };
   }
 
   if (requestedMode === "completar" && !canUseFillInTheBlankMode(cards)) {
     return {
       mode: "revisar",
-      notice:
-        "Ninguna tarjeta tiene el término dentro de su ejemplo, así que " +
-        "hacemos un repaso.",
+      notice: t("engine.notice.noFillInTheBlank"),
     };
   }
 

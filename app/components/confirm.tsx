@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
+import { useT } from "~/lib/locale-context";
+
 import { Button } from "./ui";
 
 /**
@@ -82,6 +84,7 @@ export function ConfirmSubmit({
 }) {
   const fetcher = useFetcher<{ error?: string }>();
   const [open, setOpen] = useState(false);
+  const t = useT();
 
   return (
     <>
@@ -110,7 +113,7 @@ export function ConfirmSubmit({
                 </p>
               ) : (
                 <Button type="button" variant="ghost" onClick={close}>
-                  Cancelar
+                  {t("common.cancel")}
                 </Button>
               )}
               <Button
@@ -118,7 +121,7 @@ export function ConfirmSubmit({
                 variant="danger"
                 disabled={fetcher.state !== "idle"}
               >
-                {fetcher.state === "idle" ? confirmLabel : "Eliminando…"}
+                {fetcher.state === "idle" ? confirmLabel : t("common.deleting")}
               </Button>
             </fetcher.Form>
           )}

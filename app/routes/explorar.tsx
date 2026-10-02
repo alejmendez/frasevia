@@ -9,15 +9,16 @@ import {
 } from "~/components/ui";
 import { DeckTile } from "~/features/decks/deck-tile";
 import { listPublicDecks } from "~/lib/decks";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import type { Route } from "./+types/explorar";
 
 export function meta() {
   return [
-    { title: "Explorar mazos — Frasevia" },
+    { title: t("explorar.metaTitle") },
     {
       name: "description",
-      content:
-        "Mazos públicos de inglés con ejemplos y traducciones al español.",
+      content: t("explorar.metaDescription"),
     },
   ];
 }
@@ -40,72 +41,74 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 }
 
 export default function Explorar({ loaderData }: Route.ComponentProps) {
+  const tr = useT();
   const { decks, error, query, configured } = loaderData;
   const [searchParams] = useSearchParams();
 
   return (
     <Page>
       <PageHeader
-        eyebrow="Catálogo público"
-        title="Explorar mazos"
-        description="Mazos de otras personas y los mazos oficiales de Frasevia. Puedes copiar los que te gusten a tu propia biblioteca."
+        eyebrow={tr("explorar.eyebrow")}
+        title={tr("explorar.title")}
+        description={tr("explorar.description")}
       />
 
       {/* El buscador usa GET, así que la búsqueda queda en la URL y se puede
           compartir o marcar como favorita. */}
       <Form method="get" role="search" className="mb-8 flex gap-2">
         <label htmlFor="q" className="sr-only">
-          Buscar mazos
+          {tr("explorar.searchLabel")}
         </label>
         <input
           id="q"
           name="q"
           type="search"
           defaultValue={query}
-          placeholder="Busca por título o descripción"
+          placeholder={tr("explorar.searchPlaceholder")}
           className={inputClass}
         />
         <button
           type="submit"
           className="shrink-0 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
         >
-          Buscar
+          {tr("explorar.searchButton")}
         </button>
         {searchParams.has("q") ? (
           <ButtonLink to="/explorar" variant="ghost">
-            Limpiar
+            {tr("explorar.clear")}
           </ButtonLink>
         ) : null}
       </Form>
 
       {!configured ? (
-        <Alert variant="warning" title="Sin conexión a Supabase">
-          <p>
-            No se pudo leer el catálogo porque falta configurar{" "}
-            <code className="font-mono">VITE_SUPABASE_URL</code> y{" "}
-            <code className="font-mono">VITE_SUPABASE_PUBLISHABLE_KEY</code> en
-            tu <code className="font-mono">.env</code>.
-          </p>
+        <Alert variant="warning" title={tr("explorar.noSupabaseTitle")}>
+          <p>{tr("explorar.noSupabaseBody")}</p>
         </Alert>
       ) : error ? (
-        <Alert variant="error" title="No se pudo cargar el catálogo">
+        <Alert variant="error" title={tr("explorar.loadErrorTitle")}>
           {error}
         </Alert>
       ) : decks.length === 0 ? (
         <EmptyState
-          title={query ? "Sin resultados" : "Todavía no hay mazos públicos"}
+          title={
+            query
+              ? tr("explorar.emptyResultsTitle")
+              : tr("explorar.emptyNoDecksTitle")
+          }
           description={
             query
-              ? `Ningún mazo coincide con “${query}”. Prueba con otra palabra.`
-              : "Sé la primera persona en compartir un mazo: crea el tuyo y publícalo."
+              ? tr("explorar.emptyResultsBody", { query })
+              : tr("explorar.emptyNoDecksBody")
           }
           action={
             query ? (
               <ButtonLink to="/explorar" variant="secondary">
-                Ver todos
+                {tr("explorar.seeAll")}
               </ButtonLink>
             ) : (
-              <ButtonLink to="/crear-cuenta">Crear mi primer mazo</ButtonLink>
+              <ButtonLink to="/crear-cuenta">
+                {tr("explorar.createFirst")}
+              </ButtonLink>
             )
           }
         />

@@ -9,11 +9,13 @@ import {
   Page,
 } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { safeRedirectTo } from "~/lib/session";
 import { getSupabaseBrowser } from "~/lib/supabase";
 
 export function meta() {
-  return [{ title: "Recuperar contraseña — Frasevia" }];
+  return [{ title: t("reset.metaTitle") }];
 }
 
 /**
@@ -26,6 +28,7 @@ export function meta() {
 export default function RecuperarContrasena() {
   const [searchParams] = useSearchParams();
   const { status: authStatus } = useAuth();
+  const tr = useT();
   const redirectTo = safeRedirectTo(
     searchParams.get("redirectTo"),
     "/iniciar-sesion",
@@ -41,9 +44,7 @@ export default function RecuperarContrasena() {
   // queda una sesión temporal: hay que avisar a quien está mirando la pantalla.
   useEffect(() => {
     if (authStatus === "authenticated") {
-      setInfo(
-        "Listo, el enlace funcionó. Escribe una contraseña nueva para tu cuenta.",
-      );
+      setInfo(t("reset.linkWorked"));
     }
   }, [authStatus]);
 
@@ -61,7 +62,7 @@ export default function RecuperarContrasena() {
 
     const supabase = getSupabaseBrowser();
     if (!supabase) {
-      setError("Falta configurar Supabase en tus variables de entorno.");
+      setError(t("common.noSupabaseEnv"));
       setPending(false);
       return;
     }
@@ -78,9 +79,7 @@ export default function RecuperarContrasena() {
     }
 
     // Mensaje idéntico exista o no el correo: no se revela qué cuentas existen.
-    setInfo(
-      "Si ese correo tiene una cuenta, te enviamos un enlace para cambiar la contraseña.",
-    );
+    setInfo(t("reset.emailSent"));
     setPending(false);
   }
 
@@ -89,14 +88,14 @@ export default function RecuperarContrasena() {
     setError(null);
 
     if (password.length < 8) {
-      setError("La contraseña necesita al menos 8 caracteres.");
+      setError(t("signUp.passwordTooShort"));
       return;
     }
 
     setPending(true);
     const supabase = getSupabaseBrowser();
     if (!supabase) {
-      setError("Falta configurar Supabase en tus variables de entorno.");
+      setError(t("common.noSupabaseEnv"));
       setPending(false);
       return;
     }
@@ -109,21 +108,17 @@ export default function RecuperarContrasena() {
       return;
     }
 
-    setInfo("Contraseña actualizada. Ya puedes iniciar sesión.");
+    setInfo(t("reset.updated"));
     setPending(false);
   }
 
   return (
     <Page className="max-w-md">
       <h1 className="font-display text-3xl text-ink">
-        {hasRecoverySession
-          ? "Elige una contraseña nueva"
-          : "Recuperar contraseña"}
+        {hasRecoverySession ? tr("reset.newTitle") : tr("reset.title")}
       </h1>
       <p className="mt-2 text-ink-soft">
-        {hasRecoverySession
-          ? "Estás usando el enlace que te enviamos por correo."
-          : "Escribe tu correo y te enviamos un enlace para cambiar la contraseña."}
+        {hasRecoverySession ? tr("reset.newBody") : tr("reset.body")}
       </p>
 
       {error ? (
@@ -140,10 +135,10 @@ export default function RecuperarContrasena() {
       {hasRecoverySession ? (
         <form onSubmit={handleUpdate} className="mt-6 space-y-5">
           <Field
-            label="Contraseña nueva"
+            label={tr("reset.fieldNewPassword")}
             htmlFor="password"
             required
-            hint="Mínimo 8 caracteres."
+            hint={tr("signUp.passwordHint")}
           >
             <input
               id="password"
@@ -158,12 +153,12 @@ export default function RecuperarContrasena() {
             />
           </Field>
           <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Guardando…" : "Guardar contraseña"}
+            {pending ? t("reset.saving") : tr("reset.savePassword")}
           </Button>
         </form>
       ) : (
         <form onSubmit={handleRequest} className="mt-6 space-y-5">
-          <Field label="Correo electrónico" htmlFor="email" required>
+          <Field label={tr("signIn.fieldEmail")} htmlFor="email" required>
             <input
               id="email"
               name="email"
@@ -176,7 +171,7 @@ export default function RecuperarContrasena() {
             />
           </Field>
           <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Enviando…" : "Enviar enlace"}
+            {pending ? t("reset.sending") : tr("reset.sendLink")}
           </Button>
         </form>
       )}
@@ -186,7 +181,7 @@ export default function RecuperarContrasena() {
           to={`/iniciar-sesion?redirectTo=${encodeURIComponent(redirectTo)}`}
           className="text-brand hover:underline"
         >
-          Volver a iniciar sesión
+          {tr("reset.backToSignIn")}
         </Link>
       </p>
     </Page>

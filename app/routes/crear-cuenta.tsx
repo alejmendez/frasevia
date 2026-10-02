@@ -11,17 +11,20 @@ import {
 } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
 import { forgetRedirect } from "~/lib/auth-redirect";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { safeRedirectTo, stripBasePath } from "~/lib/session";
 import { getSupabaseBrowser } from "~/lib/supabase";
 
 export function meta() {
-  return [{ title: "Crear una cuenta — Frasevia" }];
+  return [{ title: t("signUp.metaTitle") }];
 }
 
 export default function CrearCuenta() {
   const [searchParams] = useSearchParams();
   const { status: authStatus } = useAuth();
   const navigate = useNavigate();
+  const tr = useT();
 
   // `useHref("/")` devuelve la raíz ya con el prefijo del sitio. De ahí sale el
   // prefijo que hay que quitarle a `redirectTo`, porque `navigate` lo vuelve a
@@ -50,7 +53,7 @@ export default function CrearCuenta() {
     setInfo(null);
 
     if (password.length < 8) {
-      setError("La contraseña necesita al menos 8 caracteres.");
+      setError(t("signUp.passwordTooShort"));
       return;
     }
 
@@ -58,7 +61,7 @@ export default function CrearCuenta() {
     const supabase = getSupabaseBrowser();
 
     if (!supabase) {
-      setError("Falta configurar Supabase en tus variables de entorno.");
+      setError(t("common.noSupabaseEnv"));
       setPending(false);
       return;
     }
@@ -80,10 +83,7 @@ export default function CrearCuenta() {
     // Si el proyecto exige confirmar el correo, `session` viene vacío y hay que
     // avisar en vez de dar por hecho que la cuenta ya sirve.
     if (!data.session) {
-      setInfo(
-        "Revisa tu correo: te enviamos un enlace para confirmar la cuenta. " +
-          "Cuando lo abras podrás entrar.",
-      );
+      setInfo(t("signUp.checkEmail"));
       setPending(false);
       return;
     }
@@ -94,17 +94,14 @@ export default function CrearCuenta() {
 
   return (
     <Page className="max-w-md">
-      <h1 className="font-display text-3xl text-ink">Crear una cuenta</h1>
-      <p className="mt-2 text-ink-soft">
-        Tu cuenta guarda la biblioteca, el progreso de cada tarjeta y las copias
-        de los mazos que copies.
-      </p>
+      <h1 className="font-display text-3xl text-ink">{tr("signUp.title")}</h1>
+      <p className="mt-2 text-ink-soft">{tr("signUp.description")}</p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         {error ? <Alert variant="error">{error}</Alert> : null}
         {info ? <Alert variant="success">{info}</Alert> : null}
 
-        <Field label="Correo electrónico" htmlFor="email" required>
+        <Field label={tr("signIn.fieldEmail")} htmlFor="email" required>
           <input
             id="email"
             name="email"
@@ -118,10 +115,10 @@ export default function CrearCuenta() {
         </Field>
 
         <Field
-          label="Contraseña"
+          label={tr("signIn.fieldPassword")}
           htmlFor="password"
           required
-          hint="Mínimo 8 caracteres."
+          hint={tr("signUp.passwordHint")}
         >
           <input
             id="password"
@@ -137,19 +134,19 @@ export default function CrearCuenta() {
         </Field>
 
         <Button type="submit" disabled={pending} className="w-full">
-          {pending ? "Creando la cuenta…" : "Crear la cuenta"}
+          {pending ? t("signUp.creating") : tr("signUp.submit")}
         </Button>
       </form>
 
-      <GoogleSignIn redirectTo={redirectTo} label="Registrarse con Google" />
+      <GoogleSignIn redirectTo={redirectTo} label={tr("google.labelSignUp")} />
 
       <p className="mt-6 text-sm text-ink-soft">
-        ¿Ya tienes cuenta?{" "}
+        {tr("signUp.haveAccount")}{" "}
         <Link
           to={`/iniciar-sesion?redirectTo=${encodeURIComponent(redirectTo)}`}
           className="text-brand hover:underline"
         >
-          Inicia sesión
+          {tr("signUp.signInLink")}
         </Link>
       </p>
     </Page>

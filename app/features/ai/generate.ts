@@ -14,11 +14,20 @@
  * infraestructura, no un detalle de este módulo.
  */
 
+import { t } from "~/lib/locale";
+
 import { type DeckDraft, parseDeckDraft } from "./draft";
 import { getKey } from "./keys";
 import type { ModelInfo } from "./models";
 import { buildDraftPrompt, type DraftRequest, maxTokensFor } from "./prompt";
 
+/**
+ * Fallo que se puede enseñar tal cual.
+ *
+ * El mensaje se compone con el idioma activo en el momento de lanzarlo, que es
+ * durante la pulsación de quien genera, así que siempre coincide con el de la
+ * pantalla que está detrás.
+ */
 export class GenerationError extends Error {
   constructor(message: string) {
     super(message);
@@ -64,57 +73,42 @@ function explainStatus(
   detail: string,
   model: string,
 ): GenerationError {
-  const suffix = detail ? ` Detalle: ${detail}` : "";
+  // Va aparte y con un espacio delante porque se pega al final de todos los
+  // mensajes: es el detalle crudo que manda OpenRouter, útil cuando el texto
+  // de arriba no basta para saber qué pasó.
+  const suffix = detail ? t("generation.detailSuffix", { detail }) : "";
 
   if (status === 401) {
-    return new GenerationError(
-      `La clave de OpenRouter no es válida. Revísala en «Ajustes de IA».${suffix}`,
-    );
+    return new GenerationError(t("generation.invalidKey") + suffix);
   }
 
   if (status === 403) {
-    return new GenerationError(
-      "OpenRouter rechazó la petición. Suele ser la clave sin saldo, o con la " +
-        "restricción de referencias web activada y este sitio sin añadir." +
-        suffix,
-    );
+    return new GenerationError(t("generation.rejected") + suffix);
   }
 
   if (status === 429) {
-    return new GenerationError(
-      "OpenRouter dice que se alcanzó el límite de peticiones o que no queda " +
-        "crédito." +
-        suffix,
-    );
+    return new GenerationError(t("generation.rateLimited") + suffix);
   }
 
   if (status === 400 || status === 404) {
     return new GenerationError(
-      `OpenRouter no reconoce el modelo «${model}». Los identificadores cambian ` +
-        "con frecuencia: búscalo en el catálogo de la pantalla anterior, que se " +
-        `pide al momento.${suffix}`,
+      t("generation.unknownModel", { model }) + suffix,
     );
   }
 
   if (status >= 500) {
-    return new GenerationError(
-      "OpenRouter está teniendo problemas ahora mismo. Prueba en un momento." +
-        suffix,
-    );
+    return new GenerationError(t("generation.providerDown") + suffix);
   }
 
   return new GenerationError(
-    `La petición a OpenRouter falló con el estado ${status}.${suffix}`,
+    t("generation.failedWithStatus", { status }) + suffix,
   );
 }
 
 function requireKey(): string {
   const key = getKey();
   if (!key) {
-    throw new GenerationError(
-      "Falta la clave de OpenRouter. Añádela en «Ajustes de IA», o usa el modo " +
-        "de importar, que no necesita clave.",
-    );
+    throw new GenerationError(t("generation.missingKey"));
   }
   return key;
 }
@@ -133,9 +127,7 @@ export async function generateDeckDraft(
 ): Promise<DeckDraft> {
   const model = options.model.trim();
   if (model === "") {
-    throw new GenerationError(
-      "Elige un modelo. El catálogo se pide al OpenRouter y no necesita clave.",
-    );
+    throw new GenerationError(t("generation.pickModel"));
   }
 
   const { system, user } = buildDraftPrompt(options.request);
@@ -169,10 +161,7 @@ export async function generateDeckDraft(
     if (isAbort(error)) {
       throw error;
     }
-    throw new GenerationError(
-      "No se pudo contactar con OpenRouter desde el navegador. Comprueba la " +
-        "conexión e inténtalo de nuevo.",
-    );
+    throw new GenerationError(t("generation.network"));
   }
 
   if (!response.ok) {
@@ -187,9 +176,7 @@ export async function generateDeckDraft(
   try {
     data = await response.json();
   } catch {
-    throw new GenerationError(
-      "OpenRouter respondió con algo que no se pudo leer como JSON.",
-    );
+    throw new GenerationError(t("generation.badJson"));
   }
 
   const choices = (data as { choices?: unknown })?.choices;
@@ -197,10 +184,7 @@ export async function generateDeckDraft(
     ?.message?.content;
 
   if (typeof content !== "string" || content.trim() === "") {
-    throw new GenerationError(
-      "El modelo respondió vacío. Puede que se haya quedado sin tokens a " +
-        "mitad; prueba con menos tarjetas o con otro modelo.",
-    );
+    throw new GenerationError(t("generation.emptyResponse"));
   }
 
   return parseDeckDraft(content);

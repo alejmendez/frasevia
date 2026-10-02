@@ -11,7 +11,8 @@ import {
   Textarea,
 } from "~/components/ui";
 import type { DraftCard } from "~/features/ai/draft";
-import type { CardKind } from "~/lib/types";
+import { cardKindLabel } from "~/lib/format";
+import { useT } from "~/lib/locale-context";
 
 /**
  * Pantalla de revisión: las tarjetas generadas, antes de guardarlas.
@@ -36,13 +37,6 @@ export interface ReviewDeck {
   level: string | null;
   cards: ReviewCard[];
 }
-
-const KIND_LABEL: Record<CardKind, string> = {
-  word: "Palabra",
-  phrase: "Frase",
-  question: "Pregunta",
-  rule: "Regla",
-};
 
 export interface DeckReviewProps {
   deck: ReviewDeck;
@@ -87,16 +81,18 @@ export function DeckReview({
   onRegenerate,
   onCancel,
 }: DeckReviewProps) {
+  const t = useT();
+
   return (
     <div className="space-y-6">
       {error ? (
-        <Alert variant="error" title="No se pudo continuar">
+        <Alert variant="error" title={t("mazoIa.errorTitle")}>
           {error}
         </Alert>
       ) : null}
 
       <Card as="section" className="space-y-5">
-        <Field label="Título" htmlFor="draft-title" required>
+        <Field label={t("deckField.title")} htmlFor="draft-title" required>
           <input
             id="draft-title"
             value={title}
@@ -107,9 +103,9 @@ export function DeckReview({
         </Field>
 
         <Field
-          label="Descripción"
+          label={t("deckField.description")}
           htmlFor="draft-description"
-          hint="Aparece en el catálogo si lo publicas."
+          hint={t("deckField.descriptionHintReview")}
         >
           <Textarea
             id="draft-description"
@@ -118,7 +114,7 @@ export function DeckReview({
           />
         </Field>
 
-        <Field label="Visibilidad" htmlFor="draft-visibility">
+        <Field label={t("deckField.visibility")} htmlFor="draft-visibility">
           <Select
             id="draft-visibility"
             value={visibility}
@@ -126,17 +122,17 @@ export function DeckReview({
               onVisibility(event.target.value as "private" | "public")
             }
           >
-            <option value="private">Privado, solo yo</option>
-            <option value="public">Público, aparece en explorar</option>
+            <option value="private">{t("visibility.option.private")}</option>
+            <option value="public">{t("visibility.option.public")}</option>
           </Select>
         </Field>
       </Card>
 
       <div>
         <SectionTitle as="h3">
-          Tarjetas
+          {t("review.title")}
           <span className="ml-2 text-base font-normal text-ink-faint">
-            {kept} de {deck.cards.length}
+            {t("review.keptOf", { kept, total: deck.cards.length })}
           </span>
         </SectionTitle>
 
@@ -155,7 +151,7 @@ export function DeckReview({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-ink">{card.term}</p>
-                      <Tag>{KIND_LABEL[card.kind]}</Tag>
+                      <Tag>{cardKindLabel(card.kind)}</Tag>
                     </div>
                     <p className="mt-0.5 text-sm text-ink-soft">
                       {card.meaningEs}
@@ -179,7 +175,7 @@ export function DeckReview({
                     className="shrink-0 px-2.5 py-1.5 text-xs"
                     onClick={() => onToggle(index)}
                   >
-                    {isDropped ? "Recuperar" : "Quitar"}
+                    {isDropped ? t("review.restore") : t("review.remove")}
                   </Button>
                 </Card>
               </li>
@@ -190,7 +186,7 @@ export function DeckReview({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" onClick={onSave} disabled={saving || kept === 0}>
-          {saving ? "Guardando…" : `Guardar ${kept} tarjetas`}
+          {saving ? t("review.saving") : t("review.saveCards", { count: kept })}
         </Button>
 
         <Button
@@ -199,7 +195,7 @@ export function DeckReview({
           onClick={onDiscard}
           disabled={saving}
         >
-          Descartar y empezar de nuevo
+          {t("review.discard")}
         </Button>
 
         <Button
@@ -208,12 +204,12 @@ export function DeckReview({
           onClick={onRegenerate}
           disabled={busy}
         >
-          {busy ? "Generando…" : "Pedir otras tarjetas"}
+          {busy ? t("mazoIa.generating") : t("review.askMore")}
         </Button>
 
         {busy ? (
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancelar
+            {t("common.cancel")}
           </Button>
         ) : null}
       </div>

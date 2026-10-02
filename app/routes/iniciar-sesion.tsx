@@ -11,11 +11,13 @@ import {
 } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
 import { forgetRedirect } from "~/lib/auth-redirect";
+import { t } from "~/lib/locale";
+import { useT } from "~/lib/locale-context";
 import { safeRedirectTo, stripBasePath } from "~/lib/session";
 import { getSupabaseBrowser } from "~/lib/supabase";
 
 export function meta() {
-  return [{ title: "Iniciar sesión — Frasevia" }];
+  return [{ title: t("signIn.metaTitle") }];
 }
 
 /**
@@ -30,6 +32,7 @@ export default function IniciarSesion() {
   const [searchParams] = useSearchParams();
   const { status: authStatus } = useAuth();
   const navigate = useNavigate();
+  const tr = useT();
 
   // `useHref("/")` devuelve la raíz ya con el prefijo del sitio (`/frasevia/`
   // si se publica en una subcarpeta, `/` si va a la raíz del dominio). De ahí se
@@ -61,7 +64,7 @@ export default function IniciarSesion() {
 
     const supabase = getSupabaseBrowser();
     if (!supabase) {
-      setError("Falta configurar Supabase en tus variables de entorno.");
+      setError(t("common.noSupabaseEnv"));
       setPending(false);
       return;
     }
@@ -76,7 +79,7 @@ export default function IniciarSesion() {
       // propósito: no revelamos qué correos están registrados.
       setError(
         signInError.message === "Invalid login credentials"
-          ? "El correo o la contraseña no son correctos."
+          ? t("signIn.invalidCredentials")
           : signInError.message,
       );
       setPending(false);
@@ -92,24 +95,18 @@ export default function IniciarSesion() {
 
   return (
     <Page className="max-w-md">
-      <h1 className="font-display text-3xl text-ink">Iniciar sesión</h1>
-      <p className="mt-2 text-ink-soft">
-        Entra para practicar, guardar tu biblioteca y copiar mazos.
-      </p>
+      <h1 className="font-display text-3xl text-ink">{tr("signIn.title")}</h1>
+      <p className="mt-2 text-ink-soft">{tr("signIn.description")}</p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         {oauthFailed ? (
-          <Alert variant="warning" title="No se completó el acceso con Google">
-            <p>
-              Puede que se haya cancelado el permiso, o que el acceso con Google
-              no esté habilitado en el proyecto. Inténtalo otra vez o entra con
-              tu correo y contraseña.
-            </p>
+          <Alert variant="warning" title={tr("signIn.oauthTitle")}>
+            <p>{tr("signIn.oauthBody")}</p>
           </Alert>
         ) : null}
         {error ? <Alert variant="error">{error}</Alert> : null}
 
-        <Field label="Correo electrónico" htmlFor="email" required>
+        <Field label={tr("signIn.fieldEmail")} htmlFor="email" required>
           <input
             id="email"
             name="email"
@@ -122,7 +119,7 @@ export default function IniciarSesion() {
           />
         </Field>
 
-        <Field label="Contraseña" htmlFor="password" required>
+        <Field label={tr("signIn.fieldPassword")} htmlFor="password" required>
           <input
             id="password"
             name="password"
@@ -136,11 +133,14 @@ export default function IniciarSesion() {
         </Field>
 
         <Button type="submit" disabled={pending} className="w-full">
-          {pending ? "Entrando…" : "Iniciar sesión"}
+          {pending ? t("signIn.signingIn") : tr("signIn.title")}
         </Button>
       </form>
 
-      <GoogleSignIn redirectTo={redirectTo} label="Continuar con Google" />
+      <GoogleSignIn
+        redirectTo={redirectTo}
+        label={tr("google.labelContinue")}
+      />
 
       <div className="mt-6 space-y-2 text-sm">
         <p>
@@ -148,16 +148,16 @@ export default function IniciarSesion() {
             to={`/recuperar-contrasena?redirectTo=${encodeURIComponent(redirectTo)}`}
             className="text-brand hover:underline"
           >
-            ¿Olvidaste tu contraseña?
+            {tr("signIn.forgot")}
           </Link>
         </p>
         <p className="text-ink-soft">
-          ¿Todavía no tienes cuenta?{" "}
+          {tr("signIn.noAccountYet")}{" "}
           <Link
             to={`/crear-cuenta?redirectTo=${encodeURIComponent(redirectTo)}`}
             className="text-brand hover:underline"
           >
-            Crear una
+            {tr("signIn.createOne")}
           </Link>
         </p>
       </div>

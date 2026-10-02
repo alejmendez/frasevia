@@ -1,24 +1,29 @@
+import { activeLocale, t } from "./locale";
 import type { CardKind, DeckVisibility, ProgressState } from "./types";
 
-/** Etiquetas visibles para la interfaz (español). */
+/**
+ * Formateo de datos para la interfaz.
+ *
+ * Estas funciones leen el idioma activo (`app/lib/locale.ts`) en vez de recibirlo
+ * como parámetro: las llama el render y todas devuelven el mismo tipo que antes,
+ * así que no obliga a cambiar ninguna firma. El idioma activo lo mantiene el
+ * proveedor al montar y el selector al cambiar, así que cuando cambia, estos
+ * textos cambian con él.
+ */
 
-export const VISIBILITY_LABEL: Record<DeckVisibility, string> = {
-  private: "Privado",
-  public: "Público",
-};
+/** Etiquetas visibles para la interfaz, ya traducidas. */
 
-export const CARD_KIND_LABEL: Record<CardKind, string> = {
-  word: "Palabra",
-  phrase: "Frase",
-  question: "Pregunta",
-  rule: "Regla",
-};
+export function visibilityLabel(value: DeckVisibility): string {
+  return t(`label.visibility.${value}`);
+}
 
-export const PROGRESS_LABEL: Record<ProgressState, string> = {
-  new: "Nueva",
-  learning: "Practicando",
-  mastered: "Aprendida",
-};
+export function cardKindLabel(value: CardKind): string {
+  return t(`label.cardKind.${value}`);
+}
+
+export function progressLabel(value: ProgressState): string {
+  return t(`label.progress.${value}`);
+}
 
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 31536000],
@@ -29,22 +34,24 @@ const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["minute", 60],
 ];
 
-/** "hace 3 días", "dentro de 2 horas". */
+/** "hace 3 días", "in 2 hours", "sin registro" / "not recorded". */
 export function formatRelativeTime(
   isoDate: string | null | undefined,
   now: Date = new Date(),
 ): string {
   if (!isoDate) {
-    return "sin registro";
+    return t("time.noRecord");
   }
 
   const target = new Date(isoDate);
   if (Number.isNaN(target.getTime())) {
-    return "sin registro";
+    return t("time.noRecord");
   }
 
   const seconds = Math.round((target.getTime() - now.getTime()) / 1000);
-  const formatter = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+  const formatter = new Intl.RelativeTimeFormat(activeLocale(), {
+    numeric: "auto",
+  });
 
   for (const [unit, unitSeconds] of RELATIVE_UNITS) {
     if (Math.abs(seconds) >= unitSeconds) {
@@ -52,7 +59,7 @@ export function formatRelativeTime(
     }
   }
 
-  return "recién";
+  return t("time.justNow");
 }
 
 export function formatDate(isoDate: string | null | undefined): string {
@@ -65,24 +72,16 @@ export function formatDate(isoDate: string | null | undefined): string {
     return "—";
   }
 
-  return new Intl.DateTimeFormat("es", {
+  return new Intl.DateTimeFormat(activeLocale(), {
     dateStyle: "long",
   }).format(date);
 }
 
-export function pluralize(
-  count: number,
-  singular: string,
-  plural: string,
-): string {
-  return count === 1 ? singular : plural;
-}
-
-/** "3 tarjetas" / "1 tarjeta" */
+/** "3 tarjetas" / "1 tarjeta"; "3 cards" / "1 card". */
 export function cardCountLabel(count: number): string {
-  return `${count} ${pluralize(count, "tarjeta", "tarjetas")}`;
+  return t("format.cardCount", { count });
 }
 
 export function percentLabel(value: number): string {
-  return `${Math.round(value * 100)}%`;
+  return t("format.percent", { value: Math.round(value * 100) });
 }
