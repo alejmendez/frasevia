@@ -13,6 +13,7 @@ import {
 import { ThemeToggle } from "~/components/theme-toggle";
 import { cx, LoadingState } from "~/components/ui";
 import { AuthProvider, useAuth } from "~/lib/auth-context";
+import { buildCsp } from "~/lib/csp";
 import { THEME_BOOTSTRAP } from "~/lib/theme";
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -31,6 +32,17 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+/**
+ * CSP de la aplicación, calculada al compilar.
+ *
+ * Va en un `<meta>` porque GitHub Pages no deja añadir cabeceras. Su motivo
+ * concreto son las claves de IA: viven en `localStorage`, así que el riesgo de
+ * que un XSS las envíe a otro sitio es real, y `connect-src` es lo que impide
+ * que ese envío tenga éxito. Ver `app/lib/csp.ts` para lo que sí y lo que no
+ * resuelve.
+ */
+const CSP = buildCsp(import.meta.env.VITE_SUPABASE_URL);
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     // El script de abajo añade `class="dark"` a `<html>` antes de que hidrate
@@ -44,6 +56,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="theme-color" content="#faf7f1" />
         <Meta />
         <Links />
+        <meta httpEquiv="Content-Security-Policy" content={CSP} />
         {/* Antes que cualquier script de la aplicación: es lo único que puede
             dejar el tema puesto antes de que el navegador pinte el fondo.
             El contenido es una constante de `app/lib/theme.ts`, escrita en
