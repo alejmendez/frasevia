@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { redirect } from "react-router";
+import { Link, redirect, useNavigate } from "react-router";
 import {
   Alert,
   Button,
@@ -48,6 +48,7 @@ const LANGUAGES = [
 ];
 
 export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState("");
@@ -128,7 +129,12 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
       }
     }
 
-    throw redirect(`/biblioteca/mazos/${deck.id}/editar`);
+    // `navigate` y no `throw redirect()`: esto corre en el `onSubmit` de un
+    // formulario, y el enrutador solo captura el redirect de un loader o un
+    // action. Lanzado desde aquí no navegaría: el mazo se crearía, la pantalla
+    // se quedaría como si nada, y pulsar «Crear» otra vez dejaría un duplicado
+    // en la biblioteca. Lo vigila `app/lib/navigation.test.ts`.
+    navigate(`/biblioteca/mazos/${deck.id}/editar`);
   }
 
   return (
@@ -250,10 +256,17 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
           />
         </Field>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={pending}>
             {pending ? "Creando…" : "Crear el mazo"}
           </Button>
+
+          <Link
+            to="/biblioteca/mazos/nuevo-ia"
+            className="text-sm text-brand hover:underline"
+          >
+            O créalo con IA a partir de un concepto
+          </Link>
         </div>
       </form>
     </Page>
