@@ -287,7 +287,12 @@ function SessionRunner({
       </div>
 
       <div className="mt-6">
+        {/* La clave incluye el índice: React reutiliza la instancia del
+            componente entre tarjetas y, sin esto, la opción elegida, la frase
+            escrita o el "revelar" de la tarjeta anterior se mantienen y la
+            siguiente aparece ya respondida. */}
         <PracticeCard
+          key={`${plan.mode}-${index}-${item.card.id}`}
           item={item}
           progress={progressByCard.get(item.card.id)}
           onAnswer={record}
