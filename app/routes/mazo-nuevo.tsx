@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link, redirect, useNavigate } from "react-router";
+import { redirect, useNavigate } from "react-router";
 import {
   Alert,
   Button,
+  ButtonLink,
   ConfigNotice,
   Field,
   inputClass,
@@ -143,6 +144,14 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
         eyebrow="Biblioteca"
         title="Crear un mazo"
         description="Un mazo reúne tarjetas de un tema: palabras, frases o reglas. Puedes editarlo y publicarlo cuando quieras."
+        // La vía con IA está en la cabecera y no solo al final del formulario:
+        // quien llega aquí queriendo IA es el caso más común de entrada
+        // equivocada, y casi nunca ha desplazado la página hasta el enlace.
+        actions={
+          <ButtonLink to="/biblioteca/mazos/nuevo-ia" variant="secondary">
+            Crear con IA
+          </ButtonLink>
+        }
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -261,12 +270,9 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
             {pending ? "Creando…" : "Crear el mazo"}
           </Button>
 
-          <Link
-            to="/biblioteca/mazos/nuevo-ia"
-            className="text-sm text-brand hover:underline"
-          >
+          <ButtonLink to="/biblioteca/mazos/nuevo-ia" variant="secondary">
             O créalo con IA a partir de un concepto
-          </Link>
+          </ButtonLink>
         </div>
       </form>
     </Page>
