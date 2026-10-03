@@ -132,6 +132,45 @@ describe("buildFillInTheBlank", () => {
   it("oculta el término dentro del ejemplo", () => {
     const result = buildFillInTheBlank(sentenceCards[0]);
     expect(result?.sentence).toBe("The ____ is next Friday.");
+    expect(result?.answer).toBe("deadline");
+  });
+
+  it("completa la respuesta en inglés al estudiar desde el español", () => {
+    const result = buildFillInTheBlank(
+      card({
+        id: "salary-es-en",
+        term: "sueldo base",
+        meaningEs: "base salary",
+        exampleEn: "What is the base salary for this role?",
+        exampleEs: "¿Cuál es el sueldo base para este cargo?",
+        sourceLanguage: "es",
+        targetLanguage: "en",
+      }),
+    );
+    expect(result).toMatchObject({
+      sentence: "What is the ____ for this role?",
+      answer: "base salary",
+      answers: ["base salary"],
+    });
+  });
+
+  it("completa la respuesta en español al estudiar desde el inglés", () => {
+    const result = buildFillInTheBlank(
+      card({
+        id: "salary-en-es",
+        term: "base salary",
+        meaningEs: "sueldo base",
+        exampleEn: "What is the base salary for this role?",
+        exampleEs: "¿Cuál es el sueldo base para este cargo?",
+        sourceLanguage: "en",
+        targetLanguage: "es",
+      }),
+    );
+    expect(result).toMatchObject({
+      sentence: "¿Cuál es el ____ para este cargo?",
+      answer: "sueldo base",
+      answers: ["sueldo base"],
+    });
   });
 
   it("respeta mayúsculas distintas entre término y ejemplo", () => {

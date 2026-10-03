@@ -31,8 +31,9 @@ export default [
     route("biblioteca/mazos/nuevo", "routes/mazo-nuevo.tsx"),
     route("biblioteca/mazos/nuevo-ia", "routes/mazo-ia.tsx"),
     route("biblioteca/mazos/:id/editar", "routes/mazo-editar.tsx"),
-    route("estudiar/:deckId", "routes/estudiar.tsx"),
+    route("estudiar/:deckId?", "routes/estudiar.tsx"),
     route("progreso", "routes/progreso.tsx"),
+    route("ajustes/repaso", "routes/ajustes-repaso.tsx"),
     route("ajustes/ia", "routes/ajustes-ia.tsx"),
   ]),
 ] satisfies RouteConfig;

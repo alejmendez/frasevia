@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CardReviewState } from "~/lib/types";
+import { type Card, type CardReviewState, toStudyCard } from "~/lib/types";
 import { buildReviewSession, reviewDirection, reviewStatus } from "./schedule";
 
 const now = Date.parse("2026-10-03T15:00:00.000Z");
@@ -23,6 +23,29 @@ function state(
 }
 
 describe("scheduled review state", () => {
+  it("shows Spanish first for a Spanish to English deck", () => {
+    const card: Card = {
+      id: "a",
+      deck_id: "deck",
+      kind: "word",
+      term: "base salary",
+      meaning_es: "sueldo base",
+      example_en: "What is the base salary for this role?",
+      example_es: "¿Cuál es el sueldo base para este cargo?",
+      usage_note: "Salario fijo, sin bonos.",
+      tags: [],
+      position: 0,
+      created_at: "2026-10-03T12:00:00.000Z",
+      updated_at: "2026-10-03T12:00:00.000Z",
+    };
+
+    expect(toStudyCard(card, "es", "en")).toMatchObject({
+      term: "sueldo base",
+      meaningEs: "base salary",
+      exampleEn: "What is the base salary for this role?",
+    });
+  });
+
   it("keeps a card due at or before the current time", () => {
     expect(
       reviewStatus(state("a", "2026-10-03T14:59:59.000Z"), "es-en", now),

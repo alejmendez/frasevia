@@ -58,3 +58,94 @@ export async function listDeckReviewSummaries(
     error: error?.message ?? null,
   };
 }
+
+export interface RetiredReviewCard {
+  card_id: string;
+  direction: string;
+  last_reviewed_at: string;
+  review_count: number;
+  term: string;
+  meaning_es: string;
+  deck_id: string;
+  deck_title: string;
+  deck_slug: string;
+  deck_visibility: "private" | "public";
+}
+
+export interface PendingReviewCard {
+  card_id: string;
+  direction: string;
+  last_reviewed_at: string;
+  next_review_at: string;
+  review_count: number;
+  last_level_id: string | null;
+  deck_id: string;
+  kind: string;
+  term: string;
+  meaning_es: string;
+  example_en: string | null;
+  example_es: string | null;
+  usage_note: string | null;
+  deck_title: string;
+  source_language: string;
+  target_language: string;
+}
+
+export interface ScheduledReviewDate {
+  card_id: string;
+  direction: string;
+  next_review_at: string;
+  deck_id: string;
+  deck_title: string;
+}
+
+export async function listPendingReviewCards(
+  supabase: SupabaseClient,
+): Promise<{ cards: PendingReviewCard[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("my_review_queue")
+    .select("*")
+    .order("next_review_at", { ascending: true });
+  return {
+    cards: (data ?? []) as PendingReviewCard[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function countPendingReviewCards(
+  supabase: SupabaseClient,
+): Promise<{ count: number; error: string | null }> {
+  const { count, error } = await supabase
+    .from("my_review_queue")
+    .select("card_id", { count: "exact", head: true });
+  return { count: count ?? 0, error: error?.message ?? null };
+}
+
+export async function listScheduledReviewDates(
+  supabase: SupabaseClient,
+): Promise<{ dates: ScheduledReviewDate[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("my_review_schedule")
+    .select("card_id, direction, next_review_at, deck_id, deck_title")
+    .order("next_review_at", { ascending: true });
+  return {
+    dates: (data ?? []) as ScheduledReviewDate[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listRetiredReviewCards(
+  supabase: SupabaseClient,
+): Promise<{ cards: RetiredReviewCard[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("my_retired_review_cards")
+    .select(
+      "card_id, direction, last_reviewed_at, review_count, term, meaning_es, deck_id, deck_title, deck_slug, deck_visibility",
+    )
+    .order("last_reviewed_at", { ascending: false });
+
+  return {
+    cards: (data ?? []) as RetiredReviewCard[],
+    error: error?.message ?? null,
+  };
+}

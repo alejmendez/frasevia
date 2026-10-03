@@ -47,6 +47,10 @@
   --color-brand-muted: #dce8de;
   --color-accent: #de785f;
   --color-accent-muted: #f8e5dc;
+  --color-lime: #a2b54e;
+  --color-lime-muted: #eef2d8;
+  --color-blue: #466b83;
+  --color-blue-muted: #e3edf2;
 
   /* Estados */
   --color-success: #2f6b3c;
@@ -109,6 +113,10 @@
     --color-brand-muted: #293b31;
     --color-accent: #f0967a;
     --color-accent-muted: #3f2a23;
+    --color-lime: #c4d66c;
+    --color-lime-muted: #343c23;
+    --color-blue: #92bad2;
+    --color-blue-muted: #263843;
 
     --color-success: #7cc98d;
     --color-success-muted: #1e3326;
@@ -202,6 +210,102 @@ body {
 .handwritten {
   font-family: var(--font-handwritten);
 }
+
+.review-card-perspective {
+  perspective: 1200px;
+}
+
+.review-card-rotator {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 460ms cubic-bezier(0.2, 0.72, 0.22, 1);
+}
+
+.review-card-rotator.is-revealed {
+  transform: rotateY(180deg);
+}
+
+.review-card-face {
+  grid-area: 1 / 1;
+  min-height: 22rem;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.review-card-face--back {
+  transform: rotateY(180deg);
+}
+
+.rating-level--coral {
+  border-color: color-mix(in oklab, var(--color-accent) 55%, var(--color-line));
+  background: var(--color-accent-muted);
+  color: var(--color-danger);
+}
+
+.rating-level--sand {
+  border-color: var(--color-line-strong);
+  background: var(--color-paper-raised);
+  color: var(--color-ink);
+}
+
+.rating-level--sage,
+.rating-level--forest {
+  border-color: color-mix(in oklab, var(--color-brand) 35%, var(--color-line));
+  background: var(--color-brand-muted);
+  color: var(--color-brand-strong);
+}
+
+.rating-level--lime {
+  border-color: color-mix(in oklab, var(--color-lime) 55%, var(--color-line));
+  background: var(--color-lime-muted);
+  color: color-mix(in oklab, var(--color-lime) 35%, var(--color-ink));
+}
+
+.rating-level--blue {
+  border-color: color-mix(in oklab, var(--color-blue) 45%, var(--color-line));
+  background: var(--color-blue-muted);
+  color: var(--color-blue);
+}
+
+.deck-stack-card {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border-radius: 1rem;
+  box-shadow:
+    0 2px 3px rgb(67 53 33 / 0.04),
+    0 18px 28px -25px color-mix(in oklab, var(--color-ink) 38%, transparent);
+}
+
+.deck-stack-card::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0.42rem -0.4rem -0.4rem 0.4rem;
+  content: "";
+  transform: rotate(0.8deg);
+  border: 1px solid color-mix(in oklab, var(--color-line-strong) 45%, transparent);
+  border-radius: inherit;
+  background: var(--color-paper-sunken);
+}
+
+.deck-stack-card::after {
+  position: absolute;
+  z-index: -2;
+  top: -0.8rem;
+  left: 1rem;
+  width: 4.4rem;
+  height: 1.25rem;
+  content: "";
+  border: 1px solid color-mix(in oklab, var(--color-line-strong) 35%, transparent);
+  border-bottom: 0;
+  border-radius: 0.55rem 0.55rem 0 0;
+  background: var(--deck-tab-color, var(--color-brand-muted));
+}
+
+.deck-tab-coral { --deck-tab-color: var(--color-accent); }
+.deck-tab-lime { --deck-tab-color: var(--color-lime); }
+.deck-tab-blue { --deck-tab-color: var(--color-blue); }
+.deck-tab-sage { --deck-tab-color: var(--color-brand); }
 
 /* Foco visible y consistente en toda la aplicación. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {

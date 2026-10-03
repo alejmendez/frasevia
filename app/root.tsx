@@ -1,3 +1,4 @@
+import { GearSixIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useState } from "react";
 import {
   Form,
@@ -320,6 +321,14 @@ function AccountArea({
 
   return (
     <>
+      <Link
+        to="/ajustes/repaso"
+        aria-label={t("nav.reviewSettings")}
+        title={t("nav.reviewSettings")}
+        className="inline-flex size-10 items-center justify-center rounded-lg border border-line bg-paper-raised text-ink-soft transition-colors hover:bg-paper-sunken hover:text-brand"
+      >
+        <GearSixIcon aria-hidden size={19} />
+      </Link>
       <span
         className="hidden max-w-40 truncate text-sm text-ink-soft sm:inline"
         title={email ?? undefined}

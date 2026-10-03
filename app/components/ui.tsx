@@ -28,7 +28,7 @@ export function Page({
 }) {
   return (
     <div
-      className={cx("mx-auto w-full max-w-5xl px-5 py-10 sm:px-8", className)}
+      className={cx("mx-auto w-full max-w-7xl px-5 py-10 sm:px-8", className)}
     >
       {children}
     </div>

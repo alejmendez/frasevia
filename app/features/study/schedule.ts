@@ -16,26 +16,38 @@ export function reviewStatus(
 }
 
 /** Congela una sesión en el orden pendiente más antiguo y luego las nuevas. */
-export function buildReviewSession<T extends { id: string }>(
+export function buildReviewSession<
+  T extends { id: string; direction?: string },
+>(
   cards: T[],
   states: CardReviewState[],
-  direction: string,
+  direction: string | null,
   now = Date.now(),
-): Array<{ card: T; status: "due" | "new" }> {
-  const statesByCard = new Map(states.map((state) => [state.card_id, state]));
-  const due: Array<{ card: T; status: "due" | "new" }> = [];
-  const fresh: Array<{ card: T; status: "due" | "new" }> = [];
+): Array<{ card: T; status: "due" | "new"; direction: string }> {
+  const statesByKey = new Map(
+    states.map((state) => [`${state.card_id}:${state.direction}`, state]),
+  );
+  const due: Array<{ card: T; status: "due" | "new"; direction: string }> = [];
+  const fresh: Array<{ card: T; status: "due" | "new"; direction: string }> =
+    [];
 
   for (const card of cards) {
-    const state = statesByCard.get(card.id);
-    const status = reviewStatus(state, direction, now);
-    if (status === "due") due.push({ card, status });
-    if (status === "new") fresh.push({ card, status });
+    const cardDirection = direction ?? card.direction;
+    if (!cardDirection) continue;
+    const state = statesByKey.get(`${card.id}:${cardDirection}`);
+    const status = reviewStatus(state, cardDirection, now);
+    if (status === "due") due.push({ card, status, direction: cardDirection });
+    if (status === "new")
+      fresh.push({ card, status, direction: cardDirection });
   }
 
   due.sort((a, b) => {
-    const aTime = Date.parse(statesByCard.get(a.card.id)?.next_review_at ?? "");
-    const bTime = Date.parse(statesByCard.get(b.card.id)?.next_review_at ?? "");
+    const aTime = Date.parse(
+      statesByKey.get(`${a.card.id}:${a.direction}`)?.next_review_at ?? "",
+    );
+    const bTime = Date.parse(
+      statesByKey.get(`${b.card.id}:${b.direction}`)?.next_review_at ?? "",
+    );
     return aTime - bTime;
   });
 

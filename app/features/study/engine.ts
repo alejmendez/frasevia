@@ -63,6 +63,8 @@ export type PracticeItem =
       card: StudyCard;
       /** Oración con el término oculto. */
       sentence: string;
+      /** Respuesta en el idioma objetivo. */
+      answer: string;
       /** Respuestas aceptadas para esa oración. */
       answers: string[];
     };
@@ -195,13 +197,18 @@ export function checkTypedAnswer(input: string, answers: string[]): boolean {
  */
 export function buildFillInTheBlank(
   card: StudyCard,
-): { sentence: string; answers: string[] } | null {
-  const example = card.exampleEn?.trim();
+): { sentence: string; answer: string; answers: string[] } | null {
+  const hasDirection =
+    card.targetLanguage === "en" || card.targetLanguage === "es";
+  const answer = hasDirection ? card.meaningEs : card.term;
+  const example = (
+    card.targetLanguage === "es" ? card.exampleEs : card.exampleEn
+  )?.trim();
   if (!example) {
     return null;
   }
 
-  const escaped = card.term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = answer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = new RegExp(escaped, "i").exec(example);
   if (!match || match.index === undefined) {
     return null;
@@ -212,7 +219,8 @@ export function buildFillInTheBlank(
 
   return {
     sentence: `${before}____${after}`.replace(/\s+/g, " ").trim(),
-    answers: acceptedAnswers(card.term),
+    answer,
+    answers: acceptedAnswers(answer),
   };
 }
 

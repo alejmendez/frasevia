@@ -56,6 +56,10 @@ export interface StudyCard {
   exampleEn: string | null;
   exampleEs: string | null;
   usageNote: string | null;
+  direction?: string;
+  sourceLanguage?: string;
+  targetLanguage?: string;
+  deckTitle?: string;
 }
 
 export interface CardProgress {
@@ -133,11 +137,20 @@ export interface AuthUser {
 }
 
 /** Traduce una fila de `cards` al formato que consume el motor de estudio. */
-export function toStudyCard(card: Card): StudyCard {
+export function toStudyCard(
+  card: Card,
+  sourceLanguage = "en",
+  targetLanguage = "es",
+): StudyCard {
+  const sourceIsSpanish = sourceLanguage === "es" && targetLanguage === "en";
+
   return {
     id: card.id,
-    term: card.term,
-    meaningEs: card.meaning_es,
+    // En el modelo actual, `term` es la expresión inglesa y `meaning_es` su
+    // equivalencia española. Para el par habitual es → en, la cara frontal
+    // debe partir de la equivalencia española.
+    term: sourceIsSpanish ? card.meaning_es : card.term,
+    meaningEs: sourceIsSpanish ? card.term : card.meaning_es,
     exampleEn: card.example_en,
     exampleEs: card.example_es,
     usageNote: card.usage_note,
