@@ -85,10 +85,22 @@ En el panel de Supabase, abre el **SQL Editor** y ejecuta:
 
 1. `supabase/migrations/20260930230000_init_frasevia.sql` — tablas, RLS,
    funciones y vistas.
-2. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
+2. `supabase/migrations/20261003090000_scheduled_reviews.sql` — niveles
+   personales, calendario por ficha y dirección, historial idempotente y vistas
+   de cola.
+3. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
 
 El seed es idempotente (identificadores fijos y `on conflict do nothing`), así
 que se puede volver a aplicar sin duplicar nada.
+
+La migración de repaso es aditiva: conserva `user_card_progress` y las
+estadísticas anteriores. Como esos registros no guardaban una próxima fecha,
+no los interpreta como retirados ni inventa un intervalo; al abrir un mazo, las
+fichas sin una fila nueva de calendario aparecen como nuevas para el repaso por
+memoria. Los niveles predeterminados son Difícil (2 horas), Normal (1 día
+calendario local), Fácil (5 días) y Súper fácil (retirar). El servidor guarda
+los eventos y las fechas en UTC; los días se calculan en la zona horaria IANA
+del navegador para conservar la hora local ante cambios de horario.
 
 O, con la CLI de Supabase en local:
 

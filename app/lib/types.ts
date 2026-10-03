@@ -9,6 +9,9 @@
 export type DeckVisibility = "private" | "public";
 export type CardKind = "word" | "phrase" | "question" | "rule";
 export type ProgressState = "new" | "learning" | "mastered";
+export type ReviewAction = "review" | "retire";
+export type ReviewIntervalUnit = "minutes" | "hours" | "days";
+export type ReviewStatus = "new" | "due" | "scheduled" | "retired";
 
 /** Aciertos necesarios para considerar una tarjeta aprendida. */
 export const MASTERY_CORRECT_COUNT = 2;
@@ -61,6 +64,42 @@ export interface CardProgress {
   attempts: number;
   correct_count: number;
   last_studied_at: string | null;
+}
+
+export interface ReviewLevel {
+  id: string;
+  user_id: string;
+  system_key: string | null;
+  name: string;
+  action: ReviewAction;
+  interval_amount: number | null;
+  interval_unit: ReviewIntervalUnit | null;
+  position: number;
+  color: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CardReviewState {
+  card_id: string;
+  direction: string;
+  last_reviewed_at: string;
+  next_review_at: string | null;
+  retired: boolean;
+  last_level_id: string | null;
+  review_count: number;
+  updated_at: string;
+}
+
+export interface DeckReviewSummary {
+  deck_id: string;
+  new_count: number;
+  due_count: number;
+  scheduled_count: number;
+  retired_count: number;
+  next_review_at: string | null;
+  last_reviewed_at: string | null;
 }
 
 /** Resumen de progreso por mazo (vista `my_deck_progress`). */
