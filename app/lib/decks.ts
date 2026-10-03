@@ -6,6 +6,7 @@ import type {
   CardProgress,
   Deck,
   DeckProgressSummary,
+  DeckReviewSummary,
   ProgressDetail,
 } from "./types";
 
@@ -26,6 +27,7 @@ const CARD_COLUMNS =
 
 export interface LibraryDeck extends Deck {
   progress: DeckProgressSummary | null;
+  review: DeckReviewSummary | null;
 }
 
 export interface PublicDeck extends Deck {
@@ -138,8 +140,13 @@ export async function getPublicDeckBySlug(slug: string): Promise<{
 export async function listMyDecks(
   supabase: SupabaseClient,
   userId: string,
-): Promise<{ decks: LibraryDeck[]; error: string | null }> {
-  const [decksResult, progressResult] = await Promise.all([
+): Promise<{
+  decks: LibraryDeck[];
+  error: string | null;
+  deckError: string | null;
+  reviewError: string | null;
+}> {
+  const [decksResult, progressResult, reviewResult] = await Promise.all([
     supabase
       .from("decks")
       .select(DECK_COLUMNS)
@@ -150,27 +157,43 @@ export async function listMyDecks(
       .select(
         "deck_id, new_count, learning_count, mastered_count, studied_count, last_studied_at",
       ),
+    supabase
+      .from("my_deck_review_summary")
+      .select(
+        "deck_id, new_count, due_count, scheduled_count, retired_count, next_review_at, last_reviewed_at",
+      ),
   ]);
 
   if (decksResult.error) {
-    return { decks: [], error: decksResult.error.message };
-  }
-
-  if (progressResult.error) {
-    return { decks: [], error: progressResult.error.message };
+    return {
+      decks: [],
+      error: decksResult.error.message,
+      deckError: decksResult.error.message,
+      reviewError: null,
+    };
   }
 
   const progressByDeck = new Map<string, DeckProgressSummary>();
   for (const row of progressResult.data ?? []) {
     progressByDeck.set(row.deck_id as string, row as DeckProgressSummary);
   }
+  const reviewByDeck = new Map<string, DeckReviewSummary>();
+  for (const row of reviewResult.data ?? []) {
+    reviewByDeck.set(row.deck_id as string, row as DeckReviewSummary);
+  }
 
   return {
     decks: (decksResult.data ?? []).map((row) => {
       const deck = row as Deck;
-      return { ...deck, progress: progressByDeck.get(deck.id) ?? null };
+      return {
+        ...deck,
+        progress: progressByDeck.get(deck.id) ?? null,
+        review: reviewResult.error ? null : (reviewByDeck.get(deck.id) ?? null),
+      };
     }),
-    error: null,
+    error: progressResult.error?.message ?? reviewResult.error?.message ?? null,
+    deckError: null,
+    reviewError: reviewResult.error?.message ?? null,
   };
 }
 

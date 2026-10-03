@@ -16,11 +16,13 @@ export function DeckTile({
   footer,
   className,
   href,
+  descriptionAction,
 }: {
   deck: Deck;
   authorName?: string | null;
   footer?: React.ReactNode;
   className?: string;
+  descriptionAction?: React.ReactNode;
   /**
    * Destino del título. Por defecto es la página pública, pero la biblioteca
    * lo reenvía al editor: la página pública de un mazo privado responde «no
@@ -30,10 +32,13 @@ export function DeckTile({
 }) {
   const t = useT();
 
+  const tabColors = ["coral", "lime", "blue", "sage"] as const;
+  const colorIndex = deck.id.charCodeAt(0) % tabColors.length;
+
   return (
     <Card
       as="article"
-      className={`flex h-full w-full flex-col gap-3 ${className ?? ""}`}
+      className={`deck-stack-card deck-tab-${tabColors[colorIndex]} flex h-full w-full flex-col gap-3 ${className ?? ""}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h3 className="font-display text-lg leading-snug text-ink">
@@ -53,7 +58,12 @@ export function DeckTile({
       {deck.description ? (
         <p className="line-clamp-3 text-sm text-ink-soft">{deck.description}</p>
       ) : (
-        <p className="text-sm text-ink-faint">{t("deck.noDescription")}</p>
+        <div className="text-sm text-ink-faint">
+          <p>{t("deck.noDescription")}</p>
+          {descriptionAction ? (
+            <div className="mt-1">{descriptionAction}</div>
+          ) : null}
+        </div>
       )}
 
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-ink-faint">
