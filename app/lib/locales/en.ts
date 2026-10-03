@@ -284,7 +284,7 @@ export const en: SpanishMessages = {
   "biblioteca.exploreCommunity": "Explore community decks",
   "biblioteca.reviewStatsUnavailable": "Review counts could not be loaded.",
   "biblioteca.reviewStatsUnavailableBody":
-    "You can open your decks while they become available again.",
+    "Check the review migrations in README.md and apply them in Supabase to load your statistics and queue.",
   "biblioteca.upcomingUnavailable": "The review calendar could not be loaded.",
   "biblioteca.dueCount": ["{count} due", "{count} due"],
   "biblioteca.newCount": ["{count} new", "{count} new"],

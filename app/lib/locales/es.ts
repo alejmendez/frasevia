@@ -295,7 +295,7 @@ export const es = {
   "biblioteca.exploreCommunity": "Explorar mazos de la comunidad",
   "biblioteca.reviewStatsUnavailable": "No se pudieron cargar los repasos.",
   "biblioteca.reviewStatsUnavailableBody":
-    "Puedes abrir tus mazos mientras vuelven a estar disponibles.",
+    "Revisa en README.md las migraciones de repaso y aplícalas en Supabase para cargar las estadísticas y la cola.",
   "biblioteca.upcomingUnavailable":
     "No se pudo cargar el calendario de repasos.",
   "biblioteca.dueCount": ["{count} pendiente", "{count} pendientes"],

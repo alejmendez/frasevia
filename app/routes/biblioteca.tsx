@@ -52,7 +52,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
       decks: [],
       upcoming: [],
       pendingCount: 0,
-      error: null,
       deckError: null,
       reviewError: null,
       scheduleError: null,
@@ -74,7 +73,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     decks: deckResult.decks,
     upcoming: scheduleResult.dates,
     pendingCount: pendingResult.count,
-    error: deckResult.error ?? scheduleResult.error ?? pendingResult.error,
     deckError: deckResult.deckError,
     reviewError: deckResult.reviewError,
     scheduleError: scheduleResult.error,
@@ -264,7 +262,6 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
   }, [revalidate]);
 
   const decks = loaderData.status === "ready" ? loaderData.decks : [];
-  const error = loaderData.status === "ready" ? loaderData.error : null;
   const upcoming = loaderData.status === "ready" ? loaderData.upcoming : [];
   const pendingCount =
     loaderData.status === "ready" ? loaderData.pendingCount : 0;
@@ -340,13 +337,13 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      {error ? (
+      {deckError ? (
         <Alert
           variant="error"
           title={tr("biblioteca.loadErrorTitle")}
           className="mb-6"
         >
-          {error}
+          {deckError}
         </Alert>
       ) : null}
 
