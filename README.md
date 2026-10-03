@@ -88,7 +88,10 @@ En el panel de Supabase, abre el **SQL Editor** y ejecuta:
 2. `supabase/migrations/20261003090000_scheduled_reviews.sql` — niveles
    personales, calendario por ficha y dirección, historial idempotente y vistas
    de cola.
-3. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
+3. `supabase/migrations/20261003100000_include_public_deck_reviews.sql` —
+   incluye en la agenda personal las fichas estudiadas directamente desde un
+   mazo público y usa la hora de cada consulta para determinar qué ya venció.
+4. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
 
 El seed es idempotente (identificadores fijos y `on conflict do nothing`), así
 que se puede volver a aplicar sin duplicar nada.
@@ -100,7 +103,9 @@ fichas sin una fila nueva de calendario aparecen como nuevas para el repaso por
 memoria. Los niveles predeterminados son Difícil (2 horas), Normal (1 día
 calendario local), Fácil (5 días) y Súper fácil (retirar). El servidor guarda
 los eventos y las fechas en UTC; los días se calculan en la zona horaria IANA
-del navegador para conservar la hora local ante cambios de horario.
+del navegador para conservar la hora local ante cambios de horario. Los repasos
+de mazos públicos también son personales y aparecen en la cola global aunque no
+se copie el mazo; los resúmenes de «Mi biblioteca» corresponden a mazos propios.
 
 O, con la CLI de Supabase en local:
 
@@ -368,8 +373,8 @@ npm run test     # lógica pura: corrección de respuestas, modos, progreso, slu
 npm run check    # lint + tipos + pruebas + build
 ```
 
-Las pruebas de permisos, de copia de mazos y de progreso necesitan la base de
-datos real, y viven en SQL con pgTAP:
+Las pruebas de permisos, de copia de mazos, de progreso y de repaso programado
+necesitan la base de datos real, y viven en SQL con pgTAP:
 
 ```bash
 supabase start
