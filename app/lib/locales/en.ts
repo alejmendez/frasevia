@@ -89,31 +89,54 @@ export const en: SpanishMessages = {
   "inicio.metaTitle": "Frasevia — learn English from useful phrases",
   "inicio.metaDescription":
     "English decks with real examples for Spanish speakers. Explore, build your own decks and track your progress.",
-  "inicio.eyebrow": "English from Spanish",
-  "inicio.titleLead": "Learn English from phrases",
-  "inicio.titleAccent": " people actually said",
+  "inicio.eyebrow": "A little each day",
+  "inicio.titleLead": "Think. Flip.",
+  "inicio.titleAccent": " Remember",
   "inicio.body":
-    "Frasevia brings together words, phrases and simple rules with natural examples and their translation. Build your own decks, share them and practise at your own pace, with no streaks pressuring you.",
+    "Learn English with cards that feel like paper. Recall the answer and choose when to review it again.",
   "inicio.ctaExplore": "Explore decks",
   "inicio.ctaSignUp": "Create an account",
-  "inicio.cardsTitle": "This is what a card looks like",
+  "inicio.cardsTitle": "Recall it before you look",
   "inicio.cardsBody":
-    "The English term, its Spanish meaning, the sentence it appears in and how to use it. All on one screen.",
+    "Read the prompt, think of your answer and flip the card when you're ready.",
   "inicio.pillar1.title": "Cards with context",
   "inicio.pillar1.body":
     "Every word or phrase brings its example, its translation and a usage note, so the context lands before the definition does.",
-  "inicio.pillar2.title": "Four ways to practise",
+  "inicio.pillar2.title": "One prompt, one answer",
   "inicio.pillar2.body":
-    "Explore, choose the meaning, fill in the blank and review. Switch modes whenever the content doesn't fit one in particular.",
-  "inicio.pillar3.title": "Short sessions",
+    "Mental recall keeps practice direct: remember, compare and choose when to return.",
+  "inicio.pillar3.title": "At your own pace",
   "inicio.pillar3.body":
-    "As many items as you like and a summary at the end. No mandatory streaks: you move on whenever you can come back.",
+    "No timer and no required streaks. You decide when each card comes back.",
   "inicio.startTitle": "Start with the basics deck",
   "inicio.startBody":
     "Greetings, introductions, basic questions, numbers, schedules and the verbs you use every day.",
   "inicio.tagBasics": "English from the basics",
   "inicio.tagDevs": "English for developers",
   "inicio.seeCatalog": "See the catalog",
+  "inicio.ctaTry": "Try a card",
+  "inicio.ctaTurn": "Reveal answer",
+  "inicio.ctaFront": "Back to the front",
+  "inicio.ctaLibrary": "Go to my library",
+  "inicio.noStreaks": "At your own pace, with no required streaks.",
+  "inicio.demoDirection": "SPANISH → ENGLISH",
+  "inicio.demoQuestion": "How would you say it in English?",
+  "inicio.demoHint": "Think of the answer before you flip.",
+  "inicio.demoAnswerLabel": "ANSWER",
+  "inicio.demoMeaning": "What is the base salary for this role?",
+  "inicio.stepRemember": "Recall",
+  "inicio.stepRememberBody": "Read the Spanish prompt and think of the answer.",
+  "inicio.stepFlip": "Flip the card",
+  "inicio.stepFlipBody": "Reveal the answer when you're ready.",
+  "inicio.stepSchedule": "Choose the next review",
+  "inicio.stepScheduleBody": "Frasevia helps you return at the right time.",
+  "inicio.deckBasicsLabel": "A good place to start",
+  "inicio.deckBasicsBody":
+    "Greetings, introductions and useful everyday phrases.",
+  "inicio.deckDevsLabel": "For work",
+  "inicio.deckDevsBody":
+    "Vocabulary and phrases for meetings, projects and interviews.",
+  "inicio.openDeck": "View deck",
 
   // -------------------------------------------------------------------------
   // Iniciar sesión

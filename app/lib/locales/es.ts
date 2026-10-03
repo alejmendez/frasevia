@@ -98,31 +98,55 @@ export const es = {
   "inicio.metaTitle": "Frasevia — aprende inglés con frases útiles",
   "inicio.metaDescription":
     "Mazos de inglés con ejemplos reales para personas hispanohablantes. Explora, crea tus propios mazos y registra tu progreso.",
-  "inicio.eyebrow": "Inglés desde el español",
-  "inicio.titleLead": "Aprende inglés con frases que",
-  "inicio.titleAccent": " alguien dijo de verdad",
+  "inicio.eyebrow": "Un poco cada día",
+  "inicio.titleLead": "Piensa. Gira.",
+  "inicio.titleAccent": " Recuerda",
   "inicio.body":
-    "Frasevia reúne palabras, frases y reglas sencillas con ejemplos naturales y su traducción. Crea tus propios mazos, compártelos y practica a tu ritmo, sin rachas que te presionen.",
+    "Aprende inglés con fichas que se sienten como papel. Recuerda la respuesta y elige cuándo volver a repasarla.",
   "inicio.ctaExplore": "Explorar mazos",
   "inicio.ctaSignUp": "Crear una cuenta",
-  "inicio.cardsTitle": "Así se ve una tarjeta",
+  "inicio.cardsTitle": "Recuerda antes de mirar",
   "inicio.cardsBody":
-    "El término en inglés, su significado, la frase donde aparece y cómo usarla. Todo en la misma pantalla.",
+    "Lee la pregunta, piensa tu respuesta y gira la ficha cuando estés listo.",
   "inicio.pillar1.title": "Tarjetas con contexto",
   "inicio.pillar1.body":
     "Cada palabra o frase trae su ejemplo, su traducción y una nota de uso, para que el contexto llegue antes que la definición.",
-  "inicio.pillar2.title": "Cuatro formas de practicar",
+  "inicio.pillar2.title": "Una pregunta, una respuesta",
   "inicio.pillar2.body":
-    "Explorar, elegir el significado, completar la frase y repaso. Cambia de modo cuando el contenido no da para uno en concreto.",
-  "inicio.pillar3.title": "Sesiones cortas",
+    "La práctica mental es directa: intenta recordar, compara y decide cuándo volver.",
+  "inicio.pillar3.title": "A tu ritmo",
   "inicio.pillar3.body":
-    "Tantos elementos como quieras y un resumen al final. Sin rachas obligatorias: avanzas cuando puedes volver.",
+    "Sin cronómetro ni rachas obligatorias. Tú decides cuándo volver a cada ficha.",
   "inicio.startTitle": "Empieza con el mazo de las bases",
   "inicio.startBody":
     "Saludos, presentaciones, preguntas básicas, números, horarios y los verbos que usas todos los días.",
   "inicio.tagBasics": "Inglés desde las bases",
   "inicio.tagDevs": "Inglés para desarrolladores",
   "inicio.seeCatalog": "Ver el catálogo",
+  "inicio.ctaTry": "Probar una ficha",
+  "inicio.ctaTurn": "Ver respuesta",
+  "inicio.ctaFront": "Volver al frente",
+  "inicio.ctaLibrary": "Ir a mi biblioteca",
+  "inicio.noStreaks": "A tu ritmo, sin rachas obligatorias.",
+  "inicio.demoDirection": "ESPAÑOL → INGLÉS",
+  "inicio.demoQuestion": "¿Cómo lo dirías en inglés?",
+  "inicio.demoHint": "Piensa la respuesta antes de girar.",
+  "inicio.demoAnswerLabel": "RESPUESTA",
+  "inicio.demoMeaning": "¿Cuál es el sueldo base para este cargo?",
+  "inicio.stepRemember": "Recuerda",
+  "inicio.stepRememberBody":
+    "Lee la frase en español y piensa en la respuesta.",
+  "inicio.stepFlip": "Gira la ficha",
+  "inicio.stepFlipBody": "Revela la respuesta cuando estés listo.",
+  "inicio.stepSchedule": "Elige el próximo repaso",
+  "inicio.stepScheduleBody": "Frasevia te ayuda a volver en el momento justo.",
+  "inicio.deckBasicsLabel": "Para empezar",
+  "inicio.deckBasicsBody":
+    "Saludos, presentaciones y frases útiles del día a día.",
+  "inicio.deckDevsLabel": "Para el trabajo",
+  "inicio.deckDevsBody":
+    "Vocabulario y frases de reuniones, proyectos y entrevistas.",
+  "inicio.openDeck": "Ver mazo",
 
   // -------------------------------------------------------------------------
   // Iniciar sesión

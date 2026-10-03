@@ -25,27 +25,28 @@
     "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji";
   --font-display: "Fraunces", ui-serif, Georgia, Cambria, serif;
+  --font-handwritten: "Caveat", "Segoe Print", "Bradley Hand", cursive;
 
   /* Superficies */
-  --color-paper: #faf7f1;
-  --color-paper-raised: #fffdfa;
-  --color-paper-sunken: #f2ece1;
+  --color-paper: #f7f2e7;
+  --color-paper-raised: #fffcf5;
+  --color-paper-sunken: #eee8dc;
 
   /* Texto */
-  --color-ink: #221e19;
-  --color-ink-soft: #5d564b;
-  --color-ink-faint: #8b8175;
+  --color-ink: #233b36;
+  --color-ink-soft: #686a66;
+  --color-ink-faint: #88867f;
 
   /* Líneas y bordes */
-  --color-line: #e3d9c8;
-  --color-line-strong: #cdbfa8;
+  --color-line: #e5ddcf;
+  --color-line-strong: #c9bfaf;
 
   /* Acentos */
-  --color-brand: #0f5f5a;
-  --color-brand-strong: #0a4743;
-  --color-brand-muted: #e0edeb;
-  --color-accent: #b0522a;
-  --color-accent-muted: #f7e6dc;
+  --color-brand: #23473d;
+  --color-brand-strong: #17382f;
+  --color-brand-muted: #dce8de;
+  --color-accent: #de785f;
+  --color-accent-muted: #f8e5dc;
 
   /* Estados */
   --color-success: #2f6b3c;
@@ -59,8 +60,8 @@
      tiene que ser claro) y también como fondo de botón (y ahí tiene que ser
      oscuro para llevar texto claro). Separarlos evita tener que forzar un
      mismo color a cumplir los dos trabajos. */
-  --color-brand-solid: #0f5f5a;
-  --color-brand-solid-hover: #0a4743;
+  --color-brand-solid: #23473d;
+  --color-brand-solid-hover: #17382f;
   --color-on-solid: #fffdfa;
 
   --radius-card: 0.875rem;
@@ -92,31 +93,31 @@
   .dark {
     color-scheme: dark;
 
-    --color-paper: #16130f;
-    --color-paper-raised: #1d1a15;
-    --color-paper-sunken: #26211a;
+    --color-paper: #161b18;
+    --color-paper-raised: #1d2420;
+    --color-paper-sunken: #252e29;
 
-    --color-ink: #f0e9dc;
-    --color-ink-soft: #bdb2a1;
-    --color-ink-faint: #8f8577;
+    --color-ink: #f0eee4;
+    --color-ink-soft: #c0c5bc;
+    --color-ink-faint: #959b92;
 
-    --color-line: #2b2620;
-    --color-line-strong: #4a4237;
+    --color-line: #2b342f;
+    --color-line-strong: #4d5952;
 
-    --color-brand: #5ec4b7;
-    --color-brand-strong: #86d6cb;
-    --color-brand-muted: #1c3b37;
-    --color-accent: #e08a5f;
-    --color-accent-muted: #3a251b;
+    --color-brand: #9ac8ae;
+    --color-brand-strong: #b6d7c3;
+    --color-brand-muted: #293b31;
+    --color-accent: #f0967a;
+    --color-accent-muted: #3f2a23;
 
     --color-success: #7cc98d;
     --color-success-muted: #1e3326;
     --color-danger: #f0907f;
     --color-danger-muted: #3a201c;
 
-    --color-brand-solid: #45b0a3;
-    --color-brand-solid-hover: #57c4b6;
-    --color-on-solid: #0f1513;
+    --color-brand-solid: #8ebca2;
+    --color-brand-solid-hover: #a5ceb5;
+    --color-on-solid: #152019;
 
     --card-edge: rgb(255 255 255 / 0.05);
   }
@@ -138,6 +139,68 @@ body {
       transparent 40%
     );
   background-attachment: fixed;
+}
+
+/* Fichas de papel: líneas tenues y un margen coral construido en CSS, para
+   mantener el contenido seleccionable y adaptable a pantallas estrechas. */
+.paper-card {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border: 1px solid color-mix(in oklab, var(--color-line-strong) 46%, transparent);
+  border-radius: 1rem;
+  background-color: var(--color-paper-raised);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2.65rem,
+    color-mix(in oklab, var(--color-brand) 8%, transparent) 2.7rem,
+    transparent 2.74rem
+  );
+  box-shadow:
+    0 2px 3px rgb(67 53 33 / 0.04),
+    0 20px 38px -28px color-mix(in oklab, var(--color-ink) 38%, transparent);
+}
+
+.paper-card::before,
+.paper-card::after {
+  position: absolute;
+  z-index: -1;
+  content: "";
+  border: 1px solid color-mix(in oklab, var(--color-line-strong) 34%, transparent);
+  border-radius: inherit;
+  background: var(--color-paper-sunken);
+}
+
+.paper-card::before {
+  inset: 0.45rem -0.55rem -0.45rem 0.55rem;
+  transform: rotate(1deg);
+}
+
+.paper-card::after {
+  inset: 0.8rem -0.9rem -0.75rem 0.8rem;
+  transform: rotate(-0.7deg);
+  opacity: 0.75;
+}
+
+.paper-card__margin {
+  border-left: 2px solid color-mix(in oklab, var(--color-accent) 80%, transparent);
+}
+
+.paper-tape {
+  position: absolute;
+  top: -0.7rem;
+  right: 1.6rem;
+  width: 5rem;
+  height: 1.5rem;
+  transform: rotate(5deg);
+  border: 1px solid color-mix(in oklab, var(--color-line-strong) 48%, transparent);
+  background: color-mix(in oklab, var(--color-paper-sunken) 72%, transparent);
+  box-shadow: 0 2px 5px rgb(67 53 33 / 0.06);
+}
+
+.handwritten {
+  font-family: var(--font-handwritten);
 }
 
 /* Foco visible y consistente en toda la aplicación. */

@@ -33,8 +33,8 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    // Fraunces para los títulos: le da el aire de biblioteca que buscamos.
-    href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap",
+    // Fraunces para los títulos y Caveat para las expresiones de las fichas.
+    href: "https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap",
   },
 ];
 
@@ -59,7 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         {/* El color de la barra del navegador en móvil. Lo reescribe
             `app/lib/theme.ts` cada vez que cambia el tema. */}
-        <meta name="theme-color" content="#faf7f1" />
+        <meta name="theme-color" content="#f7f2e7" />
         <Meta />
         <Links />
         <meta httpEquiv="Content-Security-Policy" content={CSP} />
@@ -223,10 +223,10 @@ function SiteHeader() {
         />
       ) : null}
 
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5 sm:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 sm:px-8">
         <Link
           to="/"
-          className="font-display text-lg font-semibold tracking-tight text-ink"
+          className="font-display text-2xl font-semibold tracking-tight text-brand"
         >
           Frasevia
         </Link>
@@ -242,10 +242,10 @@ function SiteHeader() {
                   to={link.to}
                   className={({ isActive }) =>
                     cx(
-                      "rounded-md px-3 py-1.5 transition-colors",
+                      "rounded-md border-b-2 px-3 py-2 transition-colors",
                       isActive
-                        ? "bg-brand-muted font-medium text-brand-strong"
-                        : "text-ink-soft hover:bg-paper-sunken hover:text-ink",
+                        ? "border-accent font-medium text-brand-strong"
+                        : "border-transparent text-ink-soft hover:text-ink",
                     )
                   }
                 >
@@ -344,7 +344,7 @@ function SiteFooter() {
 
   return (
     <footer className="border-t border-line">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-8 text-sm text-ink-faint sm:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-8 text-sm text-ink-faint sm:px-8">
         <p>{t("footer.tagline")}</p>
         <Link to="/explorar" className="hover:text-ink">
           {t("footer.exploreDecks")}
