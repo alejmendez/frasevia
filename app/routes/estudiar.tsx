@@ -440,7 +440,7 @@ function MemoryReviewSession({
 
   const rate = useCallback(
     (level: ReviewLevel) => {
-      if (!item || saving || isTransitioning || !revealed) return;
+      if (!item || saving || isTransitioning) return;
       setSaving(true);
       setError(null);
       setNotice("");
@@ -460,7 +460,7 @@ function MemoryReviewSession({
         { method: "post" },
       );
     },
-    [fetcher, isTransitioning, item, revealed, saving],
+    [fetcher, isTransitioning, item, saving],
   );
 
   const reveal = useCallback(() => {
@@ -557,7 +557,7 @@ function MemoryReviewSession({
         return;
       }
 
-      if (revealed && /^[1-9]$/.test(event.key)) {
+      if (/^[1-9]$/.test(event.key)) {
         const level = activeLevels[Number(event.key) - 1];
         if (level) {
           event.preventDefault();
@@ -807,102 +807,107 @@ function MemoryReviewSession({
             {tr("estudiar.toFlip")}
           </span>
         </div>
-      ) : (
-        <div className="mt-8">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      ) : null}
+
+      <div className="mt-8">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
             <h2 className="font-display text-2xl text-brand">
               {tr("estudiar.ratingQuestion")}
             </h2>
-            <ButtonLink to="/ajustes/repaso" variant="ghost">
-              <GearSixIcon aria-hidden size={17} />
-              {tr("estudiar.changeIntervals")}
-            </ButtonLink>
+            <p className="mt-1 text-sm text-ink-soft">
+              {tr("estudiar.ratingTimingHint")}
+            </p>
           </div>
-          {activeLevels.length === 0 ? (
-            <Alert variant="warning" title={tr("estudiar.noActiveLevels")}>
-              <Link to="/ajustes/repaso" className="underline">
-                {tr("estudiar.changeIntervals")}
-              </Link>
-            </Alert>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {activeLevels.map((level, levelIndex) => (
-                <button
-                  type="button"
-                  key={level.id}
-                  disabled={saving || isTransitioning || !revealed}
-                  onClick={() => rate(level)}
-                  aria-keyshortcuts={
-                    levelIndex < 9 ? String(levelIndex + 1) : undefined
-                  }
-                  aria-label={`${levelIndex + 1}. ${levelName(level)}. ${intervalName(level)}`}
-                  className={cx(
-                    "flex min-h-20 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-60",
-                    LEVEL_STYLE[level.color] ?? LEVEL_STYLE.sand,
-                  )}
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-paper/65 text-lg font-semibold">
-                    {levelIndex + 1}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-semibold">
-                      {levelName(level)}
-                    </span>
-                    <span className="mt-0.5 block text-sm opacity-80">
-                      {intervalName(level)}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-          {activeLevels.length > 0 ? (
-            <p className="mt-3 text-right text-xs text-ink-faint">
-              {tr("estudiar.ratingShortcutHint", {
-                count: Math.min(activeLevels.length, 9),
-              })}
-            </p>
-          ) : null}
-          <p className="mt-3 text-right text-xs text-ink-faint">
-            {tr("estudiar.retiredCanReturn")}
-          </p>
-          {error ? (
-            <Alert variant="error" className="mt-4">
-              <p>{tr("estudiar.saveFailed", { message: error })}</p>
-              <p className="mt-1">{tr("estudiar.retrySameCard")}</p>
-            </Alert>
-          ) : null}
-          {saving ? (
-            <p role="status" className="mt-3 text-sm text-ink-soft">
-              {tr("estudiar.savingProgress")}
-            </p>
-          ) : null}
-          {notice ? (
-            <p
-              role="status"
-              aria-live="polite"
-              className="mt-3 text-sm text-brand"
-            >
-              {notice}
-            </p>
-          ) : null}
-          {currentState ? (
-            <span className="sr-only">
-              {tr("estudiar.reviewedBefore", {
-                count: currentState.review_count,
-              })}
-            </span>
-          ) : null}
-          {answeredCount > 0 ? (
-            <span className="sr-only">
-              {tr("estudiar.counter", {
-                index: answeredCount,
-                total: items.length,
-              })}
-            </span>
-          ) : null}
+          <ButtonLink to="/ajustes/repaso" variant="ghost">
+            <GearSixIcon aria-hidden size={17} />
+            {tr("estudiar.changeIntervals")}
+          </ButtonLink>
         </div>
-      )}
+        {activeLevels.length === 0 ? (
+          <Alert variant="warning" title={tr("estudiar.noActiveLevels")}>
+            <Link to="/ajustes/repaso" className="underline">
+              {tr("estudiar.changeIntervals")}
+            </Link>
+          </Alert>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {activeLevels.map((level, levelIndex) => (
+              <button
+                type="button"
+                key={level.id}
+                disabled={saving || isTransitioning}
+                onClick={() => rate(level)}
+                aria-keyshortcuts={
+                  levelIndex < 9 ? String(levelIndex + 1) : undefined
+                }
+                aria-label={`${levelIndex + 1}. ${levelName(level)}. ${intervalName(level)}`}
+                className={cx(
+                  "flex min-h-20 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-60",
+                  LEVEL_STYLE[level.color] ?? LEVEL_STYLE.sand,
+                )}
+              >
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-paper/65 text-lg font-semibold">
+                  {levelIndex + 1}
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold">
+                    {levelName(level)}
+                  </span>
+                  <span className="mt-0.5 block text-sm opacity-80">
+                    {intervalName(level)}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {activeLevels.length > 0 ? (
+          <p className="mt-3 text-right text-xs text-ink-faint">
+            {tr("estudiar.ratingShortcutHint", {
+              count: Math.min(activeLevels.length, 9),
+            })}
+          </p>
+        ) : null}
+        <p className="mt-3 text-right text-xs text-ink-faint">
+          {tr("estudiar.retiredCanReturn")}
+        </p>
+        {error ? (
+          <Alert variant="error" className="mt-4">
+            <p>{tr("estudiar.saveFailed", { message: error })}</p>
+            <p className="mt-1">{tr("estudiar.retrySameCard")}</p>
+          </Alert>
+        ) : null}
+        {saving ? (
+          <p role="status" className="mt-3 text-sm text-ink-soft">
+            {tr("estudiar.savingProgress")}
+          </p>
+        ) : null}
+        {notice ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className="mt-3 text-sm text-brand"
+          >
+            {notice}
+          </p>
+        ) : null}
+        {currentState ? (
+          <span className="sr-only">
+            {tr("estudiar.reviewedBefore", {
+              count: currentState.review_count,
+            })}
+          </span>
+        ) : null}
+        {answeredCount > 0 ? (
+          <span className="sr-only">
+            {tr("estudiar.counter", {
+              index: answeredCount,
+              total: items.length,
+            })}
+          </span>
+        ) : null}
+      </div>
     </section>
   );
 }

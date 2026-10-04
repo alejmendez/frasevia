@@ -387,6 +387,8 @@ export const es = {
   "estudiar.responseLabel": "RESPUESTA",
   "estudiar.toFlip": "para girar la ficha",
   "estudiar.ratingQuestion": "¿Qué tan fácil fue recordarla?",
+  "estudiar.ratingTimingHint":
+    "Puedes elegir un nivel ahora o revelar la respuesta primero.",
   "estudiar.ratingShortcutHint":
     "Usa las teclas 1–{count} para elegir un nivel.",
   "estudiar.noActiveLevels":

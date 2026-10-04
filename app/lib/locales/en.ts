@@ -372,6 +372,8 @@ export const en: SpanishMessages = {
   "estudiar.responseLabel": "ANSWER",
   "estudiar.toFlip": "to flip the card",
   "estudiar.ratingQuestion": "How easy was it to remember?",
+  "estudiar.ratingTimingHint":
+    "Choose a level now or reveal the answer first.",
   "estudiar.ratingShortcutHint": "Press 1–{count} to choose a level.",
   "estudiar.noActiveLevels": "Turn on at least one level to schedule a review.",
   "estudiar.intervalMinutes": "In {amount} min",
