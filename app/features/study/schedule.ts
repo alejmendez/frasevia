@@ -1,7 +1,21 @@
-import type { CardReviewState, ReviewStatus } from "~/lib/types";
+import type { CardReviewState, ReviewStatus, StudyCard } from "~/lib/types";
 
 export function reviewDirection(source: string, target: string): string {
   return `${source}-${target}`;
+}
+
+export function orientReviewCard(card: StudyCard, direction: string) {
+  const [directionSource = "en", directionTarget = "es"] = direction.split("-");
+  const cardSource = card.sourceLanguage ?? directionSource;
+  const cardTarget = card.targetLanguage ?? directionTarget;
+  const reversed = direction === `${cardTarget}-${cardSource}`;
+
+  return {
+    sourceLanguage: reversed ? cardTarget : cardSource,
+    targetLanguage: reversed ? cardSource : cardTarget,
+    sourceText: reversed ? card.meaningEs : card.term,
+    targetText: reversed ? card.term : card.meaningEs,
+  };
 }
 
 export function reviewStatus(

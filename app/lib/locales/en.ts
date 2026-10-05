@@ -373,8 +373,15 @@ export const en: SpanishMessages = {
   "estudiar.responseLabel": "ANSWER",
   "estudiar.toFlip": "to flip the card",
   "estudiar.ratingQuestion": "How easy was it to remember?",
-  "estudiar.ratingTimingHint":
-    "Choose a level now or reveal the answer first.",
+  "estudiar.ratingTimingHint": "Choose a level now or reveal the answer first.",
+  "estudiar.audioControls": "Pronunciation options",
+  "estudiar.audioNormal": "Normal",
+  "estudiar.audioSlow": "Slow",
+  "estudiar.audioNormalLabel": "Listen to {text} at normal speed",
+  "estudiar.audioSlowLabel": "Listen to {text} more slowly",
+  "estudiar.audioUnavailable": "Audio is not available in this browser.",
+  "estudiar.audioVoiceUnavailable":
+    "No voice for this language is installed on your device.",
   "estudiar.ratingShortcutHint": "Press 1–{count} to choose a level.",
   "estudiar.noActiveLevels": "Turn on at least one level to schedule a review.",
   "estudiar.intervalMinutes": "In {amount} min",

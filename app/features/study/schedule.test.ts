@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { type Card, type CardReviewState, toStudyCard } from "~/lib/types";
-import { buildReviewSession, reviewDirection, reviewStatus } from "./schedule";
+import {
+  buildReviewSession,
+  orientReviewCard,
+  reviewDirection,
+  reviewStatus,
+} from "./schedule";
 
 const now = Date.parse("2026-10-03T15:00:00.000Z");
 
@@ -92,5 +97,44 @@ describe("scheduled review state", () => {
     expect(
       reviewStatus(state("a", "2026-10-03T12:00:00.000Z"), "en-es", now),
     ).toBe("new");
+  });
+
+  it("matches each displayed side to its language in both review directions", () => {
+    const card = toStudyCard(
+      {
+        id: "a",
+        deck_id: "deck",
+        kind: "phrase",
+        term: "take over",
+        meaning_es: "hacerse cargo",
+        example_en: "She will take over the project.",
+        example_es: "Ella se hará cargo del proyecto.",
+        usage_note: null,
+        tags: [],
+        position: 0,
+        created_at: "2026-10-03T12:00:00.000Z",
+        updated_at: "2026-10-03T12:00:00.000Z",
+      },
+      "en",
+      "es",
+    );
+    const orientedCard = {
+      ...card,
+      sourceLanguage: "en",
+      targetLanguage: "es",
+    };
+
+    expect(orientReviewCard(orientedCard, "en-es")).toMatchObject({
+      sourceLanguage: "en",
+      sourceText: "take over",
+      targetLanguage: "es",
+      targetText: "hacerse cargo",
+    });
+    expect(orientReviewCard(orientedCard, "es-en")).toMatchObject({
+      sourceLanguage: "es",
+      sourceText: "hacerse cargo",
+      targetLanguage: "en",
+      targetText: "take over",
+    });
   });
 });

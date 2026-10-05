@@ -390,6 +390,14 @@ export const es = {
   "estudiar.ratingQuestion": "¿Qué tan fácil fue recordarla?",
   "estudiar.ratingTimingHint":
     "Puedes elegir un nivel ahora o revelar la respuesta primero.",
+  "estudiar.audioControls": "Opciones de pronunciación",
+  "estudiar.audioNormal": "Normal",
+  "estudiar.audioSlow": "Lenta",
+  "estudiar.audioNormalLabel": "Escuchar {text} a velocidad normal",
+  "estudiar.audioSlowLabel": "Escuchar {text} más despacio",
+  "estudiar.audioUnavailable": "El audio no está disponible en este navegador.",
+  "estudiar.audioVoiceUnavailable":
+    "No hay una voz instalada para este idioma en tu dispositivo.",
   "estudiar.ratingShortcutHint":
     "Usa las teclas 1–{count} para elegir un nivel.",
   "estudiar.noActiveLevels":

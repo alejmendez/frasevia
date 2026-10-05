@@ -2,6 +2,8 @@ import {
   ArrowLeftIcon,
   ArrowsClockwiseIcon,
   GearSixIcon,
+  SpeakerHighIcon,
+  SpeakerLowIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { data, Link, redirect, useFetcher } from "react-router";
@@ -28,7 +30,15 @@ import {
   type StudyMode,
   summarize,
 } from "~/features/study/engine";
-import { buildReviewSession, reviewDirection } from "~/features/study/schedule";
+import {
+  buildReviewSession,
+  orientReviewCard,
+  reviewDirection,
+} from "~/features/study/schedule";
+import {
+  reviewCardSpeechLanguages,
+  selectSpeechVoice,
+} from "~/features/study/speech";
 import { getMyDeck, getProgressForCards } from "~/lib/decks";
 import { percentLabel } from "~/lib/format";
 import { t } from "~/lib/locale";
@@ -397,6 +407,103 @@ const LEVEL_STYLE: Record<string, string> = {
   blue: "rating-level--blue",
 };
 
+function PronunciationControls({
+  text,
+  language,
+}: {
+  text: string;
+  language: string;
+}) {
+  const tr = useT();
+  const [unavailable, setUnavailable] = useState(false);
+  const [voiceUnavailable, setVoiceUnavailable] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+
+    const synthesis = window.speechSynthesis;
+    const updateVoices = () => setVoices(synthesis.getVoices());
+    updateVoices();
+    synthesis.addEventListener("voiceschanged", updateVoices);
+    return () => synthesis.removeEventListener("voiceschanged", updateVoices);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    },
+    [],
+  );
+
+  function speak(rate: number) {
+    if (
+      typeof window === "undefined" ||
+      !("speechSynthesis" in window) ||
+      typeof SpeechSynthesisUtterance === "undefined"
+    ) {
+      setUnavailable(true);
+      setVoiceUnavailable(false);
+      return;
+    }
+
+    setUnavailable(false);
+    const synthesis = window.speechSynthesis;
+    synthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const availableVoices = voices.length > 0 ? voices : synthesis.getVoices();
+    const voice = selectSpeechVoice(availableVoices, language);
+    if (!voice) {
+      setVoiceUnavailable(true);
+      return;
+    }
+    setVoiceUnavailable(false);
+    utterance.lang = voice.lang;
+    utterance.voice = voice;
+    utterance.rate = rate;
+    synthesis.speak(utterance);
+  }
+
+  return (
+    <div>
+      <fieldset className="mt-3 flex flex-wrap gap-2">
+        <legend className="sr-only">{tr("estudiar.audioControls")}</legend>
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-10 px-3 py-2"
+          aria-label={tr("estudiar.audioNormalLabel", { text })}
+          onClick={() => speak(1)}
+        >
+          <SpeakerHighIcon aria-hidden size={18} weight="fill" />
+          {tr("estudiar.audioNormal")}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-10 px-3 py-2"
+          aria-label={tr("estudiar.audioSlowLabel", { text })}
+          onClick={() => speak(0.75)}
+        >
+          <SpeakerLowIcon aria-hidden size={18} weight="fill" />
+          {tr("estudiar.audioSlow")}
+        </Button>
+      </fieldset>
+      {unavailable || voiceUnavailable ? (
+        <p role="status" className="mt-2 text-sm text-ink-soft">
+          {tr(
+            unavailable
+              ? "estudiar.audioUnavailable"
+              : "estudiar.audioVoiceUnavailable",
+          )}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function MemoryReviewSession({
   cards,
   states,
@@ -668,13 +775,10 @@ function MemoryReviewSession({
     );
   }
 
-  const isSpanishToEnglish = item.direction === "es-en";
-  const sourceLanguage =
-    item.card.sourceLanguage ?? (isSpanishToEnglish ? "es" : "en");
-  const targetLanguage =
-    item.card.targetLanguage ?? (isSpanishToEnglish ? "en" : "es");
-  const sourceText = item.card.term;
-  const targetText = item.card.meaningEs;
+  const { sourceLanguage, targetLanguage, sourceText, targetText } =
+    orientReviewCard(item.card, item.direction);
+  const { front: frontSpeechLanguage, answer: answerSpeechLanguage } =
+    reviewCardSpeechLanguages(item.direction);
   const targetExample =
     targetLanguage === "en" ? item.card.exampleEn : item.card.exampleEs;
   const exampleTranslation =
@@ -732,11 +836,16 @@ function MemoryReviewSession({
                 )}
               </h2>
               <p
-                lang={sourceLanguage}
+                lang={frontSpeechLanguage}
                 className="handwritten mt-8 break-words text-5xl leading-tight text-brand sm:text-7xl"
               >
                 {sourceText}
               </p>
+              <PronunciationControls
+                key={`${item.card.id}:${item.direction}:front`}
+                text={sourceText}
+                language={frontSpeechLanguage}
+              />
               <p className="handwritten mt-8 text-xl text-ink-soft sm:text-2xl">
                 {tr("estudiar.recallHint")}
               </p>
@@ -755,12 +864,20 @@ function MemoryReviewSession({
               <h2
                 ref={backHeadingRef}
                 tabIndex={revealed ? -1 : undefined}
-                lang={targetLanguage}
+                lang={answerSpeechLanguage}
                 className="handwritten mt-3 break-words text-5xl leading-tight text-brand outline-none sm:text-7xl"
               >
                 {targetText}
               </h2>
-              <p className="handwritten mt-1 text-2xl text-ink-soft sm:text-3xl">
+              <PronunciationControls
+                key={`${item.card.id}:${item.direction}:answer`}
+                text={targetText}
+                language={answerSpeechLanguage}
+              />
+              <p
+                lang={frontSpeechLanguage}
+                className="handwritten mt-1 text-2xl text-ink-soft sm:text-3xl"
+              >
                 {sourceText}
               </p>
               {targetExample ? (
@@ -771,6 +888,11 @@ function MemoryReviewSession({
                   >
                     {targetExample}
                   </p>
+                  <PronunciationControls
+                    key={`${item.card.id}:${item.direction}:example`}
+                    text={targetExample}
+                    language={targetLanguage}
+                  />
                   {exampleTranslation ? (
                     <p
                       lang={sourceLanguage}
