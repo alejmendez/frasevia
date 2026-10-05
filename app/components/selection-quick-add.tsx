@@ -1,4 +1,8 @@
-import { BookmarkSimpleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  BookmarkSimpleIcon,
+  CircleNotchIcon,
+  XIcon,
+} from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
@@ -8,8 +12,8 @@ import {
 } from "~/features/ai/generate";
 import { hasKey } from "~/features/ai/keys";
 import type { QuickAddDeck } from "~/lib/decks";
-import { getSession } from "~/lib/session";
 import { useT } from "~/lib/locale-context";
+import { getSession } from "~/lib/session";
 import { Alert, Button, Field, inputClass, Select } from "./ui";
 
 const NEW_DECK = "__new__";
@@ -500,6 +504,21 @@ function QuickAddDialog({
                 </Select>
               </Field>
 
+              {suggestionState === "loading" ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex items-center gap-2 rounded-lg border border-brand/20 bg-brand-muted px-3 py-2.5 text-sm text-brand-strong"
+                >
+                  <CircleNotchIcon
+                    aria-hidden="true"
+                    size={18}
+                    className="shrink-0 animate-spin"
+                  />
+                  <span>{tr("selection.translating")}</span>
+                </div>
+              ) : null}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={tr("selection.english")} htmlFor="selection-en">
                   <input
@@ -529,11 +548,6 @@ function QuickAddDialog({
                 </Field>
               </div>
 
-              {suggestionState === "loading" ? (
-                <p role="status" className="text-sm text-ink-soft">
-                  {tr("selection.translating")}
-                </p>
-              ) : null}
               {suggestionState === "ready" ? (
                 <p role="status" className="text-sm text-ink-soft">
                   {tr("selection.suggestionReady")}
