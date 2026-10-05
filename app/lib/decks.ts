@@ -34,6 +34,14 @@ export interface PublicDeck extends Deck {
   author_name: string | null;
 }
 
+/** Mazo propio compatible con tarjetas de vocabulario español–inglés. */
+export interface QuickAddDeck {
+  id: string;
+  title: string;
+  source_language: string;
+  target_language: string;
+}
+
 /**
  * Mazo público del catálogo, con su autor visible.
  *
@@ -194,6 +202,37 @@ export async function listMyDecks(
     error: progressResult.error?.message ?? reviewResult.error?.message ?? null,
     deckError: null,
     reviewError: reviewResult.error?.message ?? null,
+  };
+}
+
+/**
+ * Mazos propios a los que se puede añadir desde el menú rápido.
+ *
+ * La tarjeta conserva el término en inglés y el significado en español, así
+ * que solo se ofrecen mazos que usan exactamente ese par de idiomas.
+ */
+export async function listMyQuickAddDecks(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ decks: QuickAddDeck[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("decks")
+    .select("id, title, source_language, target_language")
+    .eq("author_id", userId)
+    .order("title", { ascending: true });
+
+  if (error) {
+    return { decks: [], error: error.message };
+  }
+
+  const decks = (data ?? []) as QuickAddDeck[];
+  return {
+    decks: decks.filter(
+      (deck) =>
+        (deck.source_language === "en" && deck.target_language === "es") ||
+        (deck.source_language === "es" && deck.target_language === "en"),
+    ),
+    error: null,
   };
 }
 

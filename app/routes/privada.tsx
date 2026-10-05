@@ -1,5 +1,7 @@
 import { Outlet, redirect } from "react-router";
+import { SelectionQuickAdd } from "~/components/selection-quick-add";
 import { ConfigNotice } from "~/components/ui";
+import { listMyQuickAddDecks } from "~/lib/decks";
 import { t } from "~/lib/locale";
 import { getSession, loginPath } from "~/lib/session";
 import type { Route } from "./+types/privada";
@@ -29,7 +31,23 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     throw redirect(loginPath(request));
   }
 
-  return { status: "ready" as const, userId: session.userId };
+  const { decks, error } = await listMyQuickAddDecks(
+    session.supabase,
+    session.userId,
+  );
+  const url = new URL(request.url);
+  const sharedText =
+    url.searchParams.get("text")?.trim() ||
+    url.searchParams.get("title")?.trim() ||
+    null;
+
+  return {
+    status: "ready" as const,
+    userId: session.userId,
+    quickAddDecks: decks,
+    quickAddDeckError: error,
+    sharedText,
+  };
 }
 
 export default function Privada({ loaderData }: Route.ComponentProps) {
@@ -37,5 +55,14 @@ export default function Privada({ loaderData }: Route.ComponentProps) {
     return <ConfigNotice />;
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <SelectionQuickAdd
+        decks={loaderData.quickAddDecks}
+        deckLoadError={loaderData.quickAddDeckError}
+        sharedText={loaderData.sharedText}
+      />
+    </>
+  );
 }

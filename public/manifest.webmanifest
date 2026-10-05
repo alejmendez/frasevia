@@ -1,0 +1,28 @@
+{
+  "id": "./",
+  "name": "Frasevia",
+  "short_name": "Frasevia",
+  "description": "Repasa vocabulario en inglés y español.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f2e7",
+  "theme_color": "#f7f2e7",
+  "icons": [
+    {
+      "src": "./favicon.ico",
+      "sizes": "48x48 32x32 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "share_target": {
+    "action": "./biblioteca",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
