@@ -883,7 +883,8 @@ export const en: SpanishMessages = {
   "selection.translationTooLong":
     "English text can be up to 200 characters and Spanish text up to 400.",
   "selection.translating": "Getting a translation suggestion…",
-  "selection.suggestionReady": "Suggestion ready. You can edit it before saving.",
+  "selection.suggestionReady":
+    "Suggestion ready. You can edit it before saving.",
   "selection.translationNeedsKey":
     "Add an OpenRouter key in AI settings to get a suggestion. You can also enter the translation manually.",
   "selection.configureAi": "Set up AI",

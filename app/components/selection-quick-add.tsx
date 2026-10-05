@@ -133,11 +133,10 @@ export function SelectionQuickAdd({
   return (
     <>
       {anchor ? (
-        <div
+        <fieldset
           data-no-word-save
-          role="group"
           aria-label={tr("selection.menuLabel")}
-          className="fixed z-50 flex max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-xl border border-line-strong bg-paper-raised p-2 text-ink shadow-lg"
+          className="fixed z-50 flex min-w-0 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-xl border border-line-strong bg-paper-raised p-2 text-ink shadow-lg"
           style={{ left: anchor.left, top: anchor.top }}
           onPointerDownCapture={() => {
             menuPointerActive.current = true;
@@ -171,7 +170,7 @@ export function SelectionQuickAdd({
           >
             <XIcon aria-hidden size={17} />
           </button>
-        </div>
+        </fieldset>
       ) : null}
 
       {dialogText ? (
@@ -294,7 +293,8 @@ function QuickAddDialog({
   }, [selectedLanguage, text, tr]);
 
   function close() {
-    dialogRef.current?.close();
+    if (!dialogRef.current?.open) return;
+    dialogRef.current.close();
     onClose();
   }
 
@@ -427,6 +427,12 @@ function QuickAddDialog({
       onCancel={(event) => {
         event.preventDefault();
         close();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close();
+        }
       }}
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
