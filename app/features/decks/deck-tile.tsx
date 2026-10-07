@@ -69,9 +69,12 @@ export function DeckTile({
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-ink-faint">
         <span>{cardCountLabel(deck.card_count)}</span>
         {deck.level ? <span>· {deck.level}</span> : null}
-        <span>
-          · {deck.source_language} → {deck.target_language}
-        </span>
+        <span>· {t(`studyMode.${deck.study_mode}`)}</span>
+        {deck.study_mode === "language" ? (
+          <span>
+            · {deck.source_language} → {deck.target_language}
+          </span>
+        ) : null}
         {!deck.is_official ? (
           <span>· {visibilityLabel(deck.visibility)}</span>
         ) : null}

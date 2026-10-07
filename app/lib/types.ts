@@ -1,12 +1,12 @@
 /**
  * Tipos del dominio de Frasevia.
  *
- * Reflejan 1:1 el esquema en `supabase/migrations`. El modelo guarda el par de
- * idiomas en cada mazo, así que más adelante se pueden agregar otros pares sin
- * cambiar las tablas.
+ * Reflejan el esquema en `supabase/migrations`. Los nombres históricos de las
+ * columnas de tarjetas también alojan preguntas, respuestas y contexto general.
  */
 
 export type DeckVisibility = "private" | "public";
+export type DeckStudyMode = "language" | "general";
 export type CardKind = "word" | "phrase" | "question" | "rule";
 export type ProgressState = "new" | "learning" | "mastered";
 export type ReviewAction = "review" | "retire";
@@ -22,6 +22,7 @@ export interface Deck {
   title: string;
   slug: string;
   description: string;
+  study_mode: DeckStudyMode;
   source_language: string;
   target_language: string;
   level: string | null;
@@ -60,6 +61,7 @@ export interface StudyCard {
   sourceLanguage?: string;
   targetLanguage?: string;
   deckTitle?: string;
+  studyMode?: DeckStudyMode;
 }
 
 export interface CardProgress {
@@ -141,8 +143,12 @@ export function toStudyCard(
   card: Card,
   sourceLanguage = "en",
   targetLanguage = "es",
+  studyMode: DeckStudyMode = "language",
 ): StudyCard {
-  const sourceIsSpanish = sourceLanguage === "es" && targetLanguage === "en";
+  const sourceIsSpanish =
+    studyMode === "language" &&
+    sourceLanguage === "es" &&
+    targetLanguage === "en";
 
   return {
     id: card.id,
@@ -154,5 +160,6 @@ export function toStudyCard(
     exampleEn: card.example_en,
     exampleEs: card.example_es,
     usageNote: card.usage_note,
+    studyMode,
   };
 }

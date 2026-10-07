@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CardReviewState, DeckReviewSummary, ReviewLevel } from "./types";
+import type {
+  CardReviewState,
+  DeckReviewSummary,
+  DeckStudyMode,
+  ReviewLevel,
+} from "./types";
 
 const REVIEW_LEVEL_COLUMNS =
   "id, user_id, system_key, name, action, interval_amount, interval_unit, position, color, active, created_at, updated_at";
@@ -87,6 +92,7 @@ export interface PendingReviewCard {
   example_es: string | null;
   usage_note: string | null;
   deck_title: string;
+  study_mode: DeckStudyMode;
   source_language: string;
   target_language: string;
 }

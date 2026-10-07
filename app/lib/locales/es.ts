@@ -19,6 +19,51 @@ import type { Messages, MessageValue } from "./types";
  * (`inicio.*.term` y compañía) se quedan igual por lo mismo.
  */
 export const es = {
+  "studyMode.label": "¿Qué quieres estudiar?",
+  "studyMode.language": "Idiomas",
+  "studyMode.general": "Repaso general",
+  "studyMode.languageHint":
+    "Palabras, frases y traducciones para practicar un idioma.",
+  "studyMode.generalHint":
+    "Preguntas y respuestas sobre cualquier tema que quieras recordar.",
+  "studyMode.filterLabel": "Tipo de estudio",
+  "studyMode.all": "Todos los temas",
+  "general.contentLanguage": "Idioma del contenido",
+  "general.titlePlaceholder": "Ej. Conceptos de programación",
+  "general.levelHint": "Opcional. Indica la dificultad o el curso.",
+  "general.levelPlaceholder": "Ej. Introductorio, segundo semestre…",
+  "general.seedHint":
+    "Una tarjeta por línea: pregunta | respuesta | ejemplo o contexto (opcional)",
+  "general.seedPlaceholder":
+    "¿Qué estructura sigue el orden LIFO? | Una pila. | El último elemento en entrar es el primero en salir.",
+  "general.front": "Pregunta o concepto",
+  "general.back": "Respuesta o explicación",
+  "general.concept": "Concepto",
+  "general.example": "Ejemplo o contexto",
+  "general.note": "Nota o aclaración",
+  "general.notePrefix": "Nota: ",
+  "general.aiConceptHint":
+    "Indica la materia y lo que quieres recordar. Puedes pegar tus apuntes como referencia.",
+  "general.aiConceptPlaceholder":
+    "Conceptos de estructuras de datos: pilas, colas, listas y árboles",
+  "general.aiExtras": "Pedir ejemplo y explicación en cada tarjeta",
+  "general.recallHint": "Piensa en la respuesta antes de girar.",
+  "general.reviewHint": "Intenta recordar la respuesta antes de revelarla.",
+  "general.otherPractices":
+    "Explorar las tarjetas, elegir una respuesta o repasar a tu ritmo.",
+  "general.choiceMode": "Elegir la respuesta",
+  "general.chooseAnswer": "Elige la respuesta correcta.",
+  "general.modeDescription.elegir":
+    "Elige la respuesta correcta entre cuatro opciones.",
+  "general.modeDescription.explorar":
+    "Lee las preguntas, respuestas y su contexto.",
+  "general.modeDescription.revisar":
+    "Recuerda la respuesta y compruébala al revelarla.",
+  "general.modeDescription.completar": "Repasa la pregunta y su respuesta.",
+  "inicio.demoGeneralFront": "¿Qué estructura sigue el orden LIFO?",
+  "inicio.demoGeneralBack": "Una pila",
+  "inicio.demoGeneralContext":
+    "El último elemento en entrar es el primero en salir.",
   // -------------------------------------------------------------------------
   // Común
   // -------------------------------------------------------------------------
@@ -74,8 +119,7 @@ export const es = {
   "account.signUp": "Crear cuenta",
   "account.yourAccount": "Tu cuenta",
   "account.signOut": "Salir",
-  "footer.tagline":
-    "Frasevia — aprende inglés con frases que alguien dijo de verdad.",
+  "footer.tagline": "Frasevia. Aprende idiomas y recuerda lo que te importa.",
   "footer.exploreDecks": "Explorar mazos",
 
   // -------------------------------------------------------------------------
@@ -97,14 +141,14 @@ export const es = {
   // -------------------------------------------------------------------------
   // Portada
   // -------------------------------------------------------------------------
-  "inicio.metaTitle": "Frasevia — aprende inglés con frases útiles",
+  "inicio.metaTitle": "Frasevia · aprende y repasa con tarjetas",
   "inicio.metaDescription":
-    "Mazos de inglés con ejemplos reales para personas hispanohablantes. Explora, crea tus propios mazos y registra tu progreso.",
+    "Tarjetas para aprender idiomas o repasar cualquier tema. Explora, crea tus mazos y programa tus próximos repasos.",
   "inicio.eyebrow": "Un poco cada día",
   "inicio.titleLead": "Piensa. Gira.",
   "inicio.titleAccent": " Recuerda",
   "inicio.body":
-    "Aprende inglés con fichas que se sienten como papel. Recuerda la respuesta y elige cuándo volver a repasarla.",
+    "Idiomas, apuntes y nuevas ideas. Recuerda la respuesta y elige cuándo volver a repasarla.",
   "inicio.ctaExplore": "Explorar mazos",
   "inicio.ctaSignUp": "Crear una cuenta",
   "inicio.cardsTitle": "Recuerda antes de mirar",
@@ -112,16 +156,16 @@ export const es = {
     "Lee la pregunta, piensa tu respuesta y gira la ficha cuando estés listo.",
   "inicio.pillar1.title": "Tarjetas con contexto",
   "inicio.pillar1.body":
-    "Cada palabra o frase trae su ejemplo, su traducción y una nota de uso, para que el contexto llegue antes que la definición.",
+    "Palabras, preguntas y conceptos con ejemplos y notas que te ayudan a recordarlos.",
   "inicio.pillar2.title": "Una pregunta, una respuesta",
   "inicio.pillar2.body":
     "La práctica mental es directa: intenta recordar, compara y decide cuándo volver.",
   "inicio.pillar3.title": "A tu ritmo",
   "inicio.pillar3.body":
     "Sin cronómetro ni rachas obligatorias. Tú decides cuándo volver a cada ficha.",
-  "inicio.startTitle": "Empieza con el mazo de las bases",
+  "inicio.startTitle": "Un mazo para lo que quieras aprender",
   "inicio.startBody":
-    "Saludos, presentaciones, preguntas básicas, números, horarios y los verbos que usas todos los días.",
+    "Crea tus tarjetas sobre cualquier tema o empieza con nuestros mazos de inglés.",
   "inicio.tagBasics": "Inglés desde las bases",
   "inicio.tagDevs": "Inglés para desarrolladores",
   "inicio.seeCatalog": "Ver el catálogo",
@@ -131,13 +175,11 @@ export const es = {
   "inicio.ctaLibrary": "Ir a mi biblioteca",
   "inicio.noStreaks": "A tu ritmo, sin rachas obligatorias.",
   "inicio.demoDirection": "ESPAÑOL → INGLÉS",
-  "inicio.demoQuestion": "¿Cómo lo dirías en inglés?",
   "inicio.demoHint": "Piensa la respuesta antes de girar.",
   "inicio.demoAnswerLabel": "RESPUESTA",
   "inicio.demoMeaning": "¿Cuál es el sueldo base para este cargo?",
   "inicio.stepRemember": "Recuerda",
-  "inicio.stepRememberBody":
-    "Lee la frase en español y piensa en la respuesta.",
+  "inicio.stepRememberBody": "Lee la tarjeta y piensa en la respuesta.",
   "inicio.stepFlip": "Gira la ficha",
   "inicio.stepFlipBody": "Revela la respuesta cuando estés listo.",
   "inicio.stepSchedule": "Elige el próximo repaso",
@@ -210,7 +252,7 @@ export const es = {
   // -------------------------------------------------------------------------
   "explorar.metaTitle": "Explorar mazos — Frasevia",
   "explorar.metaDescription":
-    "Mazos públicos de inglés con ejemplos y traducciones al español.",
+    "Mazos públicos de idiomas y repaso general. Descubre tarjetas sobre lo que quieras aprender.",
   "explorar.eyebrow": "Catálogo público",
   "explorar.title": "Explorar mazos",
   "explorar.description":
@@ -227,6 +269,8 @@ export const es = {
   "explorar.emptyNoDecksTitle": "Todavía no hay mazos públicos",
   "explorar.emptyResultsBody":
     "Ningún mazo coincide con “{query}”. Prueba con otra palabra.",
+  "explorar.emptyTypeBody":
+    "Todavía no hay mazos públicos de este tipo. Prueba con todos los temas o crea el tuyo.",
   "explorar.emptyNoDecksBody":
     "Sé la primera persona en compartir un mazo: crea el tuyo y publícalo.",
   "explorar.seeAll": "Ver todos",
@@ -237,7 +281,7 @@ export const es = {
   // -------------------------------------------------------------------------
   "biblioteca.metaTitle": "Mi biblioteca — Frasevia",
   "biblioteca.eyebrow": "Un poco cada día",
-  "biblioteca.title": "Tu inglés, ficha a ficha",
+  "biblioteca.title": "Lo que aprendes, ficha a ficha",
   "biblioteca.description": "Un pequeño repaso para seguir avanzando.",
   "biblioteca.createWithAi": "Crear con IA",
   "biblioteca.createDeck": "Crear un mazo",
@@ -246,7 +290,7 @@ export const es = {
   "biblioteca.loadErrorTitle": "No se pudo cargar tu biblioteca",
   "biblioteca.emptyTitle": "Tu biblioteca está vacía",
   "biblioteca.emptyDescription":
-    "Crea un mazo con tus propias palabras y frases, o copia uno de los mazos públicos para modificarlo a tu gusto.",
+    "Crea un mazo de idiomas o de repaso general, o copia un mazo público para adaptarlo a ti.",
   "biblioteca.noCards": "Sin tarjetas todavía",
   "biblioteca.notPracticed": "Sin practicar todavía",
   "biblioteca.progressAria":
@@ -382,8 +426,6 @@ export const es = {
   "estudiar.pendingLabel": "Pendiente",
   "estudiar.newLabel": "Nueva",
   "estudiar.direction": "{source} → {target}",
-  "estudiar.promptEnglish": "¿Cómo lo dirías en inglés?",
-  "estudiar.promptSpanish": "¿Cómo lo dirías en español?",
   "estudiar.recallHint": "Recuerda la expresión completa.",
   "estudiar.responseLabel": "RESPUESTA",
   "estudiar.toFlip": "para girar la ficha",
@@ -650,14 +692,13 @@ export const es = {
   "mazoEditar.noSupabaseShort": "Falta configurar Supabase.",
   "mazoEditar.titleRequired": "El título no puede quedar vacío.",
   "mazoEditar.deckSaved": "Mazo guardado.",
-  "mazoEditar.cardNeedsFields":
-    "La tarjeta necesita un término y su significado.",
+  "mazoEditar.cardNeedsFields": "Completa las dos caras de la tarjeta.",
   "mazoEditar.cardAdded": "Tarjeta agregada.",
   "mazoEditar.cardDeleted": "Tarjeta eliminada.",
   "mazoEditar.unknownAction": "Acción no reconocida.",
   "mazoEditar.nothingToSave": "No había cambios que guardar.",
   "mazoEditar.cardsNeedFields":
-    "Cada tarjeta necesita un término y su significado.",
+    "Cada tarjeta necesita contenido en las dos caras.",
   "mazoEditar.cardsSaved": "Tarjetas guardadas.",
   "mazoEditar.copyTag": "Copia",
   "mazoEditar.publicPage": "Ver página pública",
@@ -885,7 +926,7 @@ export const es = {
   "draft.malformed":
     "La respuesta del modelo estaba cortada o mal formada. Prueba otra vez.",
   "draft.noUsableCards":
-    "El modelo respondió, pero ninguna tarjeta tenía término y traducción a la vez. Prueba otra vez.",
+    "No encontramos tarjetas completas. Cada una necesita contenido en las dos caras.",
   "draft.defaultTitle": "Mazo generado con IA",
 
   // -------------------------------------------------------------------------

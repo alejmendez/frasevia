@@ -16,13 +16,14 @@ import {
   textareaClass,
 } from "~/components/ui";
 import { slugPreview } from "~/features/decks/slug";
+import { StudyModeField } from "~/features/decks/study-mode-field";
 import { getMyDeck } from "~/lib/decks";
 import { cardKindLabel, formatDate } from "~/lib/format";
 import { deckLanguages } from "~/lib/languages";
 import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
-import type { Card } from "~/lib/types";
+import type { Card, DeckStudyMode } from "~/lib/types";
 import type { Route } from "./+types/mazo-editar";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -107,6 +108,8 @@ export async function clientAction({
 
   switch (intent) {
     case "save-deck": {
+      const studyMode =
+        formData.get("study_mode") === "general" ? "general" : "language";
       const title = String(formData.get("title") ?? "").trim();
       if (!title) {
         return actionFail(t("mazoEditar.titleRequired"));
@@ -116,10 +119,15 @@ export async function clientAction({
         .from("decks")
         .update({
           title,
+          study_mode: studyMode,
           description: String(formData.get("description") ?? "").trim(),
           level: String(formData.get("level") ?? "").trim() || null,
           source_language: String(formData.get("source_language") ?? "es"),
-          target_language: String(formData.get("target_language") ?? "en"),
+          target_language: String(
+            formData.get(
+              studyMode === "general" ? "source_language" : "target_language",
+            ) ?? "en",
+          ),
           visibility:
             formData.get("visibility") === "public" ? "public" : "private",
         })
@@ -335,6 +343,9 @@ export default function MazoEditar({
   actionData,
 }: Route.ComponentProps) {
   const tr = useT();
+  const [studyMode, setStudyMode] = useState<DeckStudyMode>(
+    loaderData.deck?.study_mode ?? "language",
+  );
   const [isPublic, setIsPublic] = useState(
     loaderData.deck?.visibility === "public",
   );
@@ -417,6 +428,7 @@ export default function MazoEditar({
             }}
           >
             <input type="hidden" name="intent" value="save-deck" />
+            <StudyModeField value={studyMode} onChange={setStudyMode} />
 
             <Field label={tr("deckField.title")} htmlFor="title" required>
               <input
@@ -447,7 +459,11 @@ export default function MazoEditar({
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field
-                label={tr("deckField.sourceLanguage")}
+                label={tr(
+                  studyMode === "general"
+                    ? "general.contentLanguage"
+                    : "deckField.sourceLanguage",
+                )}
                 htmlFor="source_language"
               >
                 <Select
@@ -463,35 +479,45 @@ export default function MazoEditar({
                 </Select>
               </Field>
 
-              <Field
-                label={tr("deckField.targetLanguage")}
-                htmlFor="target_language"
-              >
-                <Select
-                  id="target_language"
-                  name="target_language"
-                  defaultValue={deck.target_language}
+              {studyMode === "language" ? (
+                <Field
+                  label={tr("deckField.targetLanguage")}
+                  htmlFor="target_language"
                 >
-                  {languages.map((language) => (
-                    <option key={language.code} value={language.code}>
-                      {language.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+                  <Select
+                    id="target_language"
+                    name="target_language"
+                    defaultValue={deck.target_language}
+                  >
+                    {languages.map((language) => (
+                      <option key={language.code} value={language.code}>
+                        {language.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field
                 label={tr("deckField.level")}
                 htmlFor="level"
-                hint={tr("deckField.levelHint")}
+                hint={tr(
+                  studyMode === "general"
+                    ? "general.levelHint"
+                    : "deckField.levelHint",
+                )}
               >
                 <input
                   id="level"
                   name="level"
                   defaultValue={deck.level ?? ""}
-                  placeholder={tr("mazoNuevo.levelPlaceholder")}
+                  placeholder={tr(
+                    studyMode === "general"
+                      ? "general.levelPlaceholder"
+                      : "mazoNuevo.levelPlaceholder",
+                  )}
                   className={inputClass}
                 />
               </Field>
@@ -533,13 +559,17 @@ export default function MazoEditar({
 
           {deck.is_official ? null : (
             <>
-              <AddCardForm />
+              <AddCardForm studyMode={deck.study_mode} />
 
               {cards.length > 0 ? (
                 <Form method="post" className="mt-6 space-y-4">
                   <input type="hidden" name="intent" value="save-cards" />
                   {cards.map((card) => (
-                    <CardEditor key={card.id} card={card} />
+                    <CardEditor
+                      key={card.id}
+                      card={card}
+                      studyMode={deck.study_mode}
+                    />
                   ))}
                   <Button type="submit">{tr("mazoEditar.saveCards")}</Button>
                 </Form>
@@ -570,8 +600,9 @@ export default function MazoEditar({
   );
 }
 
-function AddCardForm() {
+function AddCardForm({ studyMode }: { studyMode: DeckStudyMode }) {
   const tr = useT();
+  const general = studyMode === "general";
 
   return (
     <Form
@@ -584,26 +615,43 @@ function AddCardForm() {
       </h3>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label={tr("mazoEditar.fieldTerm")} htmlFor="new-term" required>
-          <input id="new-term" name="term" required className={inputClass} />
+        <Field
+          label={tr(general ? "general.front" : "mazoEditar.fieldTerm")}
+          htmlFor="new-term"
+          required
+        >
+          <textarea
+            id="new-term"
+            name="term"
+            required
+            maxLength={200}
+            className={textareaClass}
+          />
         </Field>
 
         <Field
-          label={tr("mazoEditar.fieldMeaning")}
+          label={tr(general ? "general.back" : "mazoEditar.fieldMeaning")}
           htmlFor="new-meaning"
           required
         >
-          <input
+          <textarea
             id="new-meaning"
             name="meaning_es"
+            maxLength={400}
             required
-            className={inputClass}
+            className={textareaClass}
           />
         </Field>
 
         <Field label={tr("mazoEditar.fieldKind")} htmlFor="new-kind">
-          <Select id="new-kind" name="kind" defaultValue="word">
-            <option value="word">{cardKindLabel("word")}</option>
+          <Select
+            id="new-kind"
+            name="kind"
+            defaultValue={general ? "question" : "word"}
+          >
+            <option value="word">
+              {general ? tr("general.concept") : cardKindLabel("word")}
+            </option>
             <option value="phrase">{cardKindLabel("phrase")}</option>
             <option value="question">{cardKindLabel("question")}</option>
             <option value="rule">{cardKindLabel("rule")}</option>
@@ -620,13 +668,28 @@ function AddCardForm() {
       </div>
 
       <div className="mt-4 grid gap-4">
-        <Field label={tr("mazoEditar.fieldExampleEn")} htmlFor="new-example-en">
+        <Field
+          label={tr(general ? "general.example" : "mazoEditar.fieldExampleEn")}
+          htmlFor="new-example-en"
+        >
           <input id="new-example-en" name="example_en" className={inputClass} />
         </Field>
-        <Field label={tr("mazoEditar.fieldExampleEs")} htmlFor="new-example-es">
-          <input id="new-example-es" name="example_es" className={inputClass} />
-        </Field>
-        <Field label={tr("mazoEditar.fieldUsageNote")} htmlFor="new-usage-note">
+        {general ? null : (
+          <Field
+            label={tr("mazoEditar.fieldExampleEs")}
+            htmlFor="new-example-es"
+          >
+            <input
+              id="new-example-es"
+              name="example_es"
+              className={inputClass}
+            />
+          </Field>
+        )}
+        <Field
+          label={tr(general ? "general.note" : "mazoEditar.fieldUsageNote")}
+          htmlFor="new-usage-note"
+        >
           <input id="new-usage-note" name="usage_note" className={inputClass} />
         </Field>
       </div>
@@ -638,9 +701,16 @@ function AddCardForm() {
   );
 }
 
-function CardEditor({ card }: { card: Card }) {
+function CardEditor({
+  card,
+  studyMode,
+}: {
+  card: Card;
+  studyMode: DeckStudyMode;
+}) {
   const prefix = `card:${card.id}`;
   const tr = useT();
+  const general = studyMode === "general";
 
   return (
     <fieldset className="rounded-card border border-line bg-paper-raised p-5">
@@ -650,30 +720,32 @@ function CardEditor({ card }: { card: Card }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
-          label={tr("mazoEditar.fieldTerm")}
+          label={tr(general ? "general.front" : "mazoEditar.fieldTerm")}
           htmlFor={`${prefix}-term`}
           required
         >
-          <input
+          <textarea
             id={`${prefix}-term`}
             name={`${prefix}:term`}
+            maxLength={200}
             defaultValue={card.term}
             required
-            className={inputClass}
+            className={textareaClass}
           />
         </Field>
 
         <Field
-          label={tr("mazoEditar.fieldMeaning")}
+          label={tr(general ? "general.back" : "mazoEditar.fieldMeaning")}
           htmlFor={`${prefix}-meaning`}
           required
         >
-          <input
+          <textarea
             id={`${prefix}-meaning`}
             name={`${prefix}:meaning_es`}
+            maxLength={400}
             defaultValue={card.meaning_es}
             required
-            className={inputClass}
+            className={textareaClass}
           />
         </Field>
 
@@ -683,7 +755,9 @@ function CardEditor({ card }: { card: Card }) {
             name={`${prefix}:kind`}
             defaultValue={card.kind}
           >
-            <option value="word">{cardKindLabel("word")}</option>
+            <option value="word">
+              {general ? tr("general.concept") : cardKindLabel("word")}
+            </option>
             <option value="phrase">{cardKindLabel("phrase")}</option>
             <option value="question">{cardKindLabel("question")}</option>
             <option value="rule">{cardKindLabel("rule")}</option>
@@ -706,7 +780,7 @@ function CardEditor({ card }: { card: Card }) {
 
       <div className="mt-4 grid gap-4">
         <Field
-          label={tr("mazoEditar.fieldExampleEn")}
+          label={tr(general ? "general.example" : "mazoEditar.fieldExampleEn")}
           htmlFor={`${prefix}-example-en`}
         >
           <input
@@ -716,19 +790,27 @@ function CardEditor({ card }: { card: Card }) {
             className={inputClass}
           />
         </Field>
-        <Field
-          label={tr("mazoEditar.fieldExampleEs")}
-          htmlFor={`${prefix}-example-es`}
-        >
+        {general ? (
           <input
-            id={`${prefix}-example-es`}
+            type="hidden"
             name={`${prefix}:example_es`}
-            defaultValue={card.example_es ?? ""}
-            className={inputClass}
+            value={card.example_es ?? ""}
           />
-        </Field>
+        ) : (
+          <Field
+            label={tr("mazoEditar.fieldExampleEs")}
+            htmlFor={`${prefix}-example-es`}
+          >
+            <input
+              id={`${prefix}-example-es`}
+              name={`${prefix}:example_es`}
+              defaultValue={card.example_es ?? ""}
+              className={inputClass}
+            />
+          </Field>
+        )}
         <Field
-          label={tr("mazoEditar.fieldUsageNote")}
+          label={tr(general ? "general.note" : "mazoEditar.fieldUsageNote")}
           htmlFor={`${prefix}-usage-note`}
         >
           <input

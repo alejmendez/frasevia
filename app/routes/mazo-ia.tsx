@@ -34,10 +34,12 @@ import {
 } from "~/features/ai/models";
 import { buildStandalonePrompt } from "~/features/ai/prompt";
 import { PROVIDER } from "~/features/ai/providers";
+import { StudyModeField } from "~/features/decks/study-mode-field";
 import { deckLanguages } from "~/lib/languages";
 import { type MessageKey, t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
+import type { DeckStudyMode } from "~/lib/types";
 import type { Route } from "./+types/mazo-ia";
 
 export function meta() {
@@ -89,6 +91,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
 
   const [mode, setMode] = useState<Mode>("generar");
   const [concept, setConcept] = useState("");
+  const [studyMode, setStudyMode] = useState<DeckStudyMode>("language");
   const [cardCount, setCardCount] = useState(12);
   const [level, setLevel] = useState("");
   const [sourceLanguage, setSourceLanguage] = useState("es");
@@ -152,6 +155,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
   const hasConcept = concept.trim().length >= 3;
 
   const request = {
+    studyMode,
     concept,
     cardCount,
     sourceLanguage,
@@ -226,7 +230,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       // devuelve una conversación casi nunca viene tan limpio como el de una
       // API, y tolerar la prosa y los bloques de código aquí evita hacerlo dos
       // veces.
-      adopt(parseDeckDraft(imported));
+      adopt(parseDeckDraft(imported, studyMode));
     } catch (cause) {
       setError(
         cause instanceof DraftError ? cause.message : t("mazoIa.importFailed"),
@@ -278,9 +282,11 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
         author_id: session.userId,
         title: title.trim(),
         description: description.trim(),
+        study_mode: studyMode,
         level: deck.level,
         source_language: sourceLanguage,
-        target_language: targetLanguage,
+        target_language:
+          studyMode === "general" ? sourceLanguage : targetLanguage,
         visibility,
       })
       .select("id")
@@ -300,6 +306,8 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
         meaning_es: card.meaningEs,
         example_en: card.exampleEn,
         example_es: card.exampleEs,
+        usage_note: card.usageNote,
+        tags: card.tags,
         position: index + 1,
       })),
     );
@@ -342,6 +350,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
           })}
         />
         <DeckReview
+          studyMode={studyMode}
           deck={deck}
           kept={kept.length}
           dropped={dropped}
@@ -418,10 +427,19 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
 
       <div className="space-y-6">
         <Card as="section" className="space-y-5">
+          <StudyModeField
+            value={studyMode}
+            onChange={setStudyMode}
+            disabled={busy}
+          />
           <div>
             <SectionTitle as="h3">{tr("mazoIa.stepConcept")}</SectionTitle>
             <p className="mt-1 text-sm text-ink-soft">
-              {tr("mazoIa.stepConceptBody")}
+              {tr(
+                studyMode === "general"
+                  ? "general.aiConceptHint"
+                  : "mazoIa.stepConceptBody",
+              )}
             </p>
           </div>
 
@@ -435,7 +453,11 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
               id="concept"
               value={concept}
               onChange={(event) => setConcept(event.target.value)}
-              placeholder={tr("mazoIa.conceptPlaceholder")}
+              placeholder={tr(
+                studyMode === "general"
+                  ? "general.aiConceptPlaceholder"
+                  : "mazoIa.conceptPlaceholder",
+              )}
             />
           </Field>
 
@@ -488,7 +510,11 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
-              label={tr("deckField.cardLanguage")}
+              label={tr(
+                studyMode === "general"
+                  ? "general.contentLanguage"
+                  : "deckField.cardLanguage",
+              )}
               htmlFor="source_language"
             >
               <Select
@@ -504,22 +530,24 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
               </Select>
             </Field>
 
-            <Field
-              label={tr("deckField.translationLanguage")}
-              htmlFor="target_language"
-            >
-              <Select
-                id="target_language"
-                value={targetLanguage}
-                onChange={(event) => setTargetLanguage(event.target.value)}
+            {studyMode === "language" ? (
+              <Field
+                label={tr("deckField.translationLanguage")}
+                htmlFor="target_language"
               >
-                {languages.map((language) => (
-                  <option key={language.code} value={language.code}>
-                    {language.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+                <Select
+                  id="target_language"
+                  value={targetLanguage}
+                  onChange={(event) => setTargetLanguage(event.target.value)}
+                >
+                  {languages.map((language) => (
+                    <option key={language.code} value={language.code}>
+                      {language.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
           </div>
 
           <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-paper-sunken px-4 py-3">
@@ -530,7 +558,11 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
               className="mt-0.5 size-4 accent-[var(--brand)]"
             />
             <span className="text-sm text-ink">
-              {tr("mazoIa.extrasLabel")}
+              {tr(
+                studyMode === "general"
+                  ? "general.aiExtras"
+                  : "mazoIa.extrasLabel",
+              )}
               <span className="mt-0.5 block text-xs text-ink-faint">
                 {tr("mazoIa.extrasHint")}
               </span>

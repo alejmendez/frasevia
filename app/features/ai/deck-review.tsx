@@ -13,6 +13,7 @@ import {
 import type { DraftCard } from "~/features/ai/draft";
 import { cardKindLabel } from "~/lib/format";
 import { useT } from "~/lib/locale-context";
+import type { DeckStudyMode } from "~/lib/types";
 
 /**
  * Pantalla de revisión: las tarjetas generadas, antes de guardarlas.
@@ -39,6 +40,7 @@ export interface ReviewDeck {
 }
 
 export interface DeckReviewProps {
+  studyMode: DeckStudyMode;
   deck: ReviewDeck;
   /** Cuántas quedan tras quitar las descartadas. */
   kept: number;
@@ -63,6 +65,7 @@ export interface DeckReviewProps {
 }
 
 export function DeckReview({
+  studyMode,
   deck,
   kept,
   dropped,
@@ -151,7 +154,11 @@ export function DeckReview({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-ink">{card.term}</p>
-                      <Tag>{cardKindLabel(card.kind)}</Tag>
+                      <Tag>
+                        {studyMode === "general" && card.kind === "word"
+                          ? t("general.concept")
+                          : cardKindLabel(card.kind)}
+                      </Tag>
                     </div>
                     <p className="mt-0.5 text-sm text-ink-soft">
                       {card.meaningEs}

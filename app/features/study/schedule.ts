@@ -1,10 +1,27 @@
-import type { CardReviewState, ReviewStatus, StudyCard } from "~/lib/types";
+import type {
+  CardReviewState,
+  DeckStudyMode,
+  ReviewStatus,
+  StudyCard,
+} from "~/lib/types";
 
-export function reviewDirection(source: string, target: string): string {
-  return `${source}-${target}`;
+export function reviewDirection(
+  source: string,
+  target: string,
+  mode: DeckStudyMode = "language",
+): string {
+  return mode === "general" ? "general" : `${source}-${target}`;
 }
 
 export function orientReviewCard(card: StudyCard, direction: string) {
+  if (card.studyMode === "general" || direction === "general") {
+    return {
+      sourceLanguage: card.sourceLanguage ?? "es",
+      targetLanguage: card.sourceLanguage ?? "es",
+      sourceText: card.term,
+      targetText: card.meaningEs,
+    };
+  }
   const [directionSource = "en", directionTarget = "es"] = direction.split("-");
   const cardSource = card.sourceLanguage ?? directionSource;
   const cardTarget = card.targetLanguage ?? directionTarget;

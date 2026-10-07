@@ -7,6 +7,7 @@ import type {
   Deck,
   DeckProgressSummary,
   DeckReviewSummary,
+  DeckStudyMode,
   ProgressDetail,
 } from "./types";
 
@@ -20,7 +21,7 @@ import type {
  */
 
 const DECK_COLUMNS =
-  "id, author_id, title, slug, description, source_language, target_language, level, visibility, is_official, source_deck_id, card_count, created_at, updated_at";
+  "id, author_id, title, slug, description, study_mode, source_language, target_language, level, visibility, is_official, source_deck_id, card_count, created_at, updated_at";
 
 const CARD_COLUMNS =
   "id, deck_id, kind, term, meaning_es, example_en, example_es, usage_note, tags, position, created_at, updated_at";
@@ -38,6 +39,7 @@ export interface PublicDeck extends Deck {
 export interface QuickAddDeck {
   id: string;
   title: string;
+  study_mode: DeckStudyMode;
   source_language: string;
   target_language: string;
 }
@@ -60,6 +62,7 @@ function toPublicDeck(deck: Deck): PublicDeck {
 export async function listPublicDecks(options?: {
   search?: string;
   limit?: number;
+  studyMode?: DeckStudyMode;
 }): Promise<{ decks: PublicDeck[]; error: string | null }> {
   const supabase = getSupabaseBrowser();
 
@@ -76,6 +79,7 @@ export async function listPublicDecks(options?: {
     .limit(options?.limit ?? 60);
 
   const search = options?.search?.trim();
+  if (options?.studyMode) query = query.eq("study_mode", options.studyMode);
   if (search) {
     // `or` con comodines cubre título y descripción en una sola pasada.
     const term = search.replace(/[%,()]/g, " ");
@@ -217,8 +221,9 @@ export async function listMyQuickAddDecks(
 ): Promise<{ decks: QuickAddDeck[]; error: string | null }> {
   const { data, error } = await supabase
     .from("decks")
-    .select("id, title, source_language, target_language")
+    .select("id, title, study_mode, source_language, target_language")
     .eq("author_id", userId)
+    .eq("study_mode", "language")
     .order("title", { ascending: true });
 
   if (error) {

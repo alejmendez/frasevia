@@ -12,6 +12,51 @@ import type { SpanishMessages } from "./es";
  * solo hay dos formas porque con dos idiomas eso es lo que hace falta.
  */
 export const en: SpanishMessages = {
+  "studyMode.label": "What would you like to study?",
+  "studyMode.language": "Languages",
+  "studyMode.general": "General review",
+  "studyMode.languageHint":
+    "Words, phrases and translations to practice a language.",
+  "studyMode.generalHint":
+    "Questions and answers about anything you want to remember.",
+  "studyMode.filterLabel": "Study type",
+  "studyMode.all": "All topics",
+  "general.contentLanguage": "Content language",
+  "general.titlePlaceholder": "E.g. Programming concepts",
+  "general.levelHint": "Optional. Add a difficulty or course.",
+  "general.levelPlaceholder": "E.g. Introductory, second semester…",
+  "general.seedHint":
+    "One card per line: question | answer | example or context (optional)",
+  "general.seedPlaceholder":
+    "Which data structure follows LIFO order? | A stack. | The last element added is the first one removed.",
+  "general.front": "Question or concept",
+  "general.back": "Answer or explanation",
+  "general.concept": "Concept",
+  "general.example": "Example or context",
+  "general.note": "Note or clarification",
+  "general.notePrefix": "Note: ",
+  "general.aiConceptHint":
+    "Describe the subject and what you want to remember. You can paste your notes as a reference.",
+  "general.aiConceptPlaceholder":
+    "Data structures: stacks, queues, lists and trees",
+  "general.aiExtras": "Include an example and explanation on each card",
+  "general.recallHint": "Think of the answer before flipping.",
+  "general.reviewHint": "Try to recall the answer before revealing it.",
+  "general.otherPractices":
+    "Explore your cards, choose an answer or review at your own pace.",
+  "general.choiceMode": "Choose the answer",
+  "general.chooseAnswer": "Choose the correct answer.",
+  "general.modeDescription.elegir":
+    "Choose the correct answer from four options.",
+  "general.modeDescription.explorar":
+    "Read the questions, answers and their context.",
+  "general.modeDescription.revisar":
+    "Recall the answer and check it when you reveal it.",
+  "general.modeDescription.completar": "Review the question and its answer.",
+  "inicio.demoGeneralFront": "Which data structure follows LIFO order?",
+  "inicio.demoGeneralBack": "A stack",
+  "inicio.demoGeneralContext":
+    "The last element added is the first one removed.",
   // -------------------------------------------------------------------------
   // Común
   // -------------------------------------------------------------------------
@@ -67,7 +112,8 @@ export const en: SpanishMessages = {
   "account.signUp": "Sign up",
   "account.yourAccount": "Your account",
   "account.signOut": "Sign out",
-  "footer.tagline": "Frasevia — learn English from phrases people really said.",
+  "footer.tagline":
+    "Frasevia. Learn languages and remember what matters to you.",
   "footer.exploreDecks": "Explore decks",
 
   // -------------------------------------------------------------------------
@@ -88,14 +134,14 @@ export const en: SpanishMessages = {
   // -------------------------------------------------------------------------
   // Portada
   // -------------------------------------------------------------------------
-  "inicio.metaTitle": "Frasevia — learn English from useful phrases",
+  "inicio.metaTitle": "Frasevia · learn and review with flashcards",
   "inicio.metaDescription":
-    "English decks with real examples for Spanish speakers. Explore, build your own decks and track your progress.",
+    "Flashcards for languages and any subject. Explore, create your decks and schedule your next reviews.",
   "inicio.eyebrow": "A little each day",
   "inicio.titleLead": "Think. Flip.",
   "inicio.titleAccent": " Remember",
   "inicio.body":
-    "Learn English with cards that feel like paper. Recall the answer and choose when to review it again.",
+    "Languages, notes and new ideas. Recall the answer and choose when to review it again.",
   "inicio.ctaExplore": "Explore decks",
   "inicio.ctaSignUp": "Create an account",
   "inicio.cardsTitle": "Recall it before you look",
@@ -103,16 +149,16 @@ export const en: SpanishMessages = {
     "Read the prompt, think of your answer and flip the card when you're ready.",
   "inicio.pillar1.title": "Cards with context",
   "inicio.pillar1.body":
-    "Every word or phrase brings its example, its translation and a usage note, so the context lands before the definition does.",
+    "Words, questions and concepts with examples and notes to help you remember.",
   "inicio.pillar2.title": "One prompt, one answer",
   "inicio.pillar2.body":
     "Mental recall keeps practice direct: remember, compare and choose when to return.",
   "inicio.pillar3.title": "At your own pace",
   "inicio.pillar3.body":
     "No timer and no required streaks. You decide when each card comes back.",
-  "inicio.startTitle": "Start with the basics deck",
+  "inicio.startTitle": "A deck for whatever you want to learn",
   "inicio.startBody":
-    "Greetings, introductions, basic questions, numbers, schedules and the verbs you use every day.",
+    "Create cards on any subject or start with our English decks.",
   "inicio.tagBasics": "English from the basics",
   "inicio.tagDevs": "English for developers",
   "inicio.seeCatalog": "See the catalog",
@@ -122,12 +168,11 @@ export const en: SpanishMessages = {
   "inicio.ctaLibrary": "Go to my library",
   "inicio.noStreaks": "At your own pace, with no required streaks.",
   "inicio.demoDirection": "SPANISH → ENGLISH",
-  "inicio.demoQuestion": "How would you say it in English?",
   "inicio.demoHint": "Think of the answer before you flip.",
   "inicio.demoAnswerLabel": "ANSWER",
   "inicio.demoMeaning": "What is the base salary for this role?",
   "inicio.stepRemember": "Recall",
-  "inicio.stepRememberBody": "Read the Spanish prompt and think of the answer.",
+  "inicio.stepRememberBody": "Read the card and think of the answer.",
   "inicio.stepFlip": "Flip the card",
   "inicio.stepFlipBody": "Reveal the answer when you're ready.",
   "inicio.stepSchedule": "Choose the next review",
@@ -200,7 +245,7 @@ export const en: SpanishMessages = {
   // -------------------------------------------------------------------------
   "explorar.metaTitle": "Explore decks — Frasevia",
   "explorar.metaDescription":
-    "Public English decks with examples and translations into Spanish.",
+    "Public decks for languages and general review. Discover cards about anything you want to learn.",
   "explorar.eyebrow": "Public catalog",
   "explorar.title": "Explore decks",
   "explorar.description":
@@ -217,6 +262,8 @@ export const en: SpanishMessages = {
   "explorar.emptyNoDecksTitle": "There are no public decks yet",
   "explorar.emptyResultsBody":
     "No deck matches “{query}”. Try a different word.",
+  "explorar.emptyTypeBody":
+    "There are no public decks of this type yet. Try all topics or create your own.",
   "explorar.emptyNoDecksBody":
     "Be the first to share a deck: make your own and publish it.",
   "explorar.seeAll": "See all",
@@ -227,7 +274,7 @@ export const en: SpanishMessages = {
   // -------------------------------------------------------------------------
   "biblioteca.metaTitle": "My library — Frasevia",
   "biblioteca.eyebrow": "A little each day",
-  "biblioteca.title": "Your English, one card at a time",
+  "biblioteca.title": "What you learn, one card at a time",
   "biblioteca.description": "A little review to keep moving forward.",
   "biblioteca.createWithAi": "Create with AI",
   "biblioteca.createDeck": "Create a deck",
@@ -236,7 +283,7 @@ export const en: SpanishMessages = {
   "biblioteca.loadErrorTitle": "Your library could not be loaded",
   "biblioteca.emptyTitle": "Your library is empty",
   "biblioteca.emptyDescription":
-    "Build a deck from your own words and phrases, or copy one of the public decks to change it however you like.",
+    "Create a language or general review deck, or copy a public deck to make it your own.",
   "biblioteca.noCards": "No cards yet",
   "biblioteca.notPracticed": "Not practised yet",
   "biblioteca.progressAria": "{learned} of {total} cards learned in {deck}",
@@ -367,8 +414,6 @@ export const en: SpanishMessages = {
   "estudiar.pendingLabel": "Due",
   "estudiar.newLabel": "New",
   "estudiar.direction": "{source} → {target}",
-  "estudiar.promptEnglish": "How would you say it in English?",
-  "estudiar.promptSpanish": "How would you say it in Spanish?",
   "estudiar.recallHint": "Recall the full expression.",
   "estudiar.responseLabel": "ANSWER",
   "estudiar.toFlip": "to flip the card",
@@ -631,12 +676,12 @@ export const en: SpanishMessages = {
   "mazoEditar.noSupabaseShort": "Supabase is not set up.",
   "mazoEditar.titleRequired": "The title can't be left empty.",
   "mazoEditar.deckSaved": "Deck saved.",
-  "mazoEditar.cardNeedsFields": "The card needs a term and its meaning.",
+  "mazoEditar.cardNeedsFields": "Fill in both sides of the card.",
   "mazoEditar.cardAdded": "Card added.",
   "mazoEditar.cardDeleted": "Card deleted.",
   "mazoEditar.unknownAction": "Unrecognised action.",
   "mazoEditar.nothingToSave": "There were no changes to save.",
-  "mazoEditar.cardsNeedFields": "Every card needs a term and its meaning.",
+  "mazoEditar.cardsNeedFields": "Every card needs content on both sides.",
   "mazoEditar.cardsSaved": "Cards saved.",
   "mazoEditar.copyTag": "Copy",
   "mazoEditar.publicPage": "See public page",
@@ -859,7 +904,7 @@ export const en: SpanishMessages = {
     "The model returned nothing that looks like a deck. Try another model, or ask again.",
   "draft.malformed": "The model's reply was cut off or malformed. Try again.",
   "draft.noUsableCards":
-    "The model replied, but no card had both a term and a translation. Try again.",
+    "No complete cards found. Each card needs content on both sides.",
   "draft.defaultTitle": "AI-generated deck",
 
   // -------------------------------------------------------------------------

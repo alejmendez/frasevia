@@ -188,7 +188,7 @@ export async function generateDeckDraft(
     throw new GenerationError(t("generation.emptyResponse"));
   }
 
-  return parseDeckDraft(content);
+  return parseDeckDraft(content, options.request.studyMode);
 }
 
 /**

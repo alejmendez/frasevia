@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Frasevia",
   "short_name": "Frasevia",
-  "description": "Repasa vocabulario en inglés y español.",
+  "description": "Aprende idiomas y repasa cualquier tema con tarjetas.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

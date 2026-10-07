@@ -198,6 +198,7 @@ export function checkTypedAnswer(input: string, answers: string[]): boolean {
 export function buildFillInTheBlank(
   card: StudyCard,
 ): { sentence: string; answer: string; answers: string[] } | null {
+  if (card.studyMode === "general") return null;
   const hasDirection =
     card.targetLanguage === "en" || card.targetLanguage === "es";
   const answer = hasDirection ? card.meaningEs : card.term;

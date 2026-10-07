@@ -162,9 +162,12 @@ export default function MazoPublico({
               <Tag tone="brand">{tr("biblioteca.official")}</Tag>
             ) : null}
             {deck.level ? <Tag tone="accent">{deck.level}</Tag> : null}
-            <Tag>
-              {deck.source_language} → {deck.target_language}
-            </Tag>
+            <Tag>{tr(`studyMode.${deck.study_mode}`)}</Tag>
+            {deck.study_mode === "language" ? (
+              <Tag>
+                {deck.source_language} → {deck.target_language}
+              </Tag>
+            ) : null}
           </div>
           <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl">
             {deck.title}
@@ -249,7 +252,9 @@ export default function MazoPublico({
                 <Card className="h-full">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs text-ink-faint">
-                      {cardKindLabel(card.kind)}
+                      {deck.study_mode === "general" && card.kind === "word"
+                        ? tr("general.concept")
+                        : cardKindLabel(card.kind)}
                     </span>
                   </div>
                   <p className="font-display text-lg text-brand">{card.term}</p>

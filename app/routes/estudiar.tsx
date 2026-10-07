@@ -99,7 +99,9 @@ export async function clientLoader({
 
     const cards: StudyCard[] = queueResult.cards.map((row) => {
       const spanishToEnglish =
-        row.source_language === "es" && row.target_language === "en";
+        row.study_mode !== "general" &&
+        row.source_language === "es" &&
+        row.target_language === "en";
       return {
         id: row.card_id,
         term: spanishToEnglish ? row.meaning_es : row.term,
@@ -111,6 +113,7 @@ export async function clientLoader({
         sourceLanguage: row.source_language,
         targetLanguage: row.target_language,
         deckTitle: row.deck_title,
+        studyMode: row.study_mode,
       };
     });
     const reviewStates: CardReviewState[] = queueResult.cards.map((row) => ({
@@ -158,7 +161,11 @@ export async function clientLoader({
     throw data({ message: progressError }, { status: 500 });
   }
 
-  const direction = reviewDirection(deck.source_language, deck.target_language);
+  const direction = reviewDirection(
+    deck.source_language,
+    deck.target_language,
+    deck.study_mode,
+  );
   const [reviewResult, levelsResult] = await Promise.all([
     listCardReviewStates(
       session.supabase,
@@ -180,7 +187,12 @@ export async function clientLoader({
     scope: "deck" as const,
     deck,
     cards: cards.map((card) => ({
-      ...toStudyCard(card, deck.source_language, deck.target_language),
+      ...toStudyCard(
+        card,
+        deck.source_language,
+        deck.target_language,
+        deck.study_mode,
+      ),
       direction,
       sourceLanguage: deck.source_language,
       targetLanguage: deck.target_language,
@@ -367,7 +379,11 @@ export default function Estudiar({ loaderData }: Route.ComponentProps) {
                 {tr("estudiar.otherPractices")}
               </summary>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                {tr("estudiar.otherPracticesHint")}
+                {tr(
+                  deck?.study_mode === "general"
+                    ? "general.otherPractices"
+                    : "estudiar.otherPracticesHint",
+                )}
               </p>
               <div className="mt-5">
                 <SessionRunner
@@ -779,10 +795,17 @@ function MemoryReviewSession({
     orientReviewCard(item.card, item.direction);
   const { front: frontSpeechLanguage, answer: answerSpeechLanguage } =
     reviewCardSpeechLanguages(item.direction);
-  const targetExample =
-    targetLanguage === "en" ? item.card.exampleEn : item.card.exampleEs;
-  const exampleTranslation =
-    sourceLanguage === "en" ? item.card.exampleEn : item.card.exampleEs;
+  const general = item.card.studyMode === "general";
+  const targetExample = general
+    ? item.card.exampleEn
+    : targetLanguage === "en"
+      ? item.card.exampleEn
+      : item.card.exampleEs;
+  const exampleTranslation = general
+    ? null
+    : sourceLanguage === "en"
+      ? item.card.exampleEn
+      : item.card.exampleEs;
   const answeredCount = Math.min(index, items.length);
 
   return (
@@ -814,10 +837,12 @@ function MemoryReviewSession({
             <span aria-hidden="true" className="paper-tape" />
             <div className="paper-card__margin min-h-80 pl-6 sm:pl-9">
               <p className="text-xs font-bold tracking-[0.16em] text-brand uppercase">
-                {tr("estudiar.direction", {
-                  source: sourceLanguage.toUpperCase(),
-                  target: targetLanguage.toUpperCase(),
-                })}
+                {general
+                  ? tr("studyMode.general")
+                  : tr("estudiar.direction", {
+                      source: sourceLanguage.toUpperCase(),
+                      target: targetLanguage.toUpperCase(),
+                    })}
               </p>
               {item.card.deckTitle ? (
                 <p className="mt-2 text-xs text-ink-faint">
@@ -827,27 +852,23 @@ function MemoryReviewSession({
               <h2
                 ref={frontHeadingRef}
                 tabIndex={-1}
-                className="handwritten mt-5 text-2xl leading-snug text-brand outline-none sm:text-3xl"
-              >
-                {tr(
-                  targetLanguage === "es"
-                    ? "estudiar.promptSpanish"
-                    : "estudiar.promptEnglish",
+                lang={general ? sourceLanguage : frontSpeechLanguage}
+                className={cx(
+                  "handwritten mt-8 break-words leading-tight text-brand outline-none",
+                  general ? "text-3xl sm:text-5xl" : "text-5xl sm:text-7xl",
                 )}
-              </h2>
-              <p
-                lang={frontSpeechLanguage}
-                className="handwritten mt-8 break-words text-5xl leading-tight text-brand sm:text-7xl"
               >
                 {sourceText}
-              </p>
-              <PronunciationControls
-                key={`${item.card.id}:${item.direction}:front`}
-                text={sourceText}
-                language={frontSpeechLanguage}
-              />
+              </h2>
+              {general ? null : (
+                <PronunciationControls
+                  key={`${item.card.id}:${item.direction}:front`}
+                  text={sourceText}
+                  language={frontSpeechLanguage}
+                />
+              )}
               <p className="handwritten mt-8 text-xl text-ink-soft sm:text-2xl">
-                {tr("estudiar.recallHint")}
+                {tr(general ? "general.recallHint" : "estudiar.recallHint")}
               </p>
             </div>
           </article>
@@ -864,18 +885,23 @@ function MemoryReviewSession({
               <h2
                 ref={backHeadingRef}
                 tabIndex={revealed ? -1 : undefined}
-                lang={answerSpeechLanguage}
-                className="handwritten mt-3 break-words text-5xl leading-tight text-brand outline-none sm:text-7xl"
+                lang={general ? sourceLanguage : answerSpeechLanguage}
+                className={cx(
+                  "handwritten mt-3 break-words leading-tight text-brand outline-none",
+                  general ? "text-3xl sm:text-5xl" : "text-5xl sm:text-7xl",
+                )}
               >
                 {targetText}
               </h2>
-              <PronunciationControls
-                key={`${item.card.id}:${item.direction}:answer`}
-                text={targetText}
-                language={answerSpeechLanguage}
-              />
+              {general ? null : (
+                <PronunciationControls
+                  key={`${item.card.id}:${item.direction}:answer`}
+                  text={targetText}
+                  language={answerSpeechLanguage}
+                />
+              )}
               <p
-                lang={frontSpeechLanguage}
+                lang={general ? sourceLanguage : frontSpeechLanguage}
                 className="handwritten mt-1 text-2xl text-ink-soft sm:text-3xl"
               >
                 {sourceText}
@@ -888,11 +914,13 @@ function MemoryReviewSession({
                   >
                     {targetExample}
                   </p>
-                  <PronunciationControls
-                    key={`${item.card.id}:${item.direction}:example`}
-                    text={targetExample}
-                    language={targetLanguage}
-                  />
+                  {general ? null : (
+                    <PronunciationControls
+                      key={`${item.card.id}:${item.direction}:example`}
+                      text={targetExample}
+                      language={targetLanguage}
+                    />
+                  )}
                   {exampleTranslation ? (
                     <p
                       lang={sourceLanguage}
@@ -906,7 +934,7 @@ function MemoryReviewSession({
               {item.card.usageNote ? (
                 <p className="mt-4 border-t border-line pt-3 text-sm leading-relaxed text-ink-soft">
                   <span className="font-medium text-ink">
-                    {tr("estudiar.usageNote")}
+                    {tr(general ? "general.notePrefix" : "estudiar.usageNote")}
                   </span>
                   {item.card.usageNote}
                 </p>
@@ -1109,7 +1137,11 @@ function SessionRunner({
         </div>
       ) : null}
 
-      <ModePicker mode={plan.mode} onChange={onModeChange} />
+      <ModePicker
+        mode={plan.mode}
+        onChange={onModeChange}
+        general={cards[0]?.studyMode === "general"}
+      />
 
       <div className="mt-6">
         <div className="mb-2 flex items-center justify-between text-xs text-ink-faint">
@@ -1119,7 +1151,11 @@ function SessionRunner({
               total: plan.items.length,
             })}
           </span>
-          <span>{modeLabel(plan.mode)}</span>
+          <span>
+            {cards[0]?.studyMode === "general" && plan.mode === "elegir"
+              ? tr("general.choiceMode")
+              : modeLabel(plan.mode)}
+          </span>
         </div>
         <ProgressBar
           value={index}
@@ -1150,9 +1186,11 @@ function SessionRunner({
 function ModePicker({
   mode,
   onChange,
+  general,
 }: {
   mode: StudyMode;
   onChange: (mode: StudyMode) => void;
+  general: boolean;
 }) {
   const tr = useT();
 
@@ -1162,31 +1200,39 @@ function ModePicker({
         {tr("estudiar.modeLegend")}
       </legend>
       <div className="flex flex-wrap gap-2">
-        {STUDY_MODES.map((option) => {
-          const active = option === mode;
-          return (
-            <label
-              key={option}
-              className={`cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors ${
-                active
-                  ? "border-brand bg-brand-muted font-medium text-brand-strong"
-                  : "border-line-strong bg-paper-raised text-ink-soft hover:bg-paper-sunken"
-              }`}
-            >
-              <input
-                type="radio"
-                name="modo"
-                value={option}
-                checked={active}
-                onChange={() => onChange(option)}
-                className="sr-only"
-              />
-              {modeLabel(option)}
-            </label>
-          );
-        })}
+        {STUDY_MODES.filter((option) => !general || option !== "completar").map(
+          (option) => {
+            const active = option === mode;
+            return (
+              <label
+                key={option}
+                className={`cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  active
+                    ? "border-brand bg-brand-muted font-medium text-brand-strong"
+                    : "border-line-strong bg-paper-raised text-ink-soft hover:bg-paper-sunken"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="modo"
+                  value={option}
+                  checked={active}
+                  onChange={() => onChange(option)}
+                  className="sr-only"
+                />
+                {general && option === "elegir"
+                  ? tr("general.choiceMode")
+                  : modeLabel(option)}
+              </label>
+            );
+          },
+        )}
       </div>
-      <p className="mt-2 text-xs text-ink-faint">{modeDescription(mode)}</p>
+      <p className="mt-2 text-xs text-ink-faint">
+        {general
+          ? tr(`general.modeDescription.${mode}`)
+          : modeDescription(mode)}
+      </p>
     </fieldset>
   );
 }
@@ -1251,9 +1297,17 @@ function Explore({
   const tr = useT();
   const targetLanguage = item.card.targetLanguage ?? "en";
   const targetExample =
-    targetLanguage === "es" ? item.card.exampleEs : item.card.exampleEn;
+    item.card.studyMode === "general"
+      ? item.card.exampleEn
+      : targetLanguage === "es"
+        ? item.card.exampleEs
+        : item.card.exampleEn;
   const sourceExample =
-    targetLanguage === "es" ? item.card.exampleEn : item.card.exampleEs;
+    item.card.studyMode === "general"
+      ? null
+      : targetLanguage === "es"
+        ? item.card.exampleEn
+        : item.card.exampleEs;
 
   return (
     <div>
@@ -1278,7 +1332,11 @@ function Explore({
       {item.card.usageNote ? (
         <p className="mt-4 rounded-lg bg-paper-sunken px-4 py-3 text-sm text-ink-soft">
           <span className="font-medium text-ink">
-            {tr("estudiar.usageNote")}
+            {tr(
+              item.card.studyMode === "general"
+                ? "general.notePrefix"
+                : "estudiar.usageNote",
+            )}
           </span>
           {item.card.usageNote}
         </p>
@@ -1305,9 +1363,17 @@ function Review({
   const tr = useT();
   const targetLanguage = item.card.targetLanguage ?? "en";
   const targetExample =
-    targetLanguage === "es" ? item.card.exampleEs : item.card.exampleEn;
+    item.card.studyMode === "general"
+      ? item.card.exampleEn
+      : targetLanguage === "es"
+        ? item.card.exampleEs
+        : item.card.exampleEn;
   const sourceExample =
-    targetLanguage === "es" ? item.card.exampleEn : item.card.exampleEs;
+    item.card.studyMode === "general"
+      ? null
+      : targetLanguage === "es"
+        ? item.card.exampleEn
+        : item.card.exampleEs;
 
   return (
     <div>
@@ -1336,7 +1402,11 @@ function Review({
         </div>
       ) : (
         <p className="mt-4 text-sm text-ink-faint">
-          {tr("estudiar.reviewHint")}
+          {tr(
+            item.card.studyMode === "general"
+              ? "general.reviewHint"
+              : "estudiar.reviewHint",
+          )}
         </p>
       )}
 
@@ -1384,7 +1454,13 @@ function ChooseMeaning({
   return (
     <div>
       <p className="font-display text-2xl text-brand">{item.card.term}</p>
-      <p className="mt-1 text-sm text-ink-soft">{tr("estudiar.whatMeaning")}</p>
+      <p className="mt-1 text-sm text-ink-soft">
+        {tr(
+          item.card.studyMode === "general"
+            ? "general.chooseAnswer"
+            : "estudiar.whatMeaning",
+        )}
+      </p>
 
       <div className="mt-5 grid gap-2">
         {item.options.map((option) => {

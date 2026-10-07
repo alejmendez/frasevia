@@ -14,7 +14,10 @@
  * ir dentro del propio texto.
  */
 
+import type { DeckStudyMode } from "~/lib/types";
+
 export interface DraftRequest {
+  studyMode?: DeckStudyMode;
   /** La idea que escribió la persona, tal cual. */
   concept: string;
   /** Cuántas tarjetas se piden. */
@@ -77,7 +80,26 @@ const SYSTEM_PROMPT = [
 ].join("\n");
 
 /** Details del encargo, en el mismo orden para los dos caminos. */
+const GENERAL_SYSTEM_PROMPT = [
+  "Eres un profesor que crea tarjetas de repaso sobre cualquier materia.",
+  "Responde únicamente con un objeto JSON válido, sin prosa ni bloques de código.",
+  'Formato: {"title":"título","description":"descripción","level":"dificultad opcional","cards":[{"kind":"question","front":"pregunta o concepto","back":"respuesta o explicación","example":"ejemplo o contexto opcional","note":"aclaración opcional","tags":["tema"]}]}',
+  "Crea preguntas concretas, con una respuesta clara y correcta. Cubre una idea por tarjeta.",
+  "No repitas preguntas ni inventes hechos. No incluyas traducciones ni ejercicios de idiomas.",
+  "Cada front debe tener entre 1 y 200 caracteres y cada back entre 1 y 400.",
+  "Los ejemplos y notas no deben superar 300 caracteres. Usa kind question o rule.",
+].join("\n");
+
 function briefLines(request: DraftRequest): string[] {
+  if (request.studyMode === "general") {
+    return [
+      `Crea un mazo de repaso general de ${request.cardCount} tarjetas sobre el tema indicado.`,
+      `Escribe preguntas y respuestas en ${languageName(request.sourceLanguage)}.`,
+      request.level.trim()
+        ? `Dificultad: ${request.level.trim()}.`
+        : "Adapta la dificultad al tema.",
+    ];
+  }
   const source = languageName(request.sourceLanguage);
   const target = languageName(request.targetLanguage);
   const level = request.level.trim();
@@ -103,6 +125,11 @@ function conceptBlock(concept: string): string[] {
 }
 
 function extrasLine(request: DraftRequest): string {
+  if (request.studyMode === "general") {
+    return request.withExtras
+      ? "Incluye un ejemplo o contexto en `example` y una explicación breve en `note`."
+      : "Los campos `example` y `note` son opcionales; déjalos vacíos si no aportan contexto.";
+  }
   return request.withExtras
     ? "Incluye `example_en`, `example_es` y `usage_note` en todas las tarjetas."
     : "Incluye `example_en` y `example_es` solo cuando el ejemplo aclare algo; si no, déjalos vacíos.";
@@ -123,7 +150,11 @@ export function buildDraftPrompt(request: DraftRequest): PromptPair {
     .filter((line) => line !== "")
     .join("\n");
 
-  return { system: SYSTEM_PROMPT, user };
+  return {
+    system:
+      request.studyMode === "general" ? GENERAL_SYSTEM_PROMPT : SYSTEM_PROMPT,
+    user,
+  };
 }
 
 /**
@@ -135,7 +166,7 @@ export function buildDraftPrompt(request: DraftRequest): PromptPair {
  */
 export function buildStandalonePrompt(request: DraftRequest): string {
   return [
-    SYSTEM_PROMPT,
+    request.studyMode === "general" ? GENERAL_SYSTEM_PROMPT : SYSTEM_PROMPT,
     "",
     "Encargo:",
     "",

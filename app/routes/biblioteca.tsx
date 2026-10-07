@@ -241,6 +241,7 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
   const { revalidate } = useRevalidator();
   const [search, setSearch] = useState("");
   const [visibility, setVisibility] = useState<VisibilityFilter>("all");
+  const [studyMode, setStudyMode] = useState("all");
 
   useEffect(() => {
     let lastRefresh = 0;
@@ -295,9 +296,10 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
           .includes(needle);
       const matchesVisibility =
         visibility === "all" || deck.visibility === visibility;
-      return matchesText && matchesVisibility;
+      const matchesMode = studyMode === "all" || deck.study_mode === studyMode;
+      return matchesText && matchesVisibility && matchesMode;
     });
-  }, [decks, locale, search, visibility]);
+  }, [decks, locale, search, visibility, studyMode]);
 
   useEffect(() => {
     const next = upcoming[0];
@@ -454,6 +456,18 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <label>
+            <span className="sr-only">{tr("studyMode.filterLabel")}</span>
+            <select
+              className={`${inputClass} min-h-11`}
+              value={studyMode}
+              onChange={(event) => setStudyMode(event.target.value)}
+            >
+              <option value="all">{tr("studyMode.all")}</option>
+              <option value="language">{tr("studyMode.language")}</option>
+              <option value="general">{tr("studyMode.general")}</option>
+            </select>
+          </label>
           <label className="relative min-w-56 flex-1 sm:w-64 sm:flex-none">
             <span className="sr-only">{tr("biblioteca.searchLabel")}</span>
             <MagnifyingGlassIcon

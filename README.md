@@ -1,15 +1,15 @@
 # Frasevia
 
-Aplicación para aprender inglés desde el español: se exploran mazos de contenido,
-se crean los propios y se registra el progreso de estudio.
+Aplicación de tarjetas para aprender idiomas y repasar cualquier tema: se
+exploran mazos, se crean los propios y se programa el próximo repaso.
 
-- **Interfaz en español**, contenido de aprendizaje en inglés con explicación y
-  traducción al español.
+- **Interfaz en español e inglés**. Cada mazo elige entre **Idiomas** (palabras,
+  frases y traducciones) y **Repaso general** (preguntas, conceptos y respuestas).
 - Cuatro formas de practicar: explorar, elegir significado, completar la frase y
   repaso.
 - Sesiones cortas, sin rachas obligatorias.
-- El modelo guarda el par de idiomas en cada mazo, así que más adelante se
-  pueden agregar otros pares sin cambiar las tablas.
+- Los mazos de repaso general usan un solo idioma de contenido, ejemplos y notas
+  opcionales. Comparten el calendario y la cola de pendientes con los de idiomas.
 
 No incluye pagos ni funciones sociales. El objetivo del MVP es el circuito
 completo: descubrir → copiar o crear → estudiar → ver el progreso.
@@ -91,10 +91,22 @@ En el panel de Supabase, abre el **SQL Editor** y ejecuta:
 3. `supabase/migrations/20261003100000_include_public_deck_reviews.sql` —
    incluye en la agenda personal las fichas estudiadas directamente desde un
    mazo público y usa la hora de cada consulta para determinar qué ya venció.
-4. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
+4. `supabase/migrations/20261007090000_general_review_decks.sql` — añade el tipo
+   de estudio, conserva los mazos existentes como idiomas y adapta copia, cola,
+   agenda y guardado de repasos generales.
+5. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
 
 El seed es idempotente (identificadores fijos y `on conflict do nothing`), así
 que se puede volver a aplicar sin duplicar nada.
+
+En una instalación existente aplica la migración del 7 de octubre antes de
+publicar el frontend actualizado. No vuelve a crear tarjetas ni borra progreso.
+El tipo se elige por mazo para mantener coherentes sus formularios y prácticas;
+puede cambiarse en el editor. El historial se conserva, y la cola muestra solo
+las direcciones del tipo actual. El repaso general usa la dirección `general`.
+Los nombres históricos `term`, `meaning_es` y `example_en` se conservan en la
+base: en un mazo general guardan pregunta, respuesta y contexto respectivamente.
+El menú rápido de traducción solo ofrece mazos de idiomas compatibles.
 
 La migración de repaso es aditiva: conserva `user_card_progress` y las
 estadísticas anteriores. Como esos registros no guardaban una próxima fecha,

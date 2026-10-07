@@ -8,6 +8,7 @@ import { Button, ButtonLink, Card } from "~/components/ui";
 import { useAuth } from "~/lib/auth-context";
 import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
+import type { DeckStudyMode } from "~/lib/types";
 
 const STEPS = [
   { number: "01", title: "inicio.stepRemember", icon: "card" },
@@ -26,6 +27,8 @@ export default function Inicio() {
   const tr = useT();
   const { status } = useAuth();
   const [revealed, setRevealed] = useState(false);
+  const [demoMode, setDemoMode] = useState<DeckStudyMode>("language");
+  const general = demoMode === "general";
 
   return (
     <div>
@@ -62,6 +65,23 @@ export default function Inicio() {
         </div>
 
         <div className="relative px-2 py-5 sm:px-8 sm:py-10">
+          <fieldset className="relative z-10 mb-5 flex justify-center gap-2">
+            <legend className="sr-only">{tr("studyMode.label")}</legend>
+            {(["language", "general"] as const).map((mode) => (
+              <Button
+                key={mode}
+                type="button"
+                variant={demoMode === mode ? "primary" : "secondary"}
+                aria-pressed={demoMode === mode}
+                onClick={() => {
+                  setDemoMode(mode);
+                  setRevealed(false);
+                }}
+              >
+                {tr(`studyMode.${mode}`)}
+              </Button>
+            ))}
+          </fieldset>
           <div
             aria-hidden="true"
             className="absolute inset-8 -rotate-3 rounded-[42%] bg-brand-muted/80"
@@ -78,30 +98,33 @@ export default function Inicio() {
                     {tr("inicio.demoAnswerLabel")}
                   </p>
                   <p className="handwritten mt-4 text-6xl leading-tight text-brand sm:text-8xl">
-                    base salary
+                    {general ? tr("inicio.demoGeneralBack") : "base salary"}
                   </p>
                   <p className="handwritten mt-1 text-3xl text-ink-soft sm:text-4xl">
-                    sueldo base
+                    {general ? tr("inicio.demoGeneralFront") : "sueldo base"}
                   </p>
                   <div className="mt-6 border-t border-line pt-5">
                     <p className="handwritten text-2xl leading-snug text-brand sm:text-3xl">
-                      What is the base salary for this role?
+                      {general
+                        ? tr("inicio.demoGeneralContext")
+                        : "What is the base salary for this role?"}
                     </p>
-                    <p className="mt-3 text-sm text-ink-soft">
-                      {tr("inicio.demoMeaning")}
-                    </p>
+                    {general ? null : (
+                      <p className="mt-3 text-sm text-ink-soft">
+                        {tr("inicio.demoMeaning")}
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : (
                 <div className="flex min-h-[21rem] flex-col justify-center sm:min-h-[26rem]">
                   <p className="text-xs font-bold tracking-[0.16em] text-brand uppercase">
-                    {tr("inicio.demoDirection")}
+                    {tr(general ? "studyMode.general" : "inicio.demoDirection")}
                   </p>
-                  <p className="handwritten mt-7 text-2xl text-brand sm:text-3xl">
-                    {tr("inicio.demoQuestion")}
-                  </p>
-                  <p className="handwritten mt-5 text-6xl leading-tight text-brand sm:text-8xl">
-                    sueldo base
+                  <p
+                    className={`handwritten mt-5 leading-tight text-brand ${general ? "text-4xl sm:text-5xl" : "text-6xl sm:text-8xl"}`}
+                  >
+                    {general ? tr("inicio.demoGeneralFront") : "sueldo base"}
                   </p>
                   <p className="handwritten mt-8 text-xl text-ink-soft sm:text-2xl">
                     {tr("inicio.demoHint")}

@@ -13,10 +13,12 @@ import {
   textareaClass,
 } from "~/components/ui";
 import { slugPreview } from "~/features/decks/slug";
+import { StudyModeField } from "~/features/decks/study-mode-field";
 import { deckLanguages } from "~/lib/languages";
 import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
+import type { DeckStudyMode } from "~/lib/types";
 import type { Route } from "./+types/mazo-nuevo";
 
 export function meta() {
@@ -47,6 +49,7 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const tr = useT();
   const [title, setTitle] = useState("");
+  const [studyMode, setStudyMode] = useState<DeckStudyMode>("language");
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState("");
   const [sourceLanguage, setSourceLanguage] = useState("es");
@@ -88,9 +91,11 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
         author_id: session.userId,
         title: title.trim(),
         description: description.trim(),
+        study_mode: studyMode,
         level: level.trim() || null,
         source_language: sourceLanguage,
-        target_language: targetLanguage,
+        target_language:
+          studyMode === "general" ? sourceLanguage : targetLanguage,
         visibility,
       })
       .select("id")
@@ -112,7 +117,9 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
       const { error: cardsError } = await session.supabase
         .from("cards")
         .insert(
-          lines.map((line, index) => parseSeedLine(line, deck.id, index)),
+          lines.map((line, index) =>
+            parseSeedLine(line, deck.id, index, studyMode),
+          ),
         );
 
       if (cardsError) {
@@ -153,6 +160,7 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {formError ? <Alert variant="error">{formError}</Alert> : null}
+        <StudyModeField value={studyMode} onChange={setStudyMode} />
 
         <Field
           label={tr("deckField.title")}
@@ -167,7 +175,11 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
             maxLength={120}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder={tr("mazoNuevo.titlePlaceholder")}
+            placeholder={tr(
+              studyMode === "general"
+                ? "general.titlePlaceholder"
+                : "mazoNuevo.titlePlaceholder",
+            )}
             className={inputClass}
           />
           {title.trim() ? (
@@ -193,7 +205,11 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
-            label={tr("deckField.sourceLanguage")}
+            label={tr(
+              studyMode === "general"
+                ? "general.contentLanguage"
+                : "deckField.sourceLanguage",
+            )}
             htmlFor="source_language"
           >
             <Select
@@ -209,36 +225,46 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
             </Select>
           </Field>
 
-          <Field
-            label={tr("deckField.targetLanguage")}
-            htmlFor="target_language"
-          >
-            <Select
-              id="target_language"
-              value={targetLanguage}
-              onChange={(event) => setTargetLanguage(event.target.value)}
+          {studyMode === "language" ? (
+            <Field
+              label={tr("deckField.targetLanguage")}
+              htmlFor="target_language"
             >
-              {languages.map((language) => (
-                <option key={language.code} value={language.code}>
-                  {language.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
+              <Select
+                id="target_language"
+                value={targetLanguage}
+                onChange={(event) => setTargetLanguage(event.target.value)}
+              >
+                {languages.map((language) => (
+                  <option key={language.code} value={language.code}>
+                    {language.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : null}
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             label={tr("deckField.level")}
             htmlFor="level"
-            hint={tr("deckField.levelHint")}
+            hint={tr(
+              studyMode === "general"
+                ? "general.levelHint"
+                : "deckField.levelHint",
+            )}
           >
             <input
               id="level"
               name="level"
               value={level}
               onChange={(event) => setLevel(event.target.value)}
-              placeholder={tr("mazoNuevo.levelPlaceholder")}
+              placeholder={tr(
+                studyMode === "general"
+                  ? "general.levelPlaceholder"
+                  : "mazoNuevo.levelPlaceholder",
+              )}
               className={inputClass}
             />
           </Field>
@@ -260,14 +286,18 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
         <Field
           label={tr("deckField.seed")}
           htmlFor="seed"
-          hint={tr("deckField.seedHint")}
+          hint={tr(
+            studyMode === "general" ? "general.seedHint" : "deckField.seedHint",
+          )}
         >
           <textarea
             id="seed"
             value={seedText}
             onChange={(event) => setSeedText(event.target.value)}
             placeholder={
-              "to push back a meeting | aplazar una reunión | Let's push back the meeting to Friday. | Aplacemos la reunión hasta el viernes."
+              studyMode === "general"
+                ? tr("general.seedPlaceholder")
+                : "to push back a meeting | aplazar una reunión | Let's push back the meeting to Friday. | Aplacemos la reunión hasta el viernes."
             }
             className={textareaClass}
           />
@@ -293,14 +323,19 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
  * Si faltan partes se guardan igual: es preferible una tarjeta incompleta que se
  * puede completar después en el editor, que rechazar el mazo entero.
  */
-function parseSeedLine(line: string, deckId: string, index: number) {
+function parseSeedLine(
+  line: string,
+  deckId: string,
+  index: number,
+  studyMode: DeckStudyMode,
+) {
   const [term = "", meaning = "", exampleEn = "", exampleEs = ""] = line
     .split("|")
     .map((part) => part.trim());
 
   return {
     deck_id: deckId,
-    kind: "word" as const,
+    kind: studyMode === "general" ? ("question" as const) : ("word" as const),
     term,
     meaning_es: meaning,
     example_en: exampleEn || null,

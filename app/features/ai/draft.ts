@@ -15,7 +15,7 @@
  */
 
 import { t } from "~/lib/locale";
-import type { CardKind } from "~/lib/types";
+import type { CardKind, DeckStudyMode } from "~/lib/types";
 
 /** Límites copiados de los `check` de `cards` en la migración inicial. */
 export const TERM_MAX = 200;
@@ -188,14 +188,25 @@ function toTags(value: unknown): string[] {
  * mazo con nueve tarjetas buenas que uno con diez donde la décima rompe el
  * guardado.
  */
-function toCard(value: unknown): DraftCard | null {
+function toCard(value: unknown, studyMode: DeckStudyMode): DraftCard | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return null;
   }
 
   const record = value as Record<string, unknown>;
   const term = clip(
-    pick(record, "term", "front", "word", "phrase", "texto", "english"),
+    pick(
+      record,
+      "term",
+      "front",
+      "question",
+      "pregunta",
+      "concept",
+      "word",
+      "phrase",
+      "texto",
+      "english",
+    ),
     TERM_MAX,
   );
   // `translation` va aquí y no en el ejemplo: lo habitual es que el modelo lo
@@ -209,6 +220,8 @@ function toCard(value: unknown): DraftCard | null {
       "meaning",
       "translation",
       "back",
+      "answer",
+      "respuesta",
       "traduccion",
     ),
     MEANING_MAX,
@@ -219,7 +232,11 @@ function toCard(value: unknown): DraftCard | null {
   }
 
   return {
-    kind: toKind(asText(record.kind)),
+    kind: asText(record.kind)
+      ? toKind(asText(record.kind))
+      : studyMode === "general"
+        ? "question"
+        : "word",
     term,
     meaningEs,
     exampleEn: optional(
@@ -263,7 +280,10 @@ function dedupeKey(card: DraftCard): string {
  * Lanza `DraftError` con un mensaje pensado para mostrarse tal cual cuando la
  * respuesta no contiene nada que se parezca a un mazo.
  */
-export function parseDeckDraft(raw: string): DeckDraft {
+export function parseDeckDraft(
+  raw: string,
+  studyMode: DeckStudyMode = "language",
+): DeckDraft {
   const text = stripFence(raw.trim());
   const slice = sliceJson(text);
 
@@ -295,7 +315,7 @@ export function parseDeckDraft(raw: string): DeckDraft {
   const seen = new Set<string>();
 
   for (const entry of rawCards) {
-    const card = toCard(entry);
+    const card = toCard(entry, studyMode);
     if (card === null) {
       continue;
     }

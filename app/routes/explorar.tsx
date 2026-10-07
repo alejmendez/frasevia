@@ -31,11 +31,17 @@ export function meta() {
  */
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const search = new URL(request.url).searchParams.get("q") ?? "";
+  const requestedMode = new URL(request.url).searchParams.get("tipo");
+  const studyMode =
+    requestedMode === "language" || requestedMode === "general"
+      ? requestedMode
+      : undefined;
 
-  const result = await listPublicDecks({ search });
+  const result = await listPublicDecks({ search, studyMode });
   return {
     ...result,
     query: search,
+    studyMode: studyMode ?? "all",
     configured: result.error !== "unconfigured",
   };
 }
@@ -55,7 +61,20 @@ export default function Explorar({ loaderData }: Route.ComponentProps) {
 
       {/* El buscador usa GET, así que la búsqueda queda en la URL y se puede
           compartir o marcar como favorita. */}
-      <Form method="get" role="search" className="mb-8 flex gap-2">
+      <Form method="get" role="search" className="mb-8 flex flex-wrap gap-2">
+        <label>
+          <span className="sr-only">{tr("studyMode.filterLabel")}</span>
+          <select
+            key={loaderData.studyMode}
+            name="tipo"
+            defaultValue={loaderData.studyMode}
+            className={inputClass}
+          >
+            <option value="all">{tr("studyMode.all")}</option>
+            <option value="language">{tr("studyMode.language")}</option>
+            <option value="general">{tr("studyMode.general")}</option>
+          </select>
+        </label>
         <label htmlFor="q" className="sr-only">
           {tr("explorar.searchLabel")}
         </label>
@@ -65,7 +84,7 @@ export default function Explorar({ loaderData }: Route.ComponentProps) {
           type="search"
           defaultValue={query}
           placeholder={tr("explorar.searchPlaceholder")}
-          className={inputClass}
+          className={`${inputClass} min-w-40 flex-1`}
         />
         <button
           type="submit"
@@ -73,7 +92,7 @@ export default function Explorar({ loaderData }: Route.ComponentProps) {
         >
           {tr("explorar.searchButton")}
         </button>
-        {searchParams.has("q") ? (
+        {searchParams.has("q") || searchParams.has("tipo") ? (
           <ButtonLink to="/explorar" variant="ghost">
             {tr("explorar.clear")}
           </ButtonLink>
@@ -91,17 +110,19 @@ export default function Explorar({ loaderData }: Route.ComponentProps) {
       ) : decks.length === 0 ? (
         <EmptyState
           title={
-            query
+            query || loaderData.studyMode !== "all"
               ? tr("explorar.emptyResultsTitle")
               : tr("explorar.emptyNoDecksTitle")
           }
           description={
             query
               ? tr("explorar.emptyResultsBody", { query })
-              : tr("explorar.emptyNoDecksBody")
+              : loaderData.studyMode !== "all"
+                ? tr("explorar.emptyTypeBody")
+                : tr("explorar.emptyNoDecksBody")
           }
           action={
-            query ? (
+            query || loaderData.studyMode !== "all" ? (
               <ButtonLink to="/explorar" variant="secondary">
                 {tr("explorar.seeAll")}
               </ButtonLink>
