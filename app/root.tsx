@@ -306,13 +306,13 @@ function AccountArea({
       <>
         <Link
           to="/iniciar-sesion"
-          className="rounded-lg px-3 py-2 text-sm text-ink-soft hover:bg-paper-sunken hover:text-ink"
+          className="button-interactive inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm text-ink-soft hover:bg-paper-sunken hover:text-ink"
         >
           {t("account.signIn")}
         </Link>
         <Link
           to="/crear-cuenta"
-          className="rounded-lg bg-brand-solid px-3.5 py-2 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
+          className="button-interactive inline-flex items-center justify-center rounded-lg bg-brand-solid px-3.5 py-2 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
         >
           {t("account.signUp")}
         </Link>
@@ -326,7 +326,7 @@ function AccountArea({
         to="/ajustes/repaso"
         aria-label={t("nav.reviewSettings")}
         title={t("nav.reviewSettings")}
-        className="inline-flex size-10 items-center justify-center rounded-lg border border-line bg-paper-raised text-ink-soft transition-colors hover:bg-paper-sunken hover:text-brand"
+        className="button-interactive inline-flex size-10 items-center justify-center rounded-lg border border-line bg-paper-raised text-ink-soft transition-colors hover:bg-paper-sunken hover:text-brand"
       >
         <GearSixIcon aria-hidden size={19} />
       </Link>
@@ -393,13 +393,13 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <div className="mt-8 flex justify-center gap-3">
         <Link
           to="/"
-          className="rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
+          className="button-interactive inline-flex items-center justify-center rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
         >
           {t("error.backHome")}
         </Link>
         <Link
           to="/explorar"
-          className="rounded-lg border border-line-strong bg-paper-raised px-4 py-2.5 text-sm text-ink hover:bg-paper-sunken"
+          className="button-interactive inline-flex items-center justify-center rounded-lg border border-line-strong bg-paper-raised px-4 py-2.5 text-sm text-ink hover:bg-paper-sunken"
         >
           {t("footer.exploreDecks")}
         </Link>

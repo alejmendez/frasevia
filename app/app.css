@@ -312,6 +312,76 @@ body {
   @apply outline-2 outline-offset-2 outline-brand;
 }
 
+/* Feedback táctil para botones: elevación al pasar y presión al pulsar. */
+:where(button:not(:disabled), a.button-interactive) {
+  cursor: pointer;
+  transition-property:
+    transform, box-shadow, background-color, border-color, color, opacity, filter;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (hover: hover) {
+  :where(button:not(:disabled), a.button-interactive):hover {
+    box-shadow:
+      0 3px 0 color-mix(in oklab, black 16%, transparent),
+      0 7px 14px color-mix(in oklab, black 9%, transparent);
+  }
+}
+
+:where(button:not(:disabled), a.button-interactive):active {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-accent) 13%, transparent),
+    color-mix(in oklab, var(--color-accent) 5%, transparent)
+  );
+  box-shadow:
+    inset 0 3px 7px color-mix(in oklab, black 24%, transparent),
+    0 0 0 3px color-mix(in oklab, var(--color-accent) 22%, transparent);
+  filter: brightness(0.96);
+}
+
+/* Los links de texto también reaccionan al cursor y al mantenerlos pulsados. */
+:where(a[href]:not([aria-disabled="true"]):not(.button-interactive)) {
+  transition-property:
+    color, background-color, box-shadow, filter, text-decoration-color;
+  transition-duration: 130ms;
+  transition-timing-function: ease-out;
+}
+
+@media (hover: hover) {
+  :where(a[href]:not([aria-disabled="true"]):not(.button-interactive)):hover {
+    text-decoration-line: underline;
+    text-decoration-color: var(--color-accent);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.2em;
+  }
+}
+
+:where(a[href]:not([aria-disabled="true"]):not(.button-interactive)):active {
+  border-radius: 0.2em;
+  background-color: color-mix(in oklab, var(--color-accent) 17%, transparent);
+  box-shadow:
+    inset 0 -2px 0 color-mix(in oklab, var(--color-accent) 48%, transparent);
+  filter: brightness(0.84);
+  text-decoration-line: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) {
+    :where(button:not(:disabled), a.button-interactive):hover {
+      transform: translateY(-1px);
+    }
+  }
+
+  :where(button:not(:disabled), a.button-interactive):active {
+    transform: translateY(2px) scale(0.975);
+  }
+}
+
 /* Los controles de formulario heredan la tipografía del documento. */
 input,
 select,

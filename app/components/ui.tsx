@@ -104,7 +104,7 @@ export function SectionTitle({
 // ---------------------------------------------------------------------------
 
 const BUTTON_BASE =
-  "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55";
+  "button-interactive inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55";
 
 const BUTTON_VARIANTS = {
   primary:
