@@ -305,6 +305,92 @@ export function LoadingState({ label }: { label?: string }) {
 }
 
 /**
+ * Reserva el espacio de una página mientras React Router espera sus datos.
+ * El modo de estudio se centra en la ficha; el de formulario imita sus campos.
+ */
+export function NavigationSkeleton({
+  label,
+  variant = "page",
+}: {
+  label: string;
+  variant?: "form" | "page" | "study";
+}) {
+  return (
+    <div
+      role="status"
+      aria-label={label}
+      className="mx-auto min-h-[60dvh] w-full max-w-7xl animate-pulse px-5 py-10 motion-reduce:animate-none sm:px-8"
+    >
+      <span className="sr-only">{label}</span>
+      {variant === "study" ? (
+        <div
+          aria-hidden="true"
+          className="mx-auto max-w-2xl space-y-6 pt-8 sm:pt-14"
+        >
+          <div className="mx-auto h-4 w-32 rounded-full bg-paper-sunken" />
+          <div className="rounded-card border border-line bg-paper-raised p-6 sm:p-10">
+            <div className="mx-auto h-3 w-24 rounded-full bg-paper-sunken" />
+            <div className="mx-auto mt-6 h-10 w-3/4 rounded-lg bg-paper-sunken" />
+            <div className="mx-auto mt-4 h-4 w-1/2 rounded-full bg-paper-sunken" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="h-12 rounded-lg border border-line bg-paper-raised" />
+            <div className="h-12 rounded-lg border border-line bg-paper-raised" />
+          </div>
+        </div>
+      ) : variant === "form" ? (
+        <div aria-hidden="true" className="max-w-3xl space-y-8">
+          <header className="space-y-3">
+            <div className="h-3 w-24 rounded-full bg-paper-sunken" />
+            <div className="h-10 w-64 max-w-full rounded-lg bg-paper-sunken" />
+            <div className="h-4 w-96 max-w-full rounded-full bg-paper-sunken" />
+          </header>
+          <div className="space-y-5 rounded-card border border-line bg-paper-raised p-5 sm:p-7">
+            <div className="grid gap-5 sm:grid-cols-2">
+              {Array.from({ length: 4 }, (_, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="h-3 w-24 rounded-full bg-paper-sunken" />
+                  <div className="h-11 rounded-lg border border-line bg-paper" />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <div className="h-3 w-32 rounded-full bg-paper-sunken" />
+              <div className="h-28 rounded-lg border border-line bg-paper" />
+            </div>
+            <div className="h-10 w-32 rounded-lg bg-paper-sunken" />
+          </div>
+        </div>
+      ) : (
+        <div aria-hidden="true" className="space-y-8">
+          <header className="space-y-3">
+            <div className="h-3 w-24 rounded-full bg-paper-sunken" />
+            <div className="h-10 w-64 max-w-full rounded-lg bg-paper-sunken" />
+            <div className="h-4 w-96 max-w-full rounded-full bg-paper-sunken" />
+          </header>
+          <div className="h-11 w-full rounded-lg border border-line bg-paper-raised" />
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }, (_, index) => (
+              <div
+                key={index}
+                className="space-y-4 rounded-card border border-line bg-paper-raised p-5"
+              >
+                <div className="h-5 w-2/3 rounded-full bg-paper-sunken" />
+                <div className="h-3 w-full rounded-full bg-paper-sunken" />
+                <div className="h-3 w-4/5 rounded-full bg-paper-sunken" />
+                <div className="pt-2">
+                  <div className="h-8 w-28 rounded-lg bg-paper-sunken" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Aviso de configuración faltante.
  *
  * Se muestra en lugar de los datos cuando no hay credenciales de Supabase. Es

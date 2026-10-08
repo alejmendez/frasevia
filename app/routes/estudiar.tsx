@@ -152,32 +152,29 @@ export async function clientLoader({
     throw data({ message: t("estudiar.deckNotFound") }, { status: 404 });
   }
 
-  const { progress, error: progressError } = await getProgressForCards(
-    session.supabase,
-    cards.map((card) => card.id),
-  );
-
-  if (progressError) {
-    throw data({ message: progressError }, { status: 500 });
-  }
-
   const direction = reviewDirection(
     deck.source_language,
     deck.target_language,
     deck.study_mode,
   );
-  const [reviewResult, levelsResult] = await Promise.all([
+  const cardIds = cards.map((card) => card.id);
+  const [progressResult, reviewResult, levelsResult] = await Promise.all([
+    getProgressForCards(session.supabase, cardIds),
     listCardReviewStates(
       session.supabase,
-      cards.map((card) => card.id),
+      cardIds,
       direction,
     ),
     listReviewLevels(session.supabase),
   ]);
 
-  if (reviewResult.error || levelsResult.error) {
+  if (progressResult.error || reviewResult.error || levelsResult.error) {
     throw data(
-      { message: reviewResult.error ?? levelsResult.error ?? "" },
+      {
+        message:
+          progressResult.error ?? reviewResult.error ?? levelsResult.error ??
+          "",
+      },
       { status: 500 },
     );
   }
@@ -198,7 +195,7 @@ export async function clientLoader({
       targetLanguage: deck.target_language,
       deckTitle: deck.title,
     })),
-    progress,
+    progress: progressResult.progress,
     reviewStates: reviewResult.states,
     reviewLevels: levelsResult.levels,
     direction,

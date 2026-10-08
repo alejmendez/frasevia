@@ -15,7 +15,7 @@ import {
 } from "react-router";
 import { LanguageSwitcher } from "~/components/language-switcher";
 import { ThemeToggle } from "~/components/theme-toggle";
-import { cx, LoadingState } from "~/components/ui";
+import { cx, LoadingState, NavigationSkeleton } from "~/components/ui";
 import { AuthProvider, useAuth } from "~/lib/auth-context";
 import { takeRedirect } from "~/lib/auth-redirect";
 import { buildCsp } from "~/lib/csp";
@@ -98,12 +98,56 @@ export default function App() {
       <GoogleReturn />
       <div className="flex min-h-dvh flex-col">
         <SiteHeader />
-        <main className="flex-1">
-          <Outlet />
-        </main>
+        <PendingMain />
         <SiteFooter />
       </div>
     </AuthProvider>
+  );
+}
+
+/** Muestra el destino pendiente si una navegación tarda más que un instante. */
+function PendingMain() {
+  const navigation = useNavigation();
+  const tr = useT();
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const isLoading = navigation.state === "loading";
+
+  useEffect(() => {
+    if (!isLoading) {
+      setShowSkeleton(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setShowSkeleton(true), 140);
+    return () => window.clearTimeout(timeout);
+  }, [isLoading, navigation.location?.pathname]);
+
+  const pathSegments = navigation.location?.pathname.split("/") ?? [];
+  const variant = pathSegments.includes("estudiar")
+    ? "study"
+    : pathSegments.some((segment) =>
+          [
+            "ajustes",
+            "crear-cuenta",
+            "editar",
+            "iniciar-sesion",
+            "nuevo",
+            "nuevo-ia",
+            "recuperar-contrasena",
+          ].includes(segment),
+        )
+      ? "form"
+      : "page";
+
+  return (
+    <main className="flex-1" aria-busy={isLoading}>
+      <div hidden={showSkeleton}>
+        <Outlet />
+      </div>
+      {showSkeleton ? (
+        <NavigationSkeleton label={tr("app.navigating")} variant={variant} />
+      ) : null}
+    </main>
   );
 }
 

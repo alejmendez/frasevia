@@ -245,36 +245,37 @@ export async function getMyDeck(
   supabase: SupabaseClient,
   deckId: string,
 ): Promise<{ deck: Deck | null; cards: Card[]; error: string | null }> {
-  const { data: deckData, error: deckError } = await supabase
-    .from("decks")
-    .select(DECK_COLUMNS)
-    .eq("id", deckId)
-    .maybeSingle();
+  const [deckResult, cardsResult] = await Promise.all([
+    supabase
+      .from("decks")
+      .select(DECK_COLUMNS)
+      .eq("id", deckId)
+      .maybeSingle(),
+    supabase
+      .from("cards")
+      .select(CARD_COLUMNS)
+      .eq("deck_id", deckId)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true }),
+  ]);
 
-  if (deckError) {
-    return { deck: null, cards: [], error: deckError.message };
+  if (deckResult.error) {
+    return { deck: null, cards: [], error: deckResult.error.message };
   }
 
   // RLS hace que un mazo ajeno o inexistente se comporte igual que uno propio
   // que no existe: no se distingue nada desde fuera.
-  if (!deckData) {
+  if (!deckResult.data) {
     return { deck: null, cards: [], error: null };
   }
 
-  const { data: cardData, error: cardError } = await supabase
-    .from("cards")
-    .select(CARD_COLUMNS)
-    .eq("deck_id", deckId)
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (cardError) {
-    return { deck: null, cards: [], error: cardError.message };
+  if (cardsResult.error) {
+    return { deck: null, cards: [], error: cardsResult.error.message };
   }
 
   return {
-    deck: deckData as Deck,
-    cards: (cardData ?? []) as Card[],
+    deck: deckResult.data as Deck,
+    cards: (cardsResult.data ?? []) as Card[],
     error: null,
   };
 }

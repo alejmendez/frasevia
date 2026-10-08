@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useState } from "react";
-import { data, Form, redirect } from "react-router";
+import { data, Form, Link, redirect } from "react-router";
 import { ConfirmSubmit } from "~/components/confirm";
 import {
   Alert,
@@ -402,9 +402,9 @@ export default function MazoEditar({
         <div className="mb-6">
           <Alert variant="info" title={tr("mazoEditar.officialTitle")}>
             {tr("mazoEditar.officialBody")}{" "}
-            <a href="/mazos/ingles-desde-las-bases" className="underline">
+            <Link to="/mazos/ingles-desde-las-bases" className="underline">
               {tr("mazoEditar.makeCopy")}
-            </a>{" "}
+            </Link>{" "}
             {tr("mazoEditar.officialTail")}
           </Alert>
         </div>
