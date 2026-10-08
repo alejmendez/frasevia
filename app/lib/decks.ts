@@ -246,11 +246,7 @@ export async function getMyDeck(
   deckId: string,
 ): Promise<{ deck: Deck | null; cards: Card[]; error: string | null }> {
   const [deckResult, cardsResult] = await Promise.all([
-    supabase
-      .from("decks")
-      .select(DECK_COLUMNS)
-      .eq("id", deckId)
-      .maybeSingle(),
+    supabase.from("decks").select(DECK_COLUMNS).eq("id", deckId).maybeSingle(),
     supabase
       .from("cards")
       .select(CARD_COLUMNS)

@@ -347,8 +347,8 @@ export function NavigationSkeleton({
           </header>
           <div className="space-y-5 rounded-card border border-line bg-paper-raised p-5 sm:p-7">
             <div className="grid gap-5 sm:grid-cols-2">
-              {Array.from({ length: 4 }, (_, index) => (
-                <div key={index} className="space-y-2">
+              {["field-1", "field-2", "field-3", "field-4"].map((field) => (
+                <div key={field} className="space-y-2">
                   <div className="h-3 w-24 rounded-full bg-paper-sunken" />
                   <div className="h-11 rounded-lg border border-line bg-paper" />
                 </div>
@@ -370,19 +370,21 @@ export function NavigationSkeleton({
           </header>
           <div className="h-11 w-full rounded-lg border border-line bg-paper-raised" />
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }, (_, index) => (
-              <div
-                key={index}
-                className="space-y-4 rounded-card border border-line bg-paper-raised p-5"
-              >
-                <div className="h-5 w-2/3 rounded-full bg-paper-sunken" />
-                <div className="h-3 w-full rounded-full bg-paper-sunken" />
-                <div className="h-3 w-4/5 rounded-full bg-paper-sunken" />
-                <div className="pt-2">
-                  <div className="h-8 w-28 rounded-lg bg-paper-sunken" />
+            {["card-1", "card-2", "card-3", "card-4", "card-5", "card-6"].map(
+              (card) => (
+                <div
+                  key={card}
+                  className="space-y-4 rounded-card border border-line bg-paper-raised p-5"
+                >
+                  <div className="h-5 w-2/3 rounded-full bg-paper-sunken" />
+                  <div className="h-3 w-full rounded-full bg-paper-sunken" />
+                  <div className="h-3 w-4/5 rounded-full bg-paper-sunken" />
+                  <div className="pt-2">
+                    <div className="h-8 w-28 rounded-lg bg-paper-sunken" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
         </div>
       )}

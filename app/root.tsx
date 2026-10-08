@@ -120,7 +120,7 @@ function PendingMain() {
 
     const timeout = window.setTimeout(() => setShowSkeleton(true), 140);
     return () => window.clearTimeout(timeout);
-  }, [isLoading, navigation.location?.pathname]);
+  }, [isLoading]);
 
   const pathSegments = navigation.location?.pathname.split("/") ?? [];
   const variant = pathSegments.includes("estudiar")
