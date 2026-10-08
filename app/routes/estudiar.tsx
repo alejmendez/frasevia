@@ -34,6 +34,7 @@ import {
   buildReviewSession,
   orientReviewCard,
   reviewDirection,
+  reviewStatus,
 } from "~/features/study/schedule";
 import {
   reviewCardSpeechLanguages,
@@ -160,11 +161,7 @@ export async function clientLoader({
   const cardIds = cards.map((card) => card.id);
   const [progressResult, reviewResult, levelsResult] = await Promise.all([
     getProgressForCards(session.supabase, cardIds),
-    listCardReviewStates(
-      session.supabase,
-      cardIds,
-      direction,
-    ),
+    listCardReviewStates(session.supabase, cardIds, direction),
     listReviewLevels(session.supabase),
   ]);
 
@@ -172,7 +169,9 @@ export async function clientLoader({
     throw data(
       {
         message:
-          progressResult.error ?? reviewResult.error ?? levelsResult.error ??
+          progressResult.error ??
+          reviewResult.error ??
+          levelsResult.error ??
           "",
       },
       { status: 500 },
@@ -368,6 +367,7 @@ export default function Estudiar({ loaderData }: Route.ComponentProps) {
             states={reviewStates}
             levels={reviewLevels}
             direction={direction}
+            isDeckSession={isDeckSession}
           />
 
           {isDeckSession ? (
@@ -419,6 +419,18 @@ const LEVEL_STYLE: Record<string, string> = {
   forest: "rating-level--forest",
   blue: "rating-level--blue",
 };
+
+function nextPendingReviewIndex(
+  total: number,
+  fromIndex: number,
+  reviewed: Set<number>,
+): number | null {
+  for (let offset = 1; offset < total; offset += 1) {
+    const candidate = (fromIndex + offset) % total;
+    if (!reviewed.has(candidate)) return candidate;
+  }
+  return null;
+}
 
 function PronunciationControls({
   text,
@@ -522,11 +534,13 @@ function MemoryReviewSession({
   states,
   levels,
   direction,
+  isDeckSession,
 }: {
   cards: StudyCard[];
   states: CardReviewState[];
   levels: ReviewLevel[];
   direction: string | null;
+  isDeckSession: boolean;
 }) {
   const tr = useT();
   const { locale } = useLocale();
@@ -539,32 +553,62 @@ function MemoryReviewSession({
     [levels],
   );
   const [items] = useState(() => buildReviewSession(cards, states, direction));
+  const sessionKeys = new Set(
+    items.map((entry) => `${entry.card.id}:${entry.direction}`),
+  );
+  const statesByKey = new Map(
+    states.map((state) => [`${state.card_id}:${state.direction}`, state]),
+  );
+  const queueItems = [
+    ...items.map((entry, sessionIndex) => ({ ...entry, sessionIndex })),
+    ...cards.flatMap((card) => {
+      const cardDirection = direction ?? card.direction;
+      if (!cardDirection) return [];
+      const key = `${card.id}:${cardDirection}`;
+      if (sessionKeys.has(key)) return [];
+      const status = reviewStatus(statesByKey.get(key), cardDirection);
+      if (status !== "scheduled" && status !== "retired") return [];
+      return [{ card, direction: cardDirection, status, sessionIndex: null }];
+    }),
+  ];
   const [index, setIndex] = useState(0);
+  const [reviewed, setReviewed] = useState<Set<number>>(() => new Set());
   const [revealed, setRevealed] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const eventId = useRef<string | null>(null);
+  const activeReview = useRef<{ eventId: string; index: number } | null>(null);
   const transitionTimeout = useRef<number | null>(null);
   const frontHeadingRef = useRef<HTMLHeadingElement>(null);
   const backHeadingRef = useRef<HTMLHeadingElement>(null);
   const item = items[index];
   const cardFocusKey = item ? `${item.card.id}:${item.direction}` : null;
   const currentState = item
-    ? states.find(
-        (state) =>
-          state.card_id === item.card.id && state.direction === item.direction,
-      )
+    ? statesByKey.get(`${item.card.id}:${item.direction}`)
     : undefined;
 
   const rate = useCallback(
     (level: ReviewLevel) => {
-      if (!item || saving || isTransitioning) return;
+      if (
+        !item ||
+        saving ||
+        isTransitioning ||
+        reviewed.has(index) ||
+        (activeReview.current && activeReview.current.index !== index)
+      ) {
+        return;
+      }
       setSaving(true);
+      setSavingIndex(index);
       setError(null);
       setNotice("");
-      eventId.current ??= crypto.randomUUID();
+      const eventId =
+        activeReview.current?.index === index
+          ? activeReview.current.eventId
+          : crypto.randomUUID();
+      activeReview.current = { eventId, index };
 
       const timezone =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -574,17 +618,23 @@ function MemoryReviewSession({
           cardId: item.card.id,
           direction: item.direction,
           levelId: level.id,
-          eventId: eventId.current,
+          eventId,
           timezone,
         },
         { method: "post" },
       );
+
+      const nextIndex = nextPendingReviewIndex(items.length, index, reviewed);
+      if (nextIndex !== null) {
+        setIndex(nextIndex);
+        setRevealed(false);
+      }
     },
-    [fetcher, isTransitioning, item, saving],
+    [fetcher, index, isTransitioning, item, items, reviewed, saving],
   );
 
   const reveal = useCallback(() => {
-    if (revealed || saving) return;
+    if (revealed || (saving && savingIndex === index)) return;
     if (transitionTimeout.current !== null) {
       window.clearTimeout(transitionTimeout.current);
       transitionTimeout.current = null;
@@ -599,7 +649,7 @@ function MemoryReviewSession({
       transitionTimeout.current = null;
       setIsTransitioning(false);
     }, 480);
-  }, [revealed, saving]);
+  }, [index, revealed, saving, savingIndex]);
 
   useEffect(
     () => () => {
@@ -619,14 +669,20 @@ function MemoryReviewSession({
     if (
       fetcher.state !== "idle" ||
       !fetcher.data ||
-      fetcher.data.eventId !== eventId.current
+      fetcher.data.eventId !== activeReview.current?.eventId
     ) {
       return;
     }
 
+    const activeReviewData = activeReview.current;
+    if (!activeReviewData) return;
+    const completedIndex = activeReviewData.index;
     setSaving(false);
+    setSavingIndex(null);
     if (!fetcher.data.ok) {
       setError(fetcher.data.message ?? tr("estudiar.saveFailedGeneric"));
+      setIndex(completedIndex);
+      setRevealed(false);
       return;
     }
 
@@ -646,16 +702,26 @@ function MemoryReviewSession({
             })
           : tr("estudiar.saved"),
     );
-    eventId.current = null;
+    activeReview.current = null;
     setError(null);
-    setRevealed(false);
+    setReviewed((current) => new Set(current).add(completedIndex));
+    if (index === completedIndex) {
+      const nextIndex = nextPendingReviewIndex(
+        items.length,
+        completedIndex,
+        reviewed,
+      );
+      if (nextIndex !== null) {
+        setIndex(nextIndex);
+        setRevealed(false);
+      }
+    }
     setIsTransitioning(false);
     if (transitionTimeout.current !== null) {
       window.clearTimeout(transitionTimeout.current);
       transitionTimeout.current = null;
     }
-    setIndex((value) => value + 1);
-  }, [fetcher.data, fetcher.state, locale, tr]);
+  }, [fetcher.data, fetcher.state, index, items, locale, reviewed, tr]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -669,7 +735,7 @@ function MemoryReviewSession({
       ) {
         return;
       }
-      if (saving || isTransitioning || !item) return;
+      if (isTransitioning || !item) return;
 
       if ((event.code === "Space" || event.key === " ") && !revealed) {
         event.preventDefault();
@@ -688,7 +754,7 @@ function MemoryReviewSession({
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [activeLevels, isTransitioning, item, rate, reveal, revealed, saving]);
+  }, [activeLevels, isTransitioning, item, rate, reveal, revealed]);
 
   function levelName(level: ReviewLevel) {
     if (
@@ -724,7 +790,7 @@ function MemoryReviewSession({
     return tr("estudiar.intervalDays", { amount });
   }
 
-  if (items.length > 0 && index >= items.length) {
+  if (items.length > 0 && reviewed.size === items.length) {
     return (
       <Card className="mx-auto max-w-4xl p-8 text-center sm:p-12">
         <h2 className="font-display text-3xl text-brand">
@@ -803,158 +869,279 @@ function MemoryReviewSession({
     : sourceLanguage === "en"
       ? item.card.exampleEn
       : item.card.exampleEs;
-  const answeredCount = Math.min(index, items.length);
+  const completedCount = reviewed.size;
+  const answeredCount = reviewed.size;
 
   return (
-    <section className="mx-auto max-w-5xl">
-      <div className="mb-3 flex items-center justify-between gap-4 text-sm text-ink-soft">
-        <span>
-          {tr("estudiar.counter", { index: index + 1, total: items.length })}
-        </span>
-        <span>
-          {tr(
-            item.status === "due"
-              ? "estudiar.pendingLabel"
-              : "estudiar.newLabel",
-          )}
-        </span>
-      </div>
-      <ProgressBar
-        value={index}
-        total={items.length}
-        label={tr("estudiar.sessionAria", { index, total: items.length })}
-      />
-
-      <div className="review-card-perspective mt-7">
-        <div className={cx("review-card-rotator", revealed && "is-revealed")}>
-          <article
-            aria-hidden={revealed}
-            className="paper-card review-card-face p-7 sm:p-10"
-          >
-            <span aria-hidden="true" className="paper-tape" />
-            <div className="paper-card__margin min-h-80 pl-6 sm:pl-9">
-              <p className="text-xs font-bold tracking-[0.16em] text-brand uppercase">
-                {general
-                  ? tr("studyMode.general")
-                  : tr("estudiar.direction", {
-                      source: sourceLanguage.toUpperCase(),
-                      target: targetLanguage.toUpperCase(),
-                    })}
-              </p>
-              {item.card.deckTitle ? (
-                <p className="mt-2 text-xs text-ink-faint">
-                  {item.card.deckTitle}
-                </p>
-              ) : null}
-              <h2
-                ref={frontHeadingRef}
-                tabIndex={-1}
-                lang={general ? sourceLanguage : frontSpeechLanguage}
-                className={cx(
-                  "handwritten mt-8 break-words leading-tight text-brand outline-none",
-                  general ? "text-3xl sm:text-5xl" : "text-5xl sm:text-7xl",
-                )}
-              >
-                {sourceText}
-              </h2>
-              {general ? null : (
-                <PronunciationControls
-                  key={`${item.card.id}:${item.direction}:front`}
-                  text={sourceText}
-                  language={frontSpeechLanguage}
-                />
+    <section className="mx-auto max-w-6xl">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="order-2 min-w-0 lg:order-1">
+          <div className="mb-3 flex items-center justify-between gap-4 text-sm text-ink-soft">
+            <span>
+              {tr("estudiar.counter", {
+                index: index + 1,
+                total: items.length,
+              })}
+            </span>
+            <span>
+              {tr(
+                item.status === "due"
+                  ? "estudiar.pendingLabel"
+                  : "estudiar.newLabel",
               )}
-              <p className="handwritten mt-8 text-xl text-ink-soft sm:text-2xl">
-                {tr(general ? "general.recallHint" : "estudiar.recallHint")}
-              </p>
-            </div>
-          </article>
+            </span>
+          </div>
+          <ProgressBar
+            value={completedCount}
+            total={items.length}
+            label={tr("estudiar.sessionAria", {
+              index: completedCount,
+              total: items.length,
+            })}
+          />
 
-          <article
-            aria-hidden={!revealed}
-            className="paper-card review-card-face review-card-face--back p-7 sm:p-10"
-          >
-            <span aria-hidden="true" className="paper-tape" />
-            <div className="paper-card__margin pl-6 sm:pl-9">
-              <p className="text-xs font-bold tracking-[0.16em] text-brand uppercase">
-                {tr("estudiar.responseLabel")}
-              </p>
-              <h2
-                ref={backHeadingRef}
-                tabIndex={revealed ? -1 : undefined}
-                lang={general ? sourceLanguage : answerSpeechLanguage}
-                className={cx(
-                  "handwritten mt-3 break-words leading-tight text-brand outline-none",
-                  general ? "text-3xl sm:text-5xl" : "text-5xl sm:text-7xl",
-                )}
+          <div className="review-card-perspective mt-7">
+            <div
+              className={cx("review-card-rotator", revealed && "is-revealed")}
+            >
+              <article
+                aria-hidden={revealed}
+                className="paper-card review-card-face p-7 sm:p-10"
               >
-                {targetText}
-              </h2>
-              {general ? null : (
-                <PronunciationControls
-                  key={`${item.card.id}:${item.direction}:answer`}
-                  text={targetText}
-                  language={answerSpeechLanguage}
-                />
-              )}
-              <p
-                lang={general ? sourceLanguage : frontSpeechLanguage}
-                className="handwritten mt-1 text-2xl text-ink-soft sm:text-3xl"
-              >
-                {sourceText}
-              </p>
-              {targetExample ? (
-                <div className="mt-6 border-t border-line pt-5">
-                  <p
-                    lang={targetLanguage}
-                    className="handwritten break-words text-2xl leading-snug text-brand sm:text-3xl"
-                  >
-                    {targetExample}
+                <span aria-hidden="true" className="paper-tape" />
+                <div className="paper-card__margin min-h-80 pl-6 sm:pl-9">
+                  <p className="text-xs font-bold tracking-[0.16em] text-brand uppercase">
+                    {general
+                      ? tr("studyMode.general")
+                      : tr("estudiar.direction", {
+                          source: sourceLanguage.toUpperCase(),
+                          target: targetLanguage.toUpperCase(),
+                        })}
                   </p>
+                  {item.card.deckTitle ? (
+                    <p className="mt-2 text-xs text-ink-faint">
+                      {item.card.deckTitle}
+                    </p>
+                  ) : null}
+                  <h2
+                    ref={frontHeadingRef}
+                    tabIndex={-1}
+                    lang={general ? sourceLanguage : frontSpeechLanguage}
+                    className={cx(
+                      "handwritten mt-8 break-words leading-tight text-brand outline-none",
+                      general ? "text-3xl sm:text-5xl" : "text-5xl sm:text-7xl",
+                    )}
+                  >
+                    {sourceText}
+                  </h2>
                   {general ? null : (
                     <PronunciationControls
-                      key={`${item.card.id}:${item.direction}:example`}
-                      text={targetExample}
-                      language={targetLanguage}
+                      key={`${item.card.id}:${item.direction}:front`}
+                      text={sourceText}
+                      language={frontSpeechLanguage}
                     />
                   )}
-                  {exampleTranslation ? (
-                    <p
-                      lang={sourceLanguage}
-                      className="mt-2 text-sm leading-relaxed text-ink-soft"
-                    >
-                      {exampleTranslation}
+                  <p className="handwritten mt-8 text-xl text-ink-soft sm:text-2xl">
+                    {tr(general ? "general.recallHint" : "estudiar.recallHint")}
+                  </p>
+                </div>
+              </article>
+
+              <article
+                aria-hidden={!revealed}
+                className="paper-card review-card-face review-card-face--back p-7 sm:p-10"
+              >
+                <span aria-hidden="true" className="paper-tape" />
+                <div className="paper-card__margin pl-6 sm:pl-9">
+                  <p className="text-xs font-bold tracking-[0.16em] text-brand uppercase">
+                    {tr("estudiar.responseLabel")}
+                  </p>
+                  <h2
+                    ref={backHeadingRef}
+                    tabIndex={revealed ? -1 : undefined}
+                    lang={general ? sourceLanguage : answerSpeechLanguage}
+                    className={cx(
+                      "handwritten mt-3 break-words leading-tight text-brand outline-none",
+                      general ? "text-3xl sm:text-5xl" : "text-5xl sm:text-7xl",
+                    )}
+                  >
+                    {targetText}
+                  </h2>
+                  {general ? null : (
+                    <PronunciationControls
+                      key={`${item.card.id}:${item.direction}:answer`}
+                      text={targetText}
+                      language={answerSpeechLanguage}
+                    />
+                  )}
+                  <p
+                    lang={general ? sourceLanguage : frontSpeechLanguage}
+                    className="handwritten mt-1 text-2xl text-ink-soft sm:text-3xl"
+                  >
+                    {sourceText}
+                  </p>
+                  {targetExample ? (
+                    <div className="mt-6 border-t border-line pt-5">
+                      <p
+                        lang={targetLanguage}
+                        className="handwritten break-words text-2xl leading-snug text-brand sm:text-3xl"
+                      >
+                        {targetExample}
+                      </p>
+                      {general ? null : (
+                        <PronunciationControls
+                          key={`${item.card.id}:${item.direction}:example`}
+                          text={targetExample}
+                          language={targetLanguage}
+                        />
+                      )}
+                      {exampleTranslation ? (
+                        <p
+                          lang={sourceLanguage}
+                          className="mt-2 text-sm leading-relaxed text-ink-soft"
+                        >
+                          {exampleTranslation}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {item.card.usageNote ? (
+                    <p className="mt-4 border-t border-line pt-3 text-sm leading-relaxed text-ink-soft">
+                      <span className="font-medium text-ink">
+                        {tr(
+                          general ? "general.notePrefix" : "estudiar.usageNote",
+                        )}
+                      </span>
+                      {item.card.usageNote}
                     </p>
                   ) : null}
                 </div>
-              ) : null}
-              {item.card.usageNote ? (
-                <p className="mt-4 border-t border-line pt-3 text-sm leading-relaxed text-ink-soft">
-                  <span className="font-medium text-ink">
-                    {tr(general ? "general.notePrefix" : "estudiar.usageNote")}
-                  </span>
-                  {item.card.usageNote}
-                </p>
-              ) : null}
+              </article>
             </div>
-          </article>
-        </div>
-      </div>
+          </div>
 
-      {!revealed ? (
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Button className="min-h-14 min-w-56 px-7" onClick={reveal}>
-            <ArrowsClockwiseIcon aria-hidden size={20} weight="bold" />
-            {tr("estudiar.reveal")}
-          </Button>
-          <span className="text-sm text-ink-faint">
-            <kbd className="rounded border border-line-strong bg-paper-raised px-2 py-1 font-sans text-xs">
-              Space
-            </kbd>{" "}
-            {tr("estudiar.toFlip")}
-          </span>
+          {!revealed ? (
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <Button className="min-h-14 min-w-56 px-7" onClick={reveal}>
+                <ArrowsClockwiseIcon aria-hidden size={20} weight="bold" />
+                {tr("estudiar.reveal")}
+              </Button>
+              <span className="text-sm text-ink-faint">
+                <kbd className="rounded border border-line-strong bg-paper-raised px-2 py-1 font-sans text-xs">
+                  Space
+                </kbd>{" "}
+                {tr("estudiar.toFlip")}
+              </span>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+
+        <aside className="order-1 rounded-card border border-line bg-paper-raised/80 p-4 lg:sticky lg:top-6 lg:order-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-xl text-brand">
+              {tr(
+                isDeckSession
+                  ? "estudiar.deckQueueTitle"
+                  : "estudiar.queueTitle",
+              )}
+            </h2>
+            <span className="shrink-0 text-xs tabular-nums text-ink-soft">
+              {tr("estudiar.queueProgress", {
+                done: completedCount,
+                total: items.length,
+              })}
+            </span>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+            {tr(
+              isDeckSession ? "estudiar.deckQueueHint" : "estudiar.queueHint",
+            )}
+          </p>
+          <ol className="mt-3 max-h-60 space-y-1 overflow-y-auto pr-1 lg:max-h-[calc(100vh-13rem)]">
+            {queueItems.map((entry, entryIndex) => {
+              const { sourceText: queueText } = orientReviewCard(
+                entry.card,
+                entry.direction,
+              );
+              const sessionIndex = entry.sessionIndex;
+              const isSessionCard = sessionIndex !== null;
+              const isReviewed = isSessionCard && reviewed.has(sessionIndex);
+              const isSaving = isSessionCard && savingIndex === sessionIndex;
+              const isCurrent = isSessionCard && index === sessionIndex;
+              const status = !isSessionCard
+                ? tr(
+                    entry.status === "scheduled"
+                      ? "estudiar.queueScheduled"
+                      : "estudiar.queueRetired",
+                  )
+                : isReviewed
+                  ? tr("estudiar.queueReviewed")
+                  : isSaving
+                    ? tr("estudiar.queueSaving")
+                    : isCurrent
+                      ? tr("estudiar.queueCurrent")
+                      : tr(
+                          entry.status === "due"
+                            ? "estudiar.pendingLabel"
+                            : "estudiar.newLabel",
+                        );
+
+              return (
+                <li key={`${entry.card.id}:${entry.direction}`}>
+                  <button
+                    type="button"
+                    disabled={
+                      !isSessionCard || isReviewed || isSaving || error !== null
+                    }
+                    aria-current={isCurrent ? "step" : undefined}
+                    aria-label={tr("estudiar.jumpToCard", {
+                      index: (sessionIndex ?? entryIndex) + 1,
+                      term: queueText,
+                      status,
+                    })}
+                    onClick={() => {
+                      if (sessionIndex === null) return;
+                      if (transitionTimeout.current !== null) {
+                        window.clearTimeout(transitionTimeout.current);
+                        transitionTimeout.current = null;
+                      }
+                      setIndex(sessionIndex);
+                      setRevealed(false);
+                      setIsTransitioning(false);
+                      setError(null);
+                    }}
+                    className={cx(
+                      "flex min-h-12 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors disabled:cursor-default",
+                      isCurrent
+                        ? "border-brand bg-brand-muted text-brand"
+                        : isReviewed
+                          ? "border-transparent bg-paper-sunken/70 text-ink-faint"
+                          : "border-transparent text-ink hover:border-line hover:bg-paper-sunken/60",
+                    )}
+                  >
+                    <span className="w-6 shrink-0 text-center text-xs tabular-nums text-ink-faint">
+                      {String(entryIndex + 1).padStart(2, "0")}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block line-clamp-2 break-words text-sm font-medium">
+                        {queueText}
+                      </span>
+                      {entry.card.deckTitle ? (
+                        <span className="mt-0.5 block truncate text-xs text-ink-faint">
+                          {entry.card.deckTitle}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 text-[0.68rem] text-ink-faint">
+                      {status}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </aside>
+      </div>
 
       <div className="mt-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
