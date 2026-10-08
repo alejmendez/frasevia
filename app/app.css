@@ -307,6 +307,25 @@ body {
 .deck-tab-blue { --deck-tab-color: var(--color-blue); }
 .deck-tab-sage { --deck-tab-color: var(--color-brand); }
 
+/* Solo los datos pendientes pulsan; títulos, marcos y etiquetas quedan firmes. */
+@layer components {
+  .skeleton-placeholder {
+    background-color: var(--color-paper-sunken);
+  }
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-placeholder {
+    animation: skeleton-pulse 1.6s ease-in-out infinite;
+  }
+}
+
 /* Foco visible y consistente en toda la aplicación. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   @apply outline-2 outline-offset-2 outline-brand;

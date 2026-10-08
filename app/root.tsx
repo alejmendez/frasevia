@@ -1,5 +1,5 @@
 import { GearSixIcon } from "@phosphor-icons/react/dist/ssr";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   isRouteErrorResponse,
@@ -10,12 +10,15 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useHref,
+  useLocation,
   useNavigate,
   useNavigation,
 } from "react-router";
 import { LanguageSwitcher } from "~/components/language-switcher";
+import { NavigationSkeleton } from "~/components/navigation-skeleton";
 import { ThemeToggle } from "~/components/theme-toggle";
-import { cx, LoadingState, NavigationSkeleton } from "~/components/ui";
+import { cx, LoadingState } from "~/components/ui";
 import { AuthProvider, useAuth } from "~/lib/auth-context";
 import { takeRedirect } from "~/lib/auth-redirect";
 import { buildCsp } from "~/lib/csp";
@@ -108,44 +111,74 @@ export default function App() {
 /** Muestra el destino pendiente si una navegación tarda más que un instante. */
 function PendingMain() {
   const navigation = useNavigation();
+  const location = useLocation();
+  const homeHref = useHref("/").replace(/\/$/, "");
   const tr = useT();
-  const [showSkeleton, setShowSkeleton] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const lastScreen = useRef({
+    pathname: location.pathname,
+    wasSkeleton: false,
+  });
+  const [skeletonPath, setSkeletonPath] = useState<string | null>(null);
   const isLoading = navigation.state === "loading";
+  const pendingPath =
+    navigation.location?.pathname.slice(homeHref.length) || "/";
+  const isChangingPage =
+    Boolean(navigation.location) && pendingPath !== location.pathname;
+  const showSkeleton =
+    isLoading && isChangingPage && skeletonPath === pendingPath;
 
   useEffect(() => {
-    if (!isLoading) {
-      setShowSkeleton(false);
+    setSkeletonPath(null);
+    // Los filtros y los envíos en la misma pantalla conservan su contenido.
+    if (!isLoading || !isChangingPage) {
       return;
     }
 
-    const timeout = window.setTimeout(() => setShowSkeleton(true), 140);
+    const timeout = window.setTimeout(() => setSkeletonPath(pendingPath), 140);
     return () => window.clearTimeout(timeout);
-  }, [isLoading]);
+  }, [isLoading, isChangingPage, pendingPath]);
 
-  const pathSegments = navigation.location?.pathname.split("/") ?? [];
-  const variant = pathSegments.includes("estudiar")
-    ? "study"
-    : pathSegments.some((segment) =>
-          [
-            "ajustes",
-            "crear-cuenta",
-            "editar",
-            "iniciar-sesion",
-            "nuevo",
-            "nuevo-ia",
-            "recuperar-contrasena",
-          ].includes(segment),
-        )
-      ? "form"
-      : "page";
+  useEffect(() => {
+    const changed =
+      lastScreen.current.pathname !== location.pathname ||
+      lastScreen.current.wasSkeleton;
+    lastScreen.current = {
+      pathname: location.pathname,
+      wasSkeleton: showSkeleton,
+    };
+    const content = contentRef.current;
+    if (
+      !changed ||
+      showSkeleton ||
+      !content?.animate ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    // Anima el contenido sin remontar Outlet ni retrasar su aparición.
+    const animation = content.animate(
+      [
+        { opacity: 0.55, transform: "translateY(4px)" },
+        { opacity: 1, transform: "translateY(0)" },
+      ],
+      { duration: 160, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" },
+    );
+    return () => animation.cancel();
+  }, [location.pathname, showSkeleton]);
 
   return (
     <main className="flex-1" aria-busy={isLoading}>
-      <div hidden={showSkeleton}>
+      <div ref={contentRef} hidden={showSkeleton}>
         <Outlet />
       </div>
       {showSkeleton ? (
-        <NavigationSkeleton label={tr("app.navigating")} variant={variant} />
+        <NavigationSkeleton
+          label={tr("app.navigating")}
+          pathname={pendingPath}
+          search={navigation.location?.search}
+        />
       ) : null}
     </main>
   );
@@ -265,7 +298,7 @@ function SiteHeader() {
         <div
           role="progressbar"
           aria-label={t("app.navigating")}
-          className="h-0.5 w-full animate-pulse bg-brand/60"
+          className="absolute inset-x-0 top-0 h-0.5 animate-pulse bg-brand/60 motion-reduce:animate-none"
         />
       ) : null}
 
