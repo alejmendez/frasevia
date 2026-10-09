@@ -1,20 +1,13 @@
 import { useT } from "~/lib/locale-context";
 import type { Deck, DeckStudyMode } from "~/lib/types";
 import {
-  buttonClass,
   Card,
-  Control,
-  cx,
-  DeckTiles,
-  ITEMS,
   ModeOptions,
   Page,
   PageHeader,
   Placeholder,
   SkeletonButton,
   SkeletonField,
-  Tag,
-  TextLines,
 } from "./primitives";
 
 /**

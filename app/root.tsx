@@ -1,12 +1,8 @@
-import { GearSixIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
 import {
-  Form,
   isRouteErrorResponse,
-  Link,
   Links,
   Meta,
-  NavLink,
   Outlet,
   Scripts,
   ScrollRestoration,
@@ -15,10 +11,9 @@ import {
   useNavigate,
   useNavigation,
 } from "react-router";
-import { LanguageSwitcher } from "~/components/language-switcher";
 import { NavigationSkeleton } from "~/components/navigation-skeleton";
-import { ThemeToggle } from "~/components/theme-toggle";
-import { cx, LoadingState } from "~/components/ui";
+import { SiteFooter, SiteHeader } from "~/components/site-chrome";
+import { ButtonLink, LoadingState } from "~/components/ui";
 import { AuthProvider, useAuth } from "~/lib/auth-context";
 import { takeRedirect } from "~/lib/auth-redirect";
 import { buildCsp } from "~/lib/csp";
@@ -96,11 +91,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const navigation = useNavigation();
+
   return (
     <AuthProvider>
       <GoogleReturn />
       <div className="flex min-h-dvh flex-col">
-        <SiteHeader />
+        <SiteHeader isNavigating={navigation.state !== "idle"} />
         <PendingMain />
         <SiteFooter />
       </div>
@@ -267,220 +264,55 @@ export function HydrateFallback() {
 }
 
 /**
- * Enlaces de la barra.
+ * Lo que se ve cuando una ruta no existe o algo falla.
  *
- * Se calculan en cada render en vez de ser constantes porque sus etiquetas
- * dependen del idioma. El destino no cambia nunca: cambiarlo para meter otro
- * idioma en la URL significaría tener rutas duplicadas, y la preferencia de
- * idioma es del navegador de cada persona, no algo que viva en el enlace.
+ * React Router entrega el error con lo que la ruta haya lanzado. Un
+ * `isRouteErrorResponse` es una respuesta HTTP —un 404, un 400— y trae su propio
+ * título; cualquier otra cosa es un fallo normal, y en desarrollo se enseña el
+ * mensaje real porque es lo único que ayuda a encontrarlo.
  */
-function navLinks() {
-  return {
-    public: [
-      { to: "/explorar", label: "nav.explore" },
-      { to: "/progreso", label: "nav.progress" },
-    ],
-    private: [{ to: "/biblioteca", label: "nav.library" }],
-  } as const;
-}
-
-function SiteHeader() {
-  const t = useT();
-  const { status, user } = useAuth();
-  const navigation = useNavigation();
-  const isNavigating = navigation.state !== "idle";
-  const links = navLinks();
-
-  return (
-    <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur">
-      {/* La barra de progreso comunica que hay una navegación en curso. */}
-      {isNavigating ? (
-        <div
-          role="progressbar"
-          aria-label={t("app.navigating")}
-          className="absolute inset-x-0 top-0 h-0.5 animate-pulse bg-brand/60 motion-reduce:animate-none"
-        />
-      ) : null}
-
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 sm:px-8">
-        <Link
-          to="/"
-          className="font-display text-2xl font-semibold tracking-tight text-brand"
-        >
-          Frasevia
-        </Link>
-
-        <nav
-          aria-label={t("nav.primary")}
-          className="order-3 w-full sm:order-2 sm:w-auto"
-        >
-          <ul className="flex flex-wrap items-center gap-1 text-sm">
-            {[...links.private, ...links.public].map((link) => (
-              <li key={link.to}>
-                <NavLink
-                  to={link.to}
-                  className={({ isActive }) =>
-                    cx(
-                      "rounded-md border-b-2 px-3 py-2 transition-colors",
-                      isActive
-                        ? "border-accent font-medium text-brand-strong"
-                        : "border-transparent text-ink-soft hover:text-ink",
-                    )
-                  }
-                >
-                  {t(link.label)}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="order-2 ml-auto flex items-center gap-2 sm:order-3">
-          <LanguageSwitcher />
-          <ThemeToggle />
-          <AccountArea status={status} email={user?.email ?? null} />
-        </div>
-      </div>
-    </header>
-  );
-}
-
-/**
- * Zona de cuenta.
- *
- * Mientras se resuelve la sesión se reserva el espacio con un marcador de
- * posición: el HTML del servidor y el del primer render del cliente coinciden,
- * así que no hay salto ni error de hidratación.
- */
-function AccountArea({
-  status,
-  email,
-}: {
-  status: ReturnType<typeof useAuth>["status"];
-  email: string | null;
-}) {
-  const t = useT();
-
-  if (status === "loading") {
-    return (
-      <span
-        aria-hidden="true"
-        className="block h-9 w-24 animate-pulse rounded-lg bg-paper-sunken"
-      />
-    );
-  }
-
-  if (status === "unconfigured") {
-    return (
-      <span className="rounded-md border border-accent/30 bg-accent-muted px-2.5 py-1.5 text-xs font-medium text-accent">
-        {t("account.unconfigured")}
-      </span>
-    );
-  }
-
-  if (status === "anonymous") {
-    return (
-      <>
-        <Link
-          to="/iniciar-sesion"
-          className="button-interactive inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm text-ink-soft hover:bg-paper-sunken hover:text-ink"
-        >
-          {t("account.signIn")}
-        </Link>
-        <Link
-          to="/crear-cuenta"
-          className="button-interactive inline-flex items-center justify-center rounded-lg bg-brand-solid px-3.5 py-2 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
-        >
-          {t("account.signUp")}
-        </Link>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Link
-        to="/ajustes/repaso"
-        aria-label={t("nav.reviewSettings")}
-        title={t("nav.reviewSettings")}
-        className="button-interactive inline-flex size-10 items-center justify-center rounded-lg border border-line bg-paper-raised text-ink-soft transition-colors hover:bg-paper-sunken hover:text-brand"
-      >
-        <GearSixIcon aria-hidden size={19} />
-      </Link>
-      <span
-        className="hidden max-w-40 truncate text-sm text-ink-soft sm:inline"
-        title={email ?? undefined}
-      >
-        {email ?? t("account.yourAccount")}
-      </span>
-      {/* Cierre de sesión: un `fetcher.Form` para no recargar la página. */}
-      <Form method="post" action="/salir">
-        <button
-          type="submit"
-          className="rounded-lg border border-line-strong bg-paper-raised px-3 py-2 text-sm text-ink hover:bg-paper-sunken"
-        >
-          {t("account.signOut")}
-        </button>
-      </Form>
-    </>
-  );
-}
-
-function SiteFooter() {
-  const t = useT();
-
-  return (
-    <footer className="border-t border-line">
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-8 text-sm text-ink-faint sm:px-8">
-        <p>{t("footer.tagline")}</p>
-        <Link to="/explorar" className="hover:text-ink">
-          {t("footer.exploreDecks")}
-        </Link>
-      </div>
-    </footer>
-  );
-}
-
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const t = useT();
-
-  let title = t("error.title");
-  let message = t("error.message");
-  let status: number | undefined;
-
-  if (isRouteErrorResponse(error)) {
-    status = error.status;
-    title =
-      error.status === 404 ? t("error.notFoundTitle") : t("error.shortTitle");
-    message =
-      error.status === 404
-        ? t("error.notFoundMessage")
-        : error.statusText || message;
-  } else if (import.meta.env.DEV && error instanceof Error) {
-    message = error.message;
-  }
+  const shown = describeError(error, t);
 
   return (
     <div className="mx-auto w-full max-w-2xl px-5 py-24 text-center sm:px-8">
-      {status ? (
-        <p className="font-display text-6xl text-brand">{status}</p>
+      {shown.status ? (
+        <p className="font-display text-6xl text-brand">{shown.status}</p>
       ) : null}
-      <h1 className="mt-4 font-display text-3xl text-ink">{title}</h1>
-      <p className="mt-3 text-ink-soft">{message}</p>
+      <h1 className="mt-4 font-display text-3xl text-ink">{shown.title}</h1>
+      <p className="mt-3 text-ink-soft">{shown.message}</p>
       <div className="mt-8 flex justify-center gap-3">
-        <Link
-          to="/"
-          className="button-interactive inline-flex items-center justify-center rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-medium text-on-solid hover:bg-brand-solid-hover"
-        >
-          {t("error.backHome")}
-        </Link>
-        <Link
-          to="/explorar"
-          className="button-interactive inline-flex items-center justify-center rounded-lg border border-line-strong bg-paper-raised px-4 py-2.5 text-sm text-ink hover:bg-paper-sunken"
-        >
+        <ButtonLink to="/">{t("error.backHome")}</ButtonLink>
+        <ButtonLink to="/explorar" variant="secondary">
           {t("footer.exploreDecks")}
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   );
+}
+
+/** Qué título y qué mensaje salen, según lo que falló. */
+function describeError(
+  error: unknown,
+  t: ReturnType<typeof useT>,
+): { status?: number; title: string; message: string } {
+  if (isRouteErrorResponse(error)) {
+    const notFound = error.status === 404;
+    return {
+      status: error.status,
+      title: notFound ? t("error.notFoundTitle") : t("error.shortTitle"),
+      message: notFound
+        ? t("error.notFoundMessage")
+        : error.statusText || t("error.message"),
+    };
+  }
+
+  return {
+    title: t("error.title"),
+    message:
+      import.meta.env.DEV && error instanceof Error
+        ? error.message
+        : t("error.message"),
+  };
 }

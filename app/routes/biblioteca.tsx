@@ -19,6 +19,7 @@ import {
   Tag,
 } from "~/components/ui";
 import { DeckTile } from "~/features/decks/deck-tile";
+import { DeckCardFooter } from "~/features/library/deck-card-footer";
 import type { LibraryDeck } from "~/lib/decks";
 import { listMyDecks } from "~/lib/decks";
 import { formatRelativeTime } from "~/lib/format";
@@ -129,123 +130,6 @@ function upcomingLabel(
     day: "numeric",
     month: "short",
   }).format(date);
-}
-
-function ReviewStats({ deck }: { deck: LibraryDeck }) {
-  const tr = useT();
-  const review = deck.review;
-  if (!review) {
-    return (
-      <p className="text-xs text-ink-faint">
-        {tr("biblioteca.reviewStatsUnavailable")}
-      </p>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-soft">
-      <span className="inline-flex items-center gap-1.5">
-        <i aria-hidden className="size-2.5 rounded-full bg-accent" />
-        {tr("biblioteca.dueCount", { count: review.due_count })}
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i aria-hidden className="size-2.5 rounded-full bg-lime" />
-        {tr("biblioteca.newCount", { count: review.new_count })}
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i aria-hidden className="size-2.5 rounded-full bg-brand/40" />
-        {tr("biblioteca.scheduledCount", { count: review.scheduled_count })}
-      </span>
-    </div>
-  );
-}
-
-function DeckReviewFooter({ deck }: { deck: LibraryDeck }) {
-  const tr = useT();
-  const due = deck.review?.due_count ?? 0;
-  const fresh = deck.review?.new_count ?? deck.card_count;
-  const destination =
-    deck.visibility === "public"
-      ? `/mazos/${deck.slug}`
-      : `/biblioteca/mazos/${deck.id}/editar`;
-
-  let action: React.ReactNode;
-  if (deck.card_count === 0) {
-    action = (
-      <ButtonLink
-        to={`/biblioteca/mazos/${deck.id}/editar`}
-        className="min-h-11"
-      >
-        {tr("biblioteca.addCards")}
-        <ArrowRightIcon aria-hidden size={17} />
-      </ButtonLink>
-    );
-  } else if (!deck.review) {
-    action = (
-      <ButtonLink to={destination} variant="secondary" className="min-h-11">
-        {tr("biblioteca.viewDeck")}
-      </ButtonLink>
-    );
-  } else if (due > 0) {
-    action = (
-      <ButtonLink to={`/estudiar/${deck.id}`} className="min-h-11">
-        {tr("biblioteca.reviewDeck", { count: due })}
-        <ArrowRightIcon aria-hidden size={17} />
-      </ButtonLink>
-    );
-  } else if (fresh > 0) {
-    action = (
-      <ButtonLink to={`/estudiar/${deck.id}`} className="min-h-11">
-        {tr("biblioteca.learnNew", { count: fresh })}
-        <ArrowRightIcon aria-hidden size={17} />
-      </ButtonLink>
-    );
-  } else {
-    action = (
-      <ButtonLink to={destination} variant="secondary" className="min-h-11">
-        {tr("biblioteca.viewDeck")}
-      </ButtonLink>
-    );
-  }
-
-  return (
-    <div className="space-y-3 border-t border-line pt-3">
-      <ReviewStats deck={deck} />
-      {deck.review?.last_reviewed_at ? (
-        <p className="text-xs text-ink-faint">
-          {tr("biblioteca.lastReview", {
-            date: formatRelativeTime(deck.review.last_reviewed_at),
-          })}
-        </p>
-      ) : deck.progress?.last_studied_at ? (
-        <p className="text-xs text-ink-faint">
-          {tr("biblioteca.lastPractice", {
-            date: formatRelativeTime(deck.progress.last_studied_at),
-          })}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {action}
-        <div className="flex flex-wrap items-center gap-2">
-          {deck.is_official ? (
-            <Tag tone="brand">{tr("biblioteca.official")}</Tag>
-          ) : (
-            <Tag tone={deck.visibility === "public" ? "accent" : "neutral"}>
-              {deck.visibility === "public"
-                ? tr("biblioteca.published")
-                : tr("biblioteca.private")}
-            </Tag>
-          )}
-          <Link
-            to={`/biblioteca/mazos/${deck.id}/editar`}
-            className="inline-flex min-h-11 items-center px-2 text-sm text-brand hover:underline"
-          >
-            {tr("biblioteca.edit")}
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function Biblioteca({ loaderData }: Route.ComponentProps) {
@@ -580,7 +464,7 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
                     {tr("biblioteca.completeDescription")}
                   </Link>
                 }
-                footer={<DeckReviewFooter deck={deck} />}
+                footer={<DeckCardFooter deck={deck} />}
               />
             </li>
           ))}

@@ -1,25 +1,13 @@
-import {
-  ArrowLeftIcon,
-  BooksIcon,
-  TranslateIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr";
 import { useT } from "~/lib/locale-context";
 import type { Deck } from "~/lib/types";
 import {
-  buttonClass,
-  Card,
   Control,
   cx,
-  DeckTiles,
   ITEMS,
-  ModeOptions,
   Page,
-  PageHeader,
   Placeholder,
   SkeletonButton,
-  SkeletonField,
-  Tag,
-  TextLines,
 } from "./primitives";
 
 /**

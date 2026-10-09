@@ -1,16 +1,8 @@
-import {
-  ArrowLeftIcon,
-  BooksIcon,
-  CalendarDotsIcon,
-  MagnifyingGlassIcon,
-  SparkleIcon,
-  TranslateIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { BooksIcon, TranslateIcon } from "@phosphor-icons/react/dist/ssr";
 import type { ReactNode } from "react";
-import { buttonClass, Card, cx, Page, PageHeader, Tag } from "~/components/ui";
-import { cardCountLabel } from "~/lib/format";
+import { buttonClass, Card, cx } from "~/components/ui";
 import { useT } from "~/lib/locale-context";
-import type { Deck, DeckStudyMode } from "~/lib/types";
+import type { DeckStudyMode } from "~/lib/types";
 
 /**
  * Las piezas pequeñas que todos los esqueletos comparten.
