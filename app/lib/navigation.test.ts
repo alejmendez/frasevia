@@ -19,16 +19,25 @@ import { describe, expect, it } from "vitest";
  * El sitio se publica sin servidor, así que casi todo ocurre en manejadores de
  * evento y el patrón se copia de un archivo a otro con facilidad. Para moverse
  * de página en el cliente se usa `navigate()`.
+ *
+ * El recorrido cubre **todo `app/`**, no solo `app/routes/`: parte de la lógica
+ * que hay que proteger vive en `lib/` y en `features/`, y un `redirect()` mal
+ * puesto allí también sería silencioso. Los archivos de prueba quedan fuera
+ * porque contienen el patrón a propósito, en ejemplos que el propio test usa.
  */
-const ROUTES_DIR = join(process.cwd(), "app", "routes");
+const APP_DIR = join(process.cwd(), "app");
+const IGNORED_DIRS = new Set(["node_modules", ".react-router", "build"]);
 
-function routeFiles(dir: string): string[] {
+function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      return routeFiles(full);
+      if (IGNORED_DIRS.has(entry.name)) return [];
+      return sourceFiles(join(dir, entry.name));
     }
-    return entry.name.endsWith(".tsx") ? [full] : [];
+    // Los `.test.` llevan el patrón en sus propios ejemplos: contarlos sería
+    // avisar de un fallo que no existe.
+    if (/\.test\.[cm]?[jt]sx?$/.test(entry.name)) return [];
+    return /\.[cm]?[jt]sx?$/.test(entry.name) ? [join(dir, entry.name)] : [];
   });
 }
 
@@ -231,8 +240,8 @@ function orphanRedirects(raw: string): number[] {
 }
 
 describe("navegación desde el cliente", () => {
-  it("encuentra las rutas de la aplicación", () => {
-    expect(routeFiles(ROUTES_DIR).length).toBeGreaterThan(5);
+  it("encuentra el código de la aplicación", () => {
+    expect(sourceFiles(APP_DIR).length).toBeGreaterThan(50);
   });
 
   it("sabe distinguir un redirect de datos de uno en un manejador", () => {
@@ -336,7 +345,7 @@ describe("navegación desde el cliente", () => {
     expect(orphanRedirects(source)).toEqual([7]);
   });
 
-  it.each(routeFiles(ROUTES_DIR))(
+  it.each(sourceFiles(APP_DIR))(
     "%s no lanza redirects fuera de un loader o un action",
     (file) => {
       const source = readFileSync(file, "utf8");
