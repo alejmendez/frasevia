@@ -125,7 +125,7 @@ select is(
      (select id from public.review_levels where system_key = 'normal'),
      '44000000-0000-4000-8000-000000000002',
      'America/Santiago'
-   ) ->> 'retired'),
+   ) ->> 'retired')),
   'false',
   'una calificación normal deja la tarjeta activa'
 );
