@@ -1,7 +1,7 @@
 import { GlobeIcon } from "@phosphor-icons/react/dist/ssr/Globe";
-import { cx } from "~/components/ui";
 import { LOCALE_INFO, otherLocale } from "~/lib/locale";
 import { useLocale } from "~/lib/locale-context";
+import { HeaderToggle } from "./header-toggle";
 
 /**
  * Selector de idioma de la interfaz.
@@ -25,22 +25,19 @@ import { useLocale } from "~/lib/locale-context";
  * píxeles y así se ve a qué se va a cambiar, como el icono del interruptor de
  * tema muestra el tema al que se va.
  */
-export function LanguageSwitcher({ className }: { className?: string }) {
+export function LanguageSwitcher() {
   const { locale, setLocale } = useLocale();
   const next = otherLocale(locale);
 
   return (
-    <button
-      type="button"
+    // El código corto es lo que se ve y lo que hace recognizable el botón; el
+    // nombre entero va solo para quien usa lector de pantalla.
+    <HeaderToggle
       onClick={() => setLocale(next)}
-      className={cx(
-        "inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong bg-paper-raised px-2 text-sm font-medium text-ink transition-colors hover:bg-paper-sunken",
-        className,
-      )}
+      label={LOCALE_INFO[next].native}
     >
       <GlobeIcon aria-hidden size={16} weight="bold" />
       <span aria-hidden>{LOCALE_INFO[next].short}</span>
-      <span className="sr-only">{LOCALE_INFO[next].native}</span>
-    </button>
+    </HeaderToggle>
   );
 }

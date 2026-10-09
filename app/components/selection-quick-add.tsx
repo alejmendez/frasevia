@@ -5,6 +5,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { MEANING_MAX, TERM_MAX, TITLE_MAX } from "~/features/ai/draft";
 import {
   GenerationError,
   isAbort,
@@ -25,6 +26,7 @@ import {
 import type { MessageKey } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession } from "~/lib/session";
+import { ModalDialog } from "./dialog";
 import { Alert, Button, Field, inputClass, Select } from "./ui";
 
 const NEW_DECK = "__new__";
@@ -293,10 +295,6 @@ function QuickAddDialog({
   const [saving, setSaving] = useState(false);
   const [savedDeck, setSavedDeck] = useState<QuickAddDeck | null>(null);
 
-  useEffect(() => {
-    dialogRef.current?.showModal();
-  }, []);
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: `tr` se usa dentro del efecto, pero su identidad cambia con el idioma y depender de él abortaba la petición al cambiar de idioma y la volvía a lanzar. Traducir cuesta dinero, así que solo se relanza si cambian el texto o los idiomas, que es lo único que la afecta.
   useEffect(() => {
     const sourceLanguage = selectedLanguage;
@@ -451,24 +449,13 @@ function QuickAddDialog({
   }
 
   return (
-    <dialog
+    <ModalDialog
       ref={dialogRef}
+      labelledBy="selection-dialog-title"
+      onClose={close}
+      width="wide"
+      dismissOnBackdrop
       data-no-word-save
-      aria-labelledby="selection-dialog-title"
-      className="m-auto w-[min(34rem,calc(100vw-2rem))] rounded-card border border-line bg-paper-raised p-0 text-ink shadow-xl backdrop:bg-ink/40"
-      onCancel={(event) => {
-        event.preventDefault();
-        close();
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          close();
-        }
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) close();
-      }}
     >
       <div className="p-5 sm:p-7">
         {savedDeck ? (
@@ -565,8 +552,9 @@ function QuickAddDialog({
                     type="text"
                     value={english}
                     onChange={(event) => setEnglish(event.target.value)}
-                    maxLength={200}
+                    maxLength={TERM_MAX}
                     required
+                    // biome-ignore lint/a11y/noAutofocus: es un modal que se acaba de abrir y el campo a completar es el del idioma de origen.
                     autoFocus={selectedLanguage === "en"}
                     className={inputClass}
                   />
@@ -578,8 +566,9 @@ function QuickAddDialog({
                     type="text"
                     value={spanish}
                     onChange={(event) => setSpanish(event.target.value)}
-                    maxLength={400}
+                    maxLength={MEANING_MAX}
                     required
+                    // biome-ignore lint/a11y/noAutofocus: el otro idioma del par, por el mismo motivo.
                     autoFocus={selectedLanguage === "es"}
                     className={inputClass}
                   />
@@ -642,7 +631,7 @@ function QuickAddDialog({
                     id="quick-new-deck"
                     value={newDeckTitle}
                     onChange={(event) => setNewDeckTitle(event.target.value)}
-                    maxLength={120}
+                    maxLength={TITLE_MAX}
                     required
                     placeholder={tr("selection.newDeckPlaceholder")}
                     className={inputClass}
@@ -667,7 +656,7 @@ function QuickAddDialog({
           </>
         )}
       </div>
-    </dialog>
+    </ModalDialog>
   );
 }
 
