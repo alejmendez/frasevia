@@ -20,7 +20,7 @@ schema_paths = ["./supabase/migrations"]
 
 [db.seed]
 enabled = true
-sql_paths = ["./supabase/seed.sql"]
+sql_paths = ["./seed.sql"]
 
 [auth]
 enabled = true
