@@ -1,17 +1,15 @@
-import {
-  BookmarkSimpleIcon,
-  CircleNotchIcon,
-  XIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { BookmarkSimpleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { MEANING_MAX, TERM_MAX, TITLE_MAX } from "~/features/ai/draft";
 import {
-  GenerationError,
-  isAbort,
-  suggestTranslation,
-} from "~/features/ai/generate";
-import { hasKey } from "~/features/ai/keys";
+  SuggestionNotice,
+  TranslationInput,
+} from "~/features/decks/quick-add/translation-fields";
+import {
+  type SourceLanguage,
+  useTranslationFields,
+} from "~/features/decks/quick-add/use-translation-suggestion";
 import {
   guessCardKind,
   type QuickAddProblem,
@@ -275,81 +273,13 @@ function QuickAddDialog({
 }) {
   const tr = useT();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState<"en" | "es">(
-    guessLanguage(text),
-  );
-  const [english, setEnglish] = useState(() =>
-    guessLanguage(text) === "en" ? text : "",
-  );
-  const [spanish, setSpanish] = useState(() =>
-    guessLanguage(text) === "es" ? text : "",
-  );
+  const fields = useTranslationFields(text);
+  const { english, spanish, source, setSource, suggestion } = fields;
   const [deckId, setDeckId] = useState(decks[0]?.id ?? NEW_DECK);
   const [newDeckTitle, setNewDeckTitle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [suggestionState, setSuggestionState] = useState<
-    "loading" | "ready" | "error" | "missing-key" | "too-long"
-  >("loading");
-  const [suggestionError, setSuggestionError] = useState<string | null>(null);
-  const translationEdited = useRef(false);
   const [saving, setSaving] = useState(false);
   const [savedDeck, setSavedDeck] = useState<QuickAddDeck | null>(null);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `tr` se usa dentro del efecto, pero su identidad cambia con el idioma y depender de él abortaba la petición al cambiar de idioma y la volvía a lanzar. Traducir cuesta dinero, así que solo se relanza si cambian el texto o los idiomas, que es lo único que la afecta.
-  useEffect(() => {
-    const sourceLanguage = selectedLanguage;
-    const targetLanguage = sourceLanguage === "en" ? "es" : "en";
-    const controller = new AbortController();
-    let active = true;
-    setSuggestionError(null);
-
-    if (text.length > 200) {
-      setSuggestionState("too-long");
-      return () => {
-        active = false;
-        controller.abort();
-      };
-    }
-
-    if (!hasKey()) {
-      setSuggestionState("missing-key");
-      return () => {
-        active = false;
-        controller.abort();
-      };
-    }
-
-    setSuggestionState("loading");
-    void suggestTranslation({
-      text,
-      sourceLanguage,
-      targetLanguage,
-      signal: controller.signal,
-    })
-      .then((suggestion) => {
-        if (!active) return;
-        if (!translationEdited.current) {
-          if (targetLanguage === "en") setEnglish(suggestion);
-          else setSpanish(suggestion);
-        }
-        setSuggestionState("ready");
-      })
-      .catch((error: unknown) => {
-        if (!active || isAbort(error)) return;
-        setSuggestionState("error");
-        setSuggestionError(
-          error instanceof GenerationError
-            ? error.message
-            : tr("selection.translationSuggestionFailed"),
-        );
-      });
-
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [selectedLanguage, text]);
-
   function close() {
     if (!dialogRef.current?.open) return;
     dialogRef.current.close();
@@ -506,103 +436,38 @@ function QuickAddDialog({
               >
                 <Select
                   id="selection-language"
-                  value={selectedLanguage}
-                  onChange={(event) => {
-                    const language = event.target.value as "en" | "es";
-                    translationEdited.current = false;
-                    setSelectedLanguage(language);
-                    if (language === "en") {
-                      setEnglish(text);
-                      setSpanish((current) =>
-                        current === text ? "" : current,
-                      );
-                    } else {
-                      setSpanish(text);
-                      setEnglish((current) =>
-                        current === text ? "" : current,
-                      );
-                    }
-                  }}
+                  value={source}
+                  onChange={(event) =>
+                    setSource(event.target.value as SourceLanguage)
+                  }
                 >
                   <option value="en">{tr("language.en")}</option>
                   <option value="es">{tr("language.es")}</option>
                 </Select>
               </Field>
 
-              {suggestionState === "loading" ? (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="flex items-center gap-2 rounded-lg border border-brand/20 bg-brand-muted px-3 py-2.5 text-sm text-brand-strong"
-                >
-                  <CircleNotchIcon
-                    aria-hidden="true"
-                    size={18}
-                    className="shrink-0 animate-spin"
-                  />
-                  <span>{tr("selection.translating")}</span>
-                </div>
-              ) : null}
+              <SuggestionNotice suggestion={suggestion} onClose={close} />
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={tr("selection.english")} htmlFor="selection-en">
-                  <input
-                    id="selection-en"
-                    lang="en"
-                    type="text"
-                    value={english}
-                    onChange={(event) => setEnglish(event.target.value)}
-                    maxLength={TERM_MAX}
-                    required
-                    // biome-ignore lint/a11y/noAutofocus: es un modal que se acaba de abrir y el campo a completar es el del idioma de origen.
-                    autoFocus={selectedLanguage === "en"}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label={tr("selection.spanish")} htmlFor="selection-es">
-                  <input
-                    id="selection-es"
-                    lang="es"
-                    type="text"
-                    value={spanish}
-                    onChange={(event) => setSpanish(event.target.value)}
-                    maxLength={MEANING_MAX}
-                    required
-                    // biome-ignore lint/a11y/noAutofocus: el otro idioma del par, por el mismo motivo.
-                    autoFocus={selectedLanguage === "es"}
-                    className={inputClass}
-                  />
-                </Field>
+                <TranslationInput
+                  id="selection-en"
+                  lang="en"
+                  label={tr("selection.english")}
+                  value={english}
+                  maxLength={TERM_MAX}
+                  autoFocus={source === "en"}
+                  onChange={fields.setEnglish}
+                />
+                <TranslationInput
+                  id="selection-es"
+                  lang="es"
+                  label={tr("selection.spanish")}
+                  value={spanish}
+                  maxLength={MEANING_MAX}
+                  autoFocus={source === "es"}
+                  onChange={fields.setSpanish}
+                />
               </div>
-
-              {suggestionState === "ready" ? (
-                <p role="status" className="text-sm text-ink-soft">
-                  {tr("selection.suggestionReady")}
-                </p>
-              ) : null}
-              {suggestionState === "error" ? (
-                <Alert variant="warning">
-                  {suggestionError ??
-                    tr("selection.translationSuggestionFailed")}
-                </Alert>
-              ) : null}
-              {suggestionState === "missing-key" ? (
-                <p role="status" className="text-sm text-ink-soft">
-                  {tr("selection.translationNeedsKey")}{" "}
-                  <Link
-                    to="/ajustes/ia"
-                    onClick={close}
-                    className="font-medium text-brand underline"
-                  >
-                    {tr("selection.configureAi")}
-                  </Link>
-                </p>
-              ) : null}
-              {suggestionState === "too-long" ? (
-                <p role="status" className="text-sm text-ink-soft">
-                  {tr("selection.translationTooLongForSuggestion")}
-                </p>
-              ) : null}
 
               <Field
                 label={tr("selection.destinationDeck")}
@@ -658,12 +523,4 @@ function QuickAddDialog({
       </div>
     </ModalDialog>
   );
-}
-
-function guessLanguage(text: string): "en" | "es" {
-  return /[ñáéíóú¿¡]|\b(?:el|la|los|las|una?|que|de|del|para|con|pero|está)\b/i.test(
-    text,
-  )
-    ? "es"
-    : "en";
 }

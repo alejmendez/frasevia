@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, redirect, useNavigate } from "react-router";
 import {
   Alert,
@@ -26,17 +26,18 @@ import {
   isAbort,
 } from "~/features/ai/generate";
 import { hasKey } from "~/features/ai/keys";
-import {
-  listModels,
-  type ModelInfo,
-  ModelListError,
-  searchModels,
-} from "~/features/ai/models";
+import type { ModelInfo } from "~/features/ai/models";
 import { buildStandalonePrompt } from "~/features/ai/prompt";
 import { PROVIDER } from "~/features/ai/providers";
+import { useAbortableTask } from "~/features/ai/use-abortable-task";
+import { useCopyToClipboard } from "~/features/ai/use-copy-to-clipboard";
+import {
+  type CatalogState,
+  useModelCatalog,
+} from "~/features/ai/use-model-catalog";
+import { LanguageFields } from "~/features/decks/form/deck-fields";
 import { StudyModeField } from "~/features/decks/study-mode-field";
 import { createDeckWithCards } from "~/lib/decks";
-import { deckLanguages } from "~/lib/languages";
 import { type MessageKey, t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
@@ -80,15 +81,14 @@ const LEVELS: { value: string; key: MessageKey }[] = [
 const COUNT_MIN = 4;
 const COUNT_MAX = 40;
 
-/** Filas visibles del catálogo: con el filtro de arriba no hace falta más. */
-const VISIBLE_MODELS = 40;
-
 type Mode = "generar" | "importar";
 
 export default function MazoIa({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const tr = useT();
-  const languages = deckLanguages();
+  const catalog = useModelCatalog();
+  const task = useAbortableTask();
+  const clipboard = useCopyToClipboard();
 
   const [mode, setMode] = useState<Mode>("generar");
   const [concept, setConcept] = useState("");
@@ -99,85 +99,30 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
   const [targetLanguage, setTargetLanguage] = useState("en");
   const [withExtras, setWithExtras] = useState(true);
   const [visibility, setVisibility] = useState<"private" | "public">("private");
-
   // `PROVIDER` es `as const`, así que sin el tipo explícito el estado se
   // inferiría como el literal y luego no admitiría otro modelo.
   const [model, setModel] = useState<string>(PROVIDER.defaultModel);
-  const [models, setModels] = useState<ModelInfo[] | null>(null);
-  const [modelsError, setModelsError] = useState<string | null>(null);
-  const [loadingModels, setLoadingModels] = useState(false);
-  const [modelQuery, setModelQuery] = useState("");
 
   const [imported, setImported] = useState("");
-  const [copied, setCopied] = useState(false);
-
   const [deck, setDeck] = useState<ReviewDeck | null>(null);
   const [dropped, setDropped] = useState<number[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Permite cancelar una generación en curso: son varios segundos de espera, y
-  // no hay otra forma de recuperar ese dinero ni de salir de la espera.
-  const controller = useRef<AbortController | null>(null);
-  // El aviso de «copiado» se retira solo; se guarda para poder cancelarlo si se
-  // vuelve a copiar o si la pantalla se desmonta antes.
-  const copiedTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (copiedTimer.current !== null) {
-        window.clearTimeout(copiedTimer.current);
-      }
-    },
-    [],
-  );
-
-  const loadModels = useCallback(async (signal?: AbortSignal) => {
-    setLoadingModels(true);
-    setModelsError(null);
-    try {
-      setModels(await listModels(signal));
-    } catch (cause) {
-      if (signal?.aborted) return;
-      setModelsError(
-        cause instanceof ModelListError
-          ? cause.message
-          : t("mazoIa.modelsLoadFailed"),
-      );
-    } finally {
-      if (!signal?.aborted) {
-        setLoadingModels(false);
-      }
-    }
-  }, []);
-
-  // El catálogo no necesita clave, así que se pide siempre al abrir: le sirve
-  // igual a quien va a importar y a quien va a generar, y son unos 460 modelos
-  // que no tiene sentido mantener escritos en el código.
-  //
-  // La petición se cancela al salir: si no, quien navega a otra pantalla antes
-  // de que responda sigue pagando la descarga y el filtrado de las casi 460
-  // entradas para un resultado que ya no se va a pintar.
-  useEffect(() => {
-    const controller = new AbortController();
-    void loadModels(controller.signal);
-    return () => controller.abort();
-  }, [loadModels]);
+  const busy = task.busy;
 
   /**
-   * Catálogo filtrado y prompt, ambos memorizados.
+   * El prompt, memorizado.
    *
-   * Sin esto, cada tecla escrita en el concepto, en el modelo o en el JSON
-   * pegado volvía a filtrar el catálogo entero (hasta 200 modelos) y a construir
-   * el prompt, que son unas decenas de cadenas unidas. Como esta pantalla
-   * vuelve a renderizar en cada pulsación, ese trabajo se repetía por carácter.
+   * Sin esto, cada tecla escrita en el concepto o en el nivel volvía a construir
+   * el prompt, que son unas decenas de cadenas unidas. Como esta pantalla vuelve
+   * a renderizar en cada pulsación, ese trabajo se repetía por carácter.
    *
-   * El prompt se arma con los campos sueltos en vez de con `request` porque ese
-   * objeto se reconstruye en cada render y nunca llegaría a la caché.
+   * Se arma con los campos sueltos y no con el objeto `request` porque ese se
+   * reconstruye en cada render y nunca llegaría a la caché.
    */
   const prompt = useMemo(
     () =>
@@ -201,16 +146,13 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
     ],
   );
 
-  const visibleModels = useMemo(
-    () => searchModels(models ?? [], modelQuery).slice(0, VISIBLE_MODELS),
-    [models, modelQuery],
-  );
-
   if (loaderData.status === "unconfigured") {
     return <ConfigNotice />;
   }
 
   const keyReady = hasKey();
+  const models =
+    catalog.catalog.status === "ready" ? catalog.catalog.models : null;
   const selected = models?.find((item) => item.id === model) ?? null;
   const hasConcept = concept.trim().length >= 3;
 
@@ -252,32 +194,27 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    setBusy(true);
     setError(null);
-    const current = new AbortController();
-    controller.current = current;
 
-    try {
-      const result = await generateDeckDraft({
-        model,
-        jsonMode: selected?.supportsJsonMode,
-        signal: current.signal,
-        request,
-      });
-      adopt(result);
-    } catch (cause) {
-      if (isAbort(cause)) {
-        return;
+    await task.run(async (signal) => {
+      try {
+        const result = await generateDeckDraft({
+          model,
+          jsonMode: selected?.supportsJsonMode,
+          signal,
+          request,
+        });
+        adopt(result);
+      } catch (cause) {
+        // Cancelar no es un error: quien canceló ya sabe que paró.
+        if (isAbort(cause)) return;
+        setError(
+          cause instanceof GenerationError || cause instanceof DraftError
+            ? cause.message
+            : tr("mazoIa.generateFailed"),
+        );
       }
-      setError(
-        cause instanceof GenerationError || cause instanceof DraftError
-          ? cause.message
-          : t("mazoIa.generateFailed"),
-      );
-    } finally {
-      setBusy(false);
-      controller.current = null;
-    }
+    });
   }
 
   function handleImport() {
@@ -371,17 +308,9 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
   }
 
   async function copyPrompt() {
-    try {
-      // `prompt` ya está calculado: es el mismo texto que se muestra en pantalla.
-      await navigator.clipboard.writeText(prompt);
-      setCopied(true);
-      if (copiedTimer.current !== null) {
-        window.clearTimeout(copiedTimer.current);
-      }
-      copiedTimer.current = window.setTimeout(() => setCopied(false), 2500);
-    } catch {
-      setError(t("mazoIa.clipboardFailed"));
-    }
+    // El prompt ya esta calculado: es el mismo texto que se ve en pantalla.
+    const ok = await clipboard.copy(prompt);
+    if (!ok) setError(tr("mazoIa.clipboardFailed"));
   }
 
   if (deck !== null) {
@@ -397,23 +326,22 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
         />
         <DeckReview
           studyMode={studyMode}
-          deck={deck}
-          kept={kept.length}
-          dropped={dropped}
-          onToggle={toggleDrop}
-          title={title}
-          onTitle={setTitle}
-          description={description}
-          onDescription={setDescription}
-          visibility={visibility}
-          onVisibility={setVisibility}
-          error={error}
-          saving={saving}
-          busy={busy}
-          onSave={handleSave}
-          onDiscard={discardDeck}
-          onRegenerate={handleGenerate}
-          onCancel={() => controller.current?.abort()}
+          draft={{ deck, kept: kept.length, dropped, onToggle: toggleDrop }}
+          form={{
+            title,
+            onTitle: setTitle,
+            description,
+            onDescription: setDescription,
+            visibility,
+            onVisibility: setVisibility,
+          }}
+          status={{ error, saving, busy }}
+          actions={{
+            onSave: handleSave,
+            onDiscard: discardDeck,
+            onRegenerate: handleGenerate,
+            onCancel: task.cancel,
+          }}
         />
       </Page>
     );
@@ -549,47 +477,18 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
             </Field>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field
-              label={tr(
-                studyMode === "general"
-                  ? "general.contentLanguage"
-                  : "deckField.cardLanguage",
-              )}
-              htmlFor="source_language"
-            >
-              <Select
-                id="source_language"
-                value={sourceLanguage}
-                onChange={(event) => setSourceLanguage(event.target.value)}
-              >
-                {languages.map((language) => (
-                  <option key={language.code} value={language.code}>
-                    {language.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            {studyMode === "language" ? (
-              <Field
-                label={tr("deckField.translationLanguage")}
-                htmlFor="target_language"
-              >
-                <Select
-                  id="target_language"
-                  value={targetLanguage}
-                  onChange={(event) => setTargetLanguage(event.target.value)}
-                >
-                  {languages.map((language) => (
-                    <option key={language.code} value={language.code}>
-                      {language.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            ) : null}
-          </div>
+          <LanguageFields
+            names={{ source: "source_language", target: "target_language" }}
+            labels={{
+              source: "deckField.cardLanguage",
+              target: "deckField.translationLanguage",
+            }}
+            source={sourceLanguage}
+            target={targetLanguage}
+            studyMode={studyMode}
+            onSourceChange={setSourceLanguage}
+            onTargetChange={setTargetLanguage}
+          />
 
           <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-paper-sunken px-4 py-3">
             <input
@@ -615,25 +514,23 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
           <GeneratePanel
             model={model}
             onModel={setModel}
-            models={models}
-            modelsError={modelsError}
-            loadingModels={loadingModels}
-            onRetryModels={() => void loadModels()}
-            modelQuery={modelQuery}
-            onModelQuery={setModelQuery}
-            visibleModels={visibleModels}
+            catalog={catalog.catalog}
+            models={catalog.visible}
+            total={catalog.total}
+            query={catalog.query}
+            onQuery={catalog.setQuery}
+            onRetry={catalog.retry}
             keyReady={keyReady}
             busy={busy}
             canGenerate={canGenerate}
             onGenerate={handleGenerate}
-            onCancel={() => controller.current?.abort()}
+            onCancel={task.cancel}
           />
         ) : (
           <ImportPanel
-            concept={concept}
             hasConcept={hasConcept}
             prompt={prompt}
-            copied={copied}
+            copied={clipboard.copied}
             onCopy={copyPrompt}
             imported={imported}
             onImported={setImported}
@@ -649,13 +546,15 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
 interface GeneratePanelProps {
   model: string;
   onModel: (value: string) => void;
-  models: ModelInfo[] | null;
-  modelsError: string | null;
-  loadingModels: boolean;
-  onRetryModels: () => void;
-  modelQuery: string;
-  onModelQuery: (value: string) => void;
-  visibleModels: ModelInfo[];
+  /** El estado del catálogo: cargando, con error, o con la lista. */
+  catalog: CatalogState;
+  /** Los modelos ya filtrados por lo que se ha buscado. */
+  models: ModelInfo[];
+  /** Cuántos hay sin filtrar, que es el número del resumen. */
+  total: number;
+  query: string;
+  onQuery: (value: string) => void;
+  onRetry: () => void;
   keyReady: boolean;
   busy: boolean;
   canGenerate: boolean;
@@ -666,13 +565,12 @@ interface GeneratePanelProps {
 function GeneratePanel({
   model,
   onModel,
-  models,
-  modelsError,
-  loadingModels,
-  onRetryModels,
-  modelQuery,
-  onModelQuery,
-  visibleModels,
+  catalog,
+  models: visibleModels,
+  total,
+  query: modelQuery,
+  onQuery: onModelQuery,
+  onRetry: onRetryModels,
   keyReady,
   busy,
   canGenerate,
@@ -680,6 +578,8 @@ function GeneratePanel({
   onCancel,
 }: GeneratePanelProps) {
   const tr = useT();
+  const modelsError = catalog.status === "error" ? catalog.message : null;
+  const loadingModels = catalog.status === "loading";
 
   return (
     <Card as="section" className="space-y-5">
@@ -721,10 +621,10 @@ function GeneratePanel({
         </Alert>
       ) : null}
 
-      {models !== null ? (
+      {catalog.status === "ready" ? (
         <details className="rounded-lg border border-line bg-paper-sunken px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium text-ink">
-            {tr("mazoIa.showModels", { count: models.length })}
+            {tr("mazoIa.showModels", { count: total })}
           </summary>
 
           <div className="mt-3 space-y-2">
@@ -827,7 +727,7 @@ function GeneratePanel({
 }
 
 interface ImportPanelProps {
-  concept: string;
+  /** Si el concepto escrito llega a lo minimo para poder importar. */
   hasConcept: boolean;
   prompt: string;
   copied: boolean;

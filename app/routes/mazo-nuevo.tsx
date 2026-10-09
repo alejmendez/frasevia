@@ -9,13 +9,16 @@ import {
   inputClass,
   Page,
   PageHeader,
-  Select,
   textareaClass,
 } from "~/components/ui";
+import {
+  LanguageFields,
+  LevelField,
+  VisibilityField,
+} from "~/features/decks/form/deck-fields";
 import { slugPreview } from "~/features/decks/slug";
 import { StudyModeField } from "~/features/decks/study-mode-field";
 import { type CardDraft, createDeckWithCards } from "~/lib/decks";
-import { deckLanguages } from "~/lib/languages";
 import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
@@ -61,8 +64,6 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-
-  const languages = deckLanguages();
 
   if (loaderData.status === "unconfigured") {
     return <ConfigNotice />;
@@ -185,84 +186,31 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
           />
         </Field>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field
-            label={tr(
-              studyMode === "general"
-                ? "general.contentLanguage"
-                : "deckField.sourceLanguage",
-            )}
-            htmlFor="source_language"
-          >
-            <Select
-              id="source_language"
-              value={sourceLanguage}
-              onChange={(event) => setSourceLanguage(event.target.value)}
-            >
-              {languages.map((language) => (
-                <option key={language.code} value={language.code}>
-                  {language.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          {studyMode === "language" ? (
-            <Field
-              label={tr("deckField.targetLanguage")}
-              htmlFor="target_language"
-            >
-              <Select
-                id="target_language"
-                value={targetLanguage}
-                onChange={(event) => setTargetLanguage(event.target.value)}
-              >
-                {languages.map((language) => (
-                  <option key={language.code} value={language.code}>
-                    {language.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          ) : null}
-        </div>
+        <LanguageFields
+          names={{ source: "source_language", target: "target_language" }}
+          labels={{
+            source: "deckField.sourceLanguage",
+            target: "deckField.targetLanguage",
+          }}
+          source={sourceLanguage}
+          target={targetLanguage}
+          studyMode={studyMode}
+          onSourceChange={setSourceLanguage}
+          onTargetChange={setTargetLanguage}
+        />
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field
-            label={tr("deckField.level")}
-            htmlFor="level"
-            hint={tr(
-              studyMode === "general"
-                ? "general.levelHint"
-                : "deckField.levelHint",
-            )}
-          >
-            <input
-              id="level"
-              name="level"
-              value={level}
-              onChange={(event) => setLevel(event.target.value)}
-              placeholder={tr(
-                studyMode === "general"
-                  ? "general.levelPlaceholder"
-                  : "mazoNuevo.levelPlaceholder",
-              )}
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label={tr("deckField.visibility")} htmlFor="visibility">
-            <Select
-              id="visibility"
-              value={visibility}
-              onChange={(event) =>
-                setVisibility(event.target.value as "private" | "public")
-              }
-            >
-              <option value="private">{tr("visibility.option.private")}</option>
-              <option value="public">{tr("visibility.option.public")}</option>
-            </Select>
-          </Field>
+          <LevelField
+            name="level"
+            value={level}
+            studyMode={studyMode}
+            onChange={setLevel}
+          />
+          <VisibilityField
+            name="visibility"
+            value={visibility}
+            onChange={(value) => setVisibility(value as "private" | "public")}
+          />
         </div>
 
         <Field
