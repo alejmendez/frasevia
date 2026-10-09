@@ -954,6 +954,8 @@ export const en: SpanishMessages = {
   "selection.sessionUnavailable":
     "Your session expired. Sign in to save this word.",
   "selection.deckNameRequired": "Enter a name for the new deck.",
+  "selection.deckNameTooLong":
+    "That deck name is too long. Use fewer than 120 characters.",
   "selection.saveFailed": "The word couldn't be saved. Please try again.",
   "selection.deckLoadError":
     "Your decks couldn't be loaded. You can create a new one.",

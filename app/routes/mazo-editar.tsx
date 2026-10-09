@@ -1,4 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useState } from "react";
 import { data, Form, Link, redirect } from "react-router";
 import { ConfirmSubmit } from "~/components/confirm";
@@ -15,9 +14,22 @@ import {
   Tag,
   textareaClass,
 } from "~/components/ui";
+import {
+  normalizeKind,
+  optional,
+  parseCardForm,
+  parseTags,
+} from "~/features/decks/parse-card-form";
 import { slugPreview } from "~/features/decks/slug";
 import { StudyModeField } from "~/features/decks/study-mode-field";
-import { getMyDeck } from "~/lib/decks";
+import {
+  appendCard,
+  type CardDraft,
+  deleteCard,
+  deleteDeck,
+  getMyDeck,
+  updateDeckCards,
+} from "~/lib/decks";
 import { cardKindLabel, formatDate } from "~/lib/format";
 import { deckLanguages } from "~/lib/languages";
 import { t } from "~/lib/locale";
@@ -81,8 +93,6 @@ function actionFail(message: string, status = 400) {
   return data<ActionResult>({ ok: false, message }, { status });
 }
 
-const CARD_PREFIX = "card:";
-
 /**
  * Acciones del editor.
  *
@@ -141,67 +151,60 @@ export async function clientAction({
     }
 
     case "save-cards": {
-      return saveCards(session.supabase, deckId, formData);
+      const parsed = parseCardForm(formData);
+
+      if (!parsed.ok) {
+        return actionFail(
+          parsed.reason === "empty"
+            ? t("mazoEditar.nothingToSave")
+            : t("mazoEditar.cardsNeedFields"),
+        );
+      }
+
+      const { error } = await updateDeckCards(
+        session.supabase,
+        deckId,
+        parsed.cards,
+      );
+
+      return error ? actionFail(error) : actionOk(t("mazoEditar.cardsSaved"));
     }
 
     case "add-card": {
-      const term = String(formData.get("term") ?? "").trim();
-      const meaning = String(formData.get("meaning_es") ?? "").trim();
+      const card: CardDraft = {
+        term: String(formData.get("term") ?? ""),
+        meaningEs: String(formData.get("meaning_es") ?? ""),
+        kind: normalizeKind(formData.get("kind")),
+        exampleEn: optional(formData.get("example_en")),
+        exampleEs: optional(formData.get("example_es")),
+        usageNote: optional(formData.get("usage_note")),
+        tags: parseTags(formData.get("tags")),
+      };
 
-      if (!term || !meaning) {
+      if (card.term === "" || card.meaningEs === "") {
         return actionFail(t("mazoEditar.cardNeedsFields"));
       }
 
-      const { data: last } = await session.supabase
-        .from("cards")
-        .select("position")
-        .eq("deck_id", deckId)
-        .order("position", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { error } = await appendCard(session.supabase, deckId, card);
 
-      const { error } = await session.supabase.from("cards").insert({
-        deck_id: deckId,
-        kind: normalizeKind(formData.get("kind")),
-        term,
-        meaning_es: meaning,
-        example_en: nullable(formData.get("example_en")),
-        example_es: nullable(formData.get("example_es")),
-        usage_note: nullable(formData.get("usage_note")),
-        tags: parseTags(formData.get("tags")),
-        position: ((last?.position as number | undefined) ?? 0) + 1,
-      });
-
-      if (error) {
-        return actionFail(error.message);
-      }
-
-      return actionOk(t("mazoEditar.cardAdded"));
+      return error ? actionFail(error) : actionOk(t("mazoEditar.cardAdded"));
     }
 
     case "delete-card": {
-      const cardId = String(formData.get("cardId") ?? "");
-      const { error } = await session.supabase
-        .from("cards")
-        .delete()
-        .eq("id", cardId)
-        .eq("deck_id", deckId);
+      const { error } = await deleteCard(
+        session.supabase,
+        deckId,
+        String(formData.get("cardId") ?? ""),
+      );
 
-      if (error) {
-        return actionFail(error.message);
-      }
-
-      return actionOk(t("mazoEditar.cardDeleted"));
+      return error ? actionFail(error) : actionOk(t("mazoEditar.cardDeleted"));
     }
 
     case "delete-deck": {
-      const { error } = await session.supabase
-        .from("decks")
-        .delete()
-        .eq("id", deckId);
+      const { error } = await deleteDeck(session.supabase, deckId);
 
       if (error) {
-        return actionFail(error.message);
+        return actionFail(error);
       }
 
       // Las tarjetas caen en cascada y el progreso asociado también.
@@ -211,140 +214,6 @@ export async function clientAction({
     default:
       return actionFail(t("mazoEditar.unknownAction"));
   }
-}
-
-function nullable(value: FormDataEntryValue | null): string | null {
-  const text = String(value ?? "").trim();
-  return text === "" ? null : text;
-}
-
-function normalizeKind(value: FormDataEntryValue | null) {
-  return value === "phrase" || value === "question" || value === "rule"
-    ? value
-    : "word";
-}
-
-/** "saludos, vida diaria" → ["saludos", "vida diaria"] */
-function parseTags(value: FormDataEntryValue | null): string[] {
-  return String(value ?? "")
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-}
-
-/**
- * Guarda todas las tarjetas de un solo envío.
- *
- * El formulario contiene un fieldset por tarjeta con nombres `card:<id>:<campo>`,
- * así que un solo "Guardar tarjetas" persiste toda la edición pendiente.
- */
-async function saveCards(
-  supabase: SupabaseClient,
-  deckId: string,
-  formData: FormData,
-): Promise<ReturnType<typeof actionOk>> {
-  const updates = new Map<
-    string,
-    {
-      term: string;
-      meaning_es: string;
-      example_en: string | null;
-      example_es: string | null;
-      usage_note: string | null;
-      tags: string[];
-      kind: "word" | "phrase" | "question" | "rule";
-    }
-  >();
-
-  for (const [key, value] of formData.entries()) {
-    if (!key.startsWith(CARD_PREFIX)) {
-      continue;
-    }
-
-    const [, cardId, field] = key.split(":");
-    if (!cardId || !field) {
-      continue;
-    }
-
-    const entry = updates.get(cardId) ?? {
-      term: "",
-      meaning_es: "",
-      example_en: null,
-      example_es: null,
-      usage_note: null,
-      tags: [],
-      kind: "word" as const,
-    };
-
-    const text = String(value).trim();
-
-    switch (field) {
-      case "term":
-        entry.term = text;
-        break;
-      case "meaning_es":
-        entry.meaning_es = text;
-        break;
-      case "example_en":
-        entry.example_en = text || null;
-        break;
-      case "example_es":
-        entry.example_es = text || null;
-        break;
-      case "usage_note":
-        entry.usage_note = text || null;
-        break;
-      case "tags":
-        entry.tags = parseTags(value);
-        break;
-      case "kind":
-        entry.kind = normalizeKind(value);
-        break;
-      default:
-        break;
-    }
-
-    updates.set(cardId, entry);
-  }
-
-  if (updates.size === 0) {
-    return actionOk(t("mazoEditar.nothingToSave"));
-  }
-
-  const invalid = [...updates.entries()].find(
-    ([, card]) => !card.term || !card.meaning_es,
-  );
-  if (invalid) {
-    return actionFail(t("mazoEditar.cardsNeedFields"));
-  }
-
-  // Un solo viaje para todas las tarjetas, en vez de uno por tarjeta. Además de
-  // la latencia, esto evita el guardado a medias: antes, si una petición fallaba
-  // las demás ya estaban escritas y el mazo quedaba en un estado que nadie había
-  // pedido. `update_deck_cards` comprueba de una vez que el mazo sea editable y
-  // que cada tarjeta pertenezca a él.
-  const { error } = await supabase.rpc("update_deck_cards", {
-    p_deck_id: deckId,
-    // Solo los campos que la base espera. Se listan uno a uno en vez de
-    // mandar el objeto entero, para que la forma del RPC no dependa de una
-    // conversión implícita y para que un campo nuevo no se cuele por accidente.
-    p_cards: [...updates.entries()].map(([cardId, card]) => ({
-      card_id: cardId,
-      kind: card.kind,
-      term: card.term,
-      meaning_es: card.meaning_es,
-      example_en: card.example_en,
-      example_es: card.example_es,
-      usage_note: card.usage_note,
-      tags: card.tags,
-    })),
-  });
-
-  if (error) {
-    return actionFail(error.message);
-  }
-
-  return actionOk(t("mazoEditar.cardsSaved"));
 }
 
 export default function MazoEditar({

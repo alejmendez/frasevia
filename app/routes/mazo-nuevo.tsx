@@ -14,6 +14,7 @@ import {
 } from "~/components/ui";
 import { slugPreview } from "~/features/decks/slug";
 import { StudyModeField } from "~/features/decks/study-mode-field";
+import { type CardDraft, createDeckWithCards } from "~/lib/decks";
 import { deckLanguages } from "~/lib/languages";
 import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
@@ -85,53 +86,34 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    const { data: deck, error } = await session.supabase
-      .from("decks")
-      .insert({
-        author_id: session.userId,
-        title: title.trim(),
-        description: description.trim(),
-        study_mode: studyMode,
-        level: level.trim() || null,
-        source_language: sourceLanguage,
-        target_language:
-          studyMode === "general" ? sourceLanguage : targetLanguage,
-        visibility,
-      })
-      .select("id")
-      .single();
+    // Si la persona pegó contenido de entrada, se crea una tarjeta por línea.
+    const seedCards = parseSeedLines(seedText, studyMode);
 
-    if (error || !deck) {
-      setFormError(error?.message ?? t("mazoNuevo.createFailed"));
+    const result = await createDeckWithCards(
+      session.supabase,
+      session.userId,
+      {
+        title,
+        description,
+        studyMode,
+        level,
+        sourceLanguage,
+        targetLanguage,
+        visibility,
+      },
+      // Las tarjetas se pasan a medio hacer: el identificador del mazo solo
+      // existe después de crearlo, y eso es cosa de la escritura.
+      seedCards,
+    );
+
+    if (!result.ok) {
+      setFormError(
+        result.stage === "cards"
+          ? t("mazoNuevo.seedFailed", { message: result.message })
+          : result.message || t("mazoNuevo.createFailed"),
+      );
       setPending(false);
       return;
-    }
-
-    // Si la persona pegó contenido de entrada, se crea una tarjeta por línea.
-    const lines = seedText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    if (lines.length > 0) {
-      const { error: cardsError } = await session.supabase
-        .from("cards")
-        .insert(
-          lines.map((line, index) =>
-            parseSeedLine(line, deck.id, index, studyMode),
-          ),
-        );
-
-      if (cardsError) {
-        // Se deshace el mazo para no dejar uno a medio crear: si solo fallaran
-        // las tarjetas, reintentar crearía un mazo duplicado.
-        await session.supabase.from("decks").delete().eq("id", deck.id);
-        setFormError(
-          t("mazoNuevo.seedFailed", { message: cardsError.message }),
-        );
-        setPending(false);
-        return;
-      }
     }
 
     // `navigate` y no `throw redirect()`: esto corre en el `onSubmit` de un
@@ -139,7 +121,7 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
     // action. Lanzado desde aquí no navegaría: el mazo se crearía, la pantalla
     // se quedaría como si nada, y pulsar «Crear» otra vez dejaría un duplicado
     // en la biblioteca. Lo vigila `app/lib/navigation.test.ts`.
-    navigate(`/biblioteca/mazos/${deck.id}/editar`);
+    navigate(`/biblioteca/mazos/${result.deckId}/editar`);
   }
 
   return (
@@ -318,28 +300,37 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
 }
 
 /**
- * Interpreta una línea de la tanda inicial.
+ * Interpreta la tanda inicial que se pegó en el formulario.
  *
- * Si faltan partes se guardan igual: es preferible una tarjeta incompleta que se
- * puede completar después en el editor, que rechazar el mazo entero.
+ * Cada línea es una tarjeta: `término|traducción|frase en inglés|frase en
+ * español`. Faltar partes no es un error —se guardan igual— porque es preferible
+ * una tarjeta incompleta que se puede completar después en el editor a rechazar
+ * el mazo entero. Las líneas en blanco se saltan: pegar desde un documento casi
+ * siempre arrastra un salto de más al final.
  */
-function parseSeedLine(
-  line: string,
-  deckId: string,
-  index: number,
+function parseSeedLines(
+  seedText: string,
   studyMode: DeckStudyMode,
-) {
+): CardDraft[] {
+  return seedText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => parseSeedLine(line, studyMode));
+}
+
+function parseSeedLine(line: string, studyMode: DeckStudyMode): CardDraft {
   const [term = "", meaning = "", exampleEn = "", exampleEs = ""] = line
     .split("|")
     .map((part) => part.trim());
 
   return {
-    deck_id: deckId,
-    kind: studyMode === "general" ? ("question" as const) : ("word" as const),
+    // En un mazo de repaso general la primera columna es la pregunta, no una
+    // palabra: el tipo dice cómo se presenta.
+    kind: studyMode === "general" ? "question" : "word",
     term,
-    meaning_es: meaning,
-    example_en: exampleEn || null,
-    example_es: exampleEs || null,
-    position: index + 1,
+    meaningEs: meaning,
+    exampleEn,
+    exampleEs,
   };
 }

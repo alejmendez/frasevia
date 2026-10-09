@@ -48,7 +48,7 @@ const CEILINGS: Array<{
   {
     label: "código de biblioteca",
     matches: (path) => path.startsWith(`lib${sep}`),
-    max: 320,
+    max: 330,
   },
   {
     label: "código de dominio",

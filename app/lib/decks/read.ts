@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-import { getSupabaseBrowser } from "./supabase";
+import { getSupabaseBrowser } from "../supabase";
 import type {
   Card,
   CardProgress,
@@ -9,22 +8,24 @@ import type {
   DeckReviewSummary,
   DeckStudyMode,
   ProgressDetail,
-} from "./types";
+} from "../types";
+import { CARD_COLUMNS, DECK_COLUMNS } from "./rows";
 
 /**
- * Consultas a la base de datos.
+ * Lecturas de mazos, tarjetas y progreso.
  *
  * Todas pasan por el cliente del navegador. La seguridad no está aquí: RLS
  * filtra cada fila en la base de datos, así que aunque alguien cambiara estas
  * consultas no vería datos ajenos. Las públicas no necesitan sesión, pero viajan
  * por el mismo cliente para no mantener dos rutas de acceso a los mismos datos.
+ *
+ * Hay dos convenciones y conviene saber cuál es cuál, porque se ven distintas:
+ *
+ * - Las del **catálogo público** se llaman solas y se apoyan en el cliente del
+ *   navegador. Sin sesión no hay nada que pasar.
+ * - Las de **lo que es tuyo** reciben `supabase` y `userId` de la sesión que ya
+ *   tienen, para que quede explícito de quién son los datos que se piden.
  */
-
-const DECK_COLUMNS =
-  "id, author_id, title, slug, description, study_mode, source_language, target_language, level, visibility, is_official, source_deck_id, card_count, created_at, updated_at";
-
-const CARD_COLUMNS =
-  "id, deck_id, kind, term, meaning_es, example_en, example_es, usage_note, tags, position, created_at, updated_at";
 
 export interface LibraryDeck extends Deck {
   progress: DeckProgressSummary | null;
@@ -148,6 +149,10 @@ export async function getPublicDeckBySlug(slug: string): Promise<{
 
   return { deck, cards: (cardData ?? []) as Card[], error: null, status: "ok" };
 }
+
+// ---------------------------------------------------------------------------
+// Mazos propios
+// ---------------------------------------------------------------------------
 
 export async function listMyDecks(
   supabase: SupabaseClient,
@@ -273,6 +278,10 @@ export async function getMyDeck(
     error: null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Progreso
+// ---------------------------------------------------------------------------
 
 export async function getProgressForCards(
   supabase: SupabaseClient,

@@ -1,13 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  CardReviewState,
-  DeckReviewSummary,
-  DeckStudyMode,
-  ReviewLevel,
-} from "./types";
+import type { CardReviewState, DeckStudyMode, ReviewLevel } from "../types";
+import { REVIEW_LEVEL_COLUMNS } from "./write";
 
-const REVIEW_LEVEL_COLUMNS =
-  "id, user_id, system_key, name, action, interval_amount, interval_unit, position, color, active, created_at, updated_at";
+/**
+ * Lecturas de repaso: niveles, estado por ficha, cola pendiente y calendario.
+ *
+ * Todo lo que se pregunta vive aquí y todo lo que se cambia en `write.ts`. La
+ * lista de columnas de un nivel se comparte entre los dos: si leer y escribir
+ * vieran columnas distintas, la pantalla mostraría una cosa y guardaría otra, y
+ * eso no da ningún error.
+ */
+
 const REVIEW_STATE_COLUMNS =
   "card_id, direction, last_reviewed_at, next_review_at, retired, last_level_id, review_count, updated_at";
 
@@ -41,25 +44,6 @@ export async function listCardReviewStates(
 
   return {
     states: (data ?? []) as CardReviewState[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listDeckReviewSummaries(
-  supabase: SupabaseClient,
-  deckIds: string[],
-): Promise<{ summaries: DeckReviewSummary[]; error: string | null }> {
-  if (deckIds.length === 0) return { summaries: [], error: null };
-
-  const { data, error } = await supabase
-    .from("my_deck_review_summary")
-    .select(
-      "deck_id, new_count, due_count, scheduled_count, retired_count, next_review_at, last_reviewed_at",
-    )
-    .in("deck_id", deckIds);
-
-  return {
-    summaries: (data ?? []) as DeckReviewSummary[],
     error: error?.message ?? null,
   };
 }
@@ -112,13 +96,13 @@ export interface ScheduledReviewDate {
  * para gastar ancho de banda en fichas que no se van a ver. El tope deja la
  * pantalla de repaso siempre igual de rápida por muchas que haya pendientes.
  */
-export const REVIEW_QUEUE_LIMIT = 200;
+const REVIEW_QUEUE_LIMIT = 200;
 
 /** Cuántas fechas futuras se piden para el resumen de la biblioteca. */
-export const REVIEW_SCHEDULE_LIMIT = 200;
+const REVIEW_SCHEDULE_LIMIT = 200;
 
 /** Cuántas tarjetas retiradas se muestran en los ajustes de repaso. */
-export const RETIRED_CARDS_LIMIT = 100;
+const RETIRED_CARDS_LIMIT = 100;
 
 const PENDING_REVIEW_COLUMNS =
   "card_id, direction, last_reviewed_at, next_review_at, review_count, last_level_id, deck_id, kind, term, meaning_es, example_en, example_es, usage_note, deck_title, study_mode, source_language, target_language";

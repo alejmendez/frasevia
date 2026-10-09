@@ -35,6 +35,7 @@ import {
 import { buildStandalonePrompt } from "~/features/ai/prompt";
 import { PROVIDER } from "~/features/ai/providers";
 import { StudyModeField } from "~/features/decks/study-mode-field";
+import { createDeckWithCards } from "~/lib/decks";
 import { deckLanguages } from "~/lib/languages";
 import { type MessageKey, t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
@@ -311,6 +312,8 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
     );
   }
 
+  // Las tarjetas del borrador que no se descartaron. `deck.cards` ya tiene la
+  // forma que espera la escritura, así que no hay nada que traducir aquí.
   const kept = deck
     ? deck.cards.filter((_, index) => !dropped.includes(index))
     : [];
@@ -335,47 +338,27 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    const { data: newDeck, error: deckError } = await session.supabase
-      .from("decks")
-      .insert({
-        author_id: session.userId,
-        title: title.trim(),
-        description: description.trim(),
-        study_mode: studyMode,
+    const result = await createDeckWithCards(
+      session.supabase,
+      session.userId,
+      {
+        title,
+        description,
+        studyMode,
         level: deck.level,
-        source_language: sourceLanguage,
-        target_language:
-          studyMode === "general" ? sourceLanguage : targetLanguage,
+        sourceLanguage,
+        targetLanguage,
         visibility,
-      })
-      .select("id")
-      .single();
-
-    if (deckError || !newDeck) {
-      setError(deckError?.message ?? t("mazoNuevo.createFailed"));
-      setSaving(false);
-      return;
-    }
-
-    const { error: cardsError } = await session.supabase.from("cards").insert(
-      kept.map((card, index) => ({
-        deck_id: newDeck.id,
-        kind: card.kind,
-        term: card.term,
-        meaning_es: card.meaningEs,
-        example_en: card.exampleEn,
-        example_es: card.exampleEs,
-        usage_note: card.usageNote,
-        tags: card.tags,
-        position: index + 1,
-      })),
+      },
+      kept,
     );
 
-    if (cardsError) {
-      // Se deshace el mazo entero: si solo fallaran las tarjetas, reintentar
-      // crearía un mazo duplicado en la biblioteca.
-      await session.supabase.from("decks").delete().eq("id", newDeck.id);
-      setError(t("mazoIa.cardsSaveFailed", { message: cardsError.message }));
+    if (!result.ok) {
+      setError(
+        result.stage === "cards"
+          ? t("mazoIa.cardsSaveFailed", { message: result.message })
+          : result.message || t("mazoNuevo.createFailed"),
+      );
       setSaving(false);
       return;
     }
@@ -384,7 +367,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
     // el enrutador solo captura el redirect de un loader o un action. Lanzado
     // aquí no navegaría y dejaría la página como si el guardado hubiera fallado.
     // Lo vigila `app/lib/navigation.test.ts`.
-    navigate(`/biblioteca/mazos/${newDeck.id}/editar`);
+    navigate(`/biblioteca/mazos/${result.deckId}/editar`);
   }
 
   async function copyPrompt() {

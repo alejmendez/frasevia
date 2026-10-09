@@ -975,6 +975,8 @@ export const es = {
   "selection.sessionUnavailable":
     "Tu sesión terminó. Vuelve a entrar para guardar la palabra.",
   "selection.deckNameRequired": "Escribe un nombre para el mazo nuevo.",
+  "selection.deckNameTooLong":
+    "El nombre del mazo es demasiado largo. Usa menos de 120 caracteres.",
   "selection.saveFailed": "No se pudo guardar la palabra. Inténtalo de nuevo.",
   "selection.deckLoadError":
     "No se pudieron cargar tus mazos. Puedes crear uno nuevo.",

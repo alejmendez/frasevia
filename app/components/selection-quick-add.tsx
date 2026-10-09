@@ -11,13 +11,38 @@ import {
   suggestTranslation,
 } from "~/features/ai/generate";
 import { hasKey } from "~/features/ai/keys";
-import type { QuickAddDeck } from "~/lib/decks";
-import { t } from "~/lib/locale";
+import {
+  guessCardKind,
+  type QuickAddProblem,
+  validateQuickAdd,
+} from "~/features/decks/quick-add/validate";
+import {
+  appendCard,
+  type CardDraft,
+  createDeckWithCards,
+  type QuickAddDeck,
+} from "~/lib/decks";
+import type { MessageKey } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession } from "~/lib/session";
 import { Alert, Button, Field, inputClass, Select } from "./ui";
 
 const NEW_DECK = "__new__";
+
+/**
+ * Cada problema de la validación y el texto que lo explica.
+ *
+ * Las reglas viven en `features/decks/quick-add/validate` y no conocen los
+ * textos: aquí se traduce el motivo. Así las reglas se prueban sin idioma de por
+ * medio, y el aviso sale en el que se está usando la aplicación.
+ */
+const PROBLEM_KEYS: Record<QuickAddProblem, MessageKey> = {
+  "translation-required": "selection.translationRequired",
+  "translation-too-long": "selection.translationTooLong",
+  "deck-unavailable": "selection.deckUnavailable",
+  "deck-name-required": "selection.deckNameRequired",
+  "deck-title-too-long": "selection.deckNameTooLong",
+};
 
 interface SelectionAnchor {
   text: string;
@@ -272,6 +297,7 @@ function QuickAddDialog({
     dialogRef.current?.showModal();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `tr` se usa dentro del efecto, pero su identidad cambia con el idioma y depender de él abortaba la petición al cambiar de idioma y la volvía a lanzar. Traducir cuesta dinero, así que solo se relanza si cambian el texto o los idiomas, que es lo único que la afecta.
   useEffect(() => {
     const sourceLanguage = selectedLanguage;
     const targetLanguage = sourceLanguage === "en" ? "es" : "en";
@@ -316,7 +342,7 @@ function QuickAddDialog({
         setSuggestionError(
           error instanceof GenerationError
             ? error.message
-            : t("selection.translationSuggestionFailed"),
+            : tr("selection.translationSuggestionFailed"),
         );
       });
 
@@ -324,10 +350,6 @@ function QuickAddDialog({
       active = false;
       controller.abort();
     };
-    // `tr` no entra: su identidad cambia con el idioma, y depender de él
-    // abortaba la petición al cambiar de idioma y la volvía a lanzar. Traducir
-    // la sugerencia cuesta dinero, así que solo se relanza si cambian el texto o
-    // los idiomas, que es lo único que la afecta.
   }, [selectedLanguage, text]);
 
   function close() {
@@ -340,20 +362,15 @@ function QuickAddDialog({
     event.preventDefault();
     setFormError(null);
 
-    const term = english.trim();
-    const meaning = spanish.trim();
-    if (!term || !meaning) {
-      setFormError(tr("selection.translationRequired"));
-      return;
-    }
-    if (term.length > 200 || meaning.length > 400) {
-      setFormError(tr("selection.translationTooLong"));
-      return;
-    }
+    const problem = validateQuickAdd({
+      english,
+      spanish,
+      deckId: deckId === NEW_DECK ? null : deckId,
+      newDeckTitle,
+    });
 
-    const selectedDeck = decks.find((deck) => deck.id === deckId);
-    if (deckId !== NEW_DECK && !selectedDeck) {
-      setFormError(tr("selection.deckUnavailable"));
+    if (problem) {
+      setFormError(tr(PROBLEM_KEYS[problem]));
       return;
     }
 
@@ -365,83 +382,60 @@ function QuickAddDialog({
         return;
       }
 
-      let deck = selectedDeck;
-      let createdDeckId: string | null = null;
+      const card: CardDraft = {
+        term: english,
+        meaningEs: spanish,
+        kind: guessCardKind(english),
+      };
+
+      // Un mazo nuevo se crea con la tarjeta dentro, y se deshace entero si la
+      // tarjeta no entra: el mismo camino que usa «crear mazo» en la biblioteca.
       if (deckId === NEW_DECK) {
         const title = newDeckTitle.trim();
-        if (!title) {
-          setFormError(tr("selection.deckNameRequired"));
-          return;
-        }
-
-        const { data, error } = await session.supabase
-          .from("decks")
-          .insert({
-            author_id: session.userId,
+        const result = await createDeckWithCards(
+          session.supabase,
+          session.userId,
+          {
             title,
-            description: "",
-            source_language: "es",
-            target_language: "en",
+            // El menú rápido solo trabaja con vocabulario español–inglés, que es
+            // lo único para lo que ofrece mazos.
+            studyMode: "language",
+            sourceLanguage: "es",
+            targetLanguage: "en",
             visibility: "private",
-          })
-          .select("id, title, source_language, target_language")
-          .single();
+          },
+          [card],
+        );
 
-        if (error || !data) {
-          setFormError(error?.message ?? tr("selection.saveFailed"));
+        if (!result.ok) {
+          setFormError(result.message || tr("selection.saveFailed"));
           return;
         }
 
-        deck = data as QuickAddDeck;
-        createdDeckId = deck.id;
+        const saved = {
+          id: result.deckId,
+          title,
+          study_mode: "language" as const,
+          source_language: "es",
+          target_language: "en",
+        };
+
+        onSaved(saved);
+        setSavedDeck(saved);
+        return;
       }
+
+      const deck = decks.find((entry) => entry.id === deckId);
 
       if (!deck) {
         setFormError(tr("selection.deckUnavailable"));
         return;
       }
 
-      const { data: lastCard, error: positionError } = await session.supabase
-        .from("cards")
-        .select("position")
-        .eq("deck_id", deck.id)
-        .order("position", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { error } = await appendCard(session.supabase, deck.id, card);
 
-      if (positionError) {
-        if (createdDeckId) {
-          await session.supabase
-            .from("decks")
-            .delete()
-            .eq("id", createdDeckId)
-            .eq("author_id", session.userId);
-        }
-        setFormError(positionError.message);
-        return;
-      }
-
-      const { error: cardError } = await session.supabase.from("cards").insert({
-        deck_id: deck.id,
-        kind: /\s/.test(term) ? "phrase" : "word",
-        term,
-        meaning_es: meaning,
-        example_en: null,
-        example_es: null,
-        usage_note: null,
-        tags: [],
-        position: ((lastCard?.position as number | undefined) ?? -1) + 1,
-      });
-
-      if (cardError) {
-        if (createdDeckId) {
-          await session.supabase
-            .from("decks")
-            .delete()
-            .eq("id", createdDeckId)
-            .eq("author_id", session.userId);
-        }
-        setFormError(cardError.message);
+      if (error) {
+        setFormError(error);
         return;
       }
 

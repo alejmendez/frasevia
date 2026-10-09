@@ -18,8 +18,15 @@ import {
 } from "~/components/ui";
 import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
+import { intervalName, levelName, REVIEW_COLORS } from "~/lib/review-levels";
 import type { RetiredReviewCard } from "~/lib/reviews";
-import { listRetiredReviewCards, listReviewLevels } from "~/lib/reviews";
+import {
+  listRetiredReviewCards,
+  listReviewLevels,
+  reactivateCardReview,
+  resetReviewLevels,
+  saveReviewLevels,
+} from "~/lib/reviews";
 import { getSession, loginPath } from "~/lib/session";
 import type {
   ReviewAction,
@@ -27,50 +34,6 @@ import type {
   ReviewLevel,
 } from "~/lib/types";
 import type { Route } from "./+types/ajustes-repaso";
-
-const DEFAULTS = [
-  {
-    system_key: "difficult",
-    name: "Difícil",
-    action: "review",
-    interval_amount: 2,
-    interval_unit: "hours",
-    position: 1,
-    color: "coral",
-  },
-  {
-    system_key: "normal",
-    name: "Normal",
-    action: "review",
-    interval_amount: 1,
-    interval_unit: "days",
-    position: 2,
-    color: "sand",
-  },
-  {
-    system_key: "easy",
-    name: "Fácil",
-    action: "review",
-    interval_amount: 5,
-    interval_unit: "days",
-    position: 3,
-    color: "sage",
-  },
-  {
-    system_key: "very_easy",
-    name: "Súper fácil",
-    action: "retire",
-    interval_amount: null,
-    interval_unit: null,
-    position: 4,
-    color: "lime",
-  },
-] as const;
-
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const COLORS = ["coral", "sand", "sage", "lime", "forest", "blue"] as const;
-const UNITS = ["minutes", "hours", "days"] as const;
 
 type SettingsActionResult = {
   ok: boolean;
@@ -115,14 +78,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const intent = String(formData.get("intent") ?? "");
   const session = await getSession();
   if (session.status !== "ready") {
-    return data(
-      {
-        ok: false as const,
-        intent,
-        message: t("ajustesRepaso.sessionExpired"),
-      },
-      { status: 401 },
-    );
+    return fail(intent, t("ajustesRepaso.sessionExpired"), 401);
   }
 
   if (intent === "reactivate") {
@@ -139,204 +95,80 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
         { status: 400 },
       );
     }
-    const { error } = await session.supabase.rpc("reactivate_card_review", {
-      p_card_id: cardId,
-      p_direction: direction,
-    });
-    return error
-      ? data(
-          { ok: false as const, intent, cardId, message: error.message },
-          { status: 400 },
-        )
-      : {
+
+    const result = await reactivateCardReview(
+      session.supabase,
+      cardId,
+      direction,
+    );
+
+    return result.ok
+      ? {
           ok: true as const,
           intent,
           cardId,
           message: t("ajustesRepaso.reactivated"),
-        };
+        }
+      : data(
+          { ok: false as const, intent, cardId, message: result.message },
+          { status: 400 },
+        );
   }
 
   if (intent === "reset") {
-    const { data: existingData, error } = await session.supabase
-      .from("review_levels")
-      .select(
-        "id, user_id, system_key, name, action, interval_amount, interval_unit, position, color, active, created_at, updated_at",
-      )
-      .order("position", { ascending: true });
-    if (error) {
-      return data(
-        { ok: false as const, intent, message: error.message },
-        { status: 400 },
-      );
-    }
-    const existing = (existingData ?? []) as ReviewLevel[];
-    const bySystemKey = new Map(
-      existing
-        .filter((level) => level.system_key)
-        .map((level) => [level.system_key, level]),
-    );
-    const now = new Date().toISOString();
-    const rows = [
-      ...DEFAULTS.map((preset) => {
-        const current = bySystemKey.get(preset.system_key);
-        return {
-          id: current?.id ?? crypto.randomUUID(),
-          user_id: session.userId,
-          ...preset,
-          active: true,
-          created_at: current?.created_at ?? now,
-          updated_at: now,
-        };
-      }),
-      ...existing
-        .filter((level) => !level.system_key)
-        .map((level, index) => ({
-          ...level,
-          active: false,
-          position: DEFAULTS.length + index + 1,
-          updated_at: now,
-        })),
-    ];
-    const { data: saved, error: saveError } = await session.supabase
-      .from("review_levels")
-      .upsert(rows, { onConflict: "id" })
-      .select(
-        "id, user_id, system_key, name, action, interval_amount, interval_unit, position, color, active, created_at, updated_at",
-      );
-    return saveError
-      ? data(
-          { ok: false as const, intent, message: saveError.message },
-          { status: 400 },
-        )
-      : {
+    const result = await resetReviewLevels(session.supabase, session.userId);
+
+    return result.ok
+      ? {
           ok: true as const,
           intent,
           message: t("ajustesRepaso.resetDone"),
-          levels: (saved ?? []) as ReviewLevel[],
-        };
+          levels: result.levels,
+        }
+      : data(
+          { ok: false as const, intent, message: result.message },
+          { status: 400 },
+        );
   }
 
   if (intent !== "save") {
-    return data(
-      { ok: false as const, intent, message: t("ajustesRepaso.invalidAction") },
-      { status: 400 },
-    );
+    return fail(intent, t("ajustesRepaso.invalidAction"));
   }
 
   let submitted: unknown;
   try {
     submitted = JSON.parse(String(formData.get("levels") ?? "[]"));
   } catch {
-    return data(
-      { ok: false as const, intent, message: t("ajustesRepaso.invalidLevels") },
-      { status: 400 },
-    );
-  }
-  if (
-    !Array.isArray(submitted) ||
-    submitted.length === 0 ||
-    submitted.length > 30
-  ) {
-    return data(
-      { ok: false as const, intent, message: t("ajustesRepaso.invalidLevels") },
-      { status: 400 },
-    );
+    return fail(intent, t("ajustesRepaso.invalidLevels"));
   }
 
-  const normalized = submitted.map((candidate, index) => {
-    if (!candidate || typeof candidate !== "object") return null;
-    const row = candidate as Record<string, unknown>;
-    const name = typeof row.name === "string" ? row.name.trim() : "";
-    const action = row.action;
-    const amount = row.interval_amount;
-    const unit = row.interval_unit;
-    const color = row.color;
-    const systemKey = row.system_key;
-    if (
-      typeof row.id !== "string" ||
-      !UUID.test(row.id) ||
-      name.length < 1 ||
-      name.length > 40 ||
-      (action !== "review" && action !== "retire") ||
-      !COLORS.includes(color as (typeof COLORS)[number]) ||
-      (systemKey !== null &&
-        !DEFAULTS.some((preset) => preset.system_key === systemKey))
-    )
-      return null;
+  const result = await saveReviewLevels(
+    session.supabase,
+    session.userId,
+    submitted,
+  );
 
-    if (action === "review") {
-      if (
-        typeof amount !== "number" ||
-        !Number.isInteger(amount) ||
-        amount < 1 ||
-        amount > 525600 ||
-        !UNITS.includes(unit as (typeof UNITS)[number]) ||
-        (unit === "hours" && amount > 8760) ||
-        (unit === "days" && amount > 3650)
-      )
-        return null;
-    }
-
-    return {
-      id: row.id,
-      user_id: session.userId,
-      system_key: systemKey,
-      name,
-      action: action as ReviewAction,
-      interval_amount: action === "retire" ? null : (amount as number),
-      interval_unit: action === "retire" ? null : (unit as ReviewIntervalUnit),
-      position: index + 1,
-      color,
-      active: row.active === true,
-    };
-  });
-
-  if (normalized.some((row) => row === null)) {
-    return data(
-      { ok: false as const, intent, message: t("ajustesRepaso.invalidLevels") },
-      { status: 400 },
-    );
+  if (!result.ok) {
+    return fail(intent, t("ajustesRepaso.invalidLevels"));
   }
 
-  const now = new Date().toISOString();
-  const ids = (normalized as NonNullable<(typeof normalized)[number]>[]).map(
-    (row) => row.id,
-  );
-  const { data: currentRows } = await session.supabase
-    .from("review_levels")
-    .select("id, created_at")
-    .in("id", ids);
-  const createdById = new Map(
-    (currentRows ?? []).map((row) => [
-      row.id as string,
-      row.created_at as string,
-    ]),
-  );
-  const rows = (normalized as NonNullable<(typeof normalized)[number]>[]).map(
-    (row) => ({
-      ...row,
-      created_at: createdById.get(row.id) ?? now,
-      updated_at: now,
-    }),
-  );
-  const { data: saved, error } = await session.supabase
-    .from("review_levels")
-    .upsert(rows, { onConflict: "id" })
-    .select(
-      "id, user_id, system_key, name, action, interval_amount, interval_unit, position, color, active, created_at, updated_at",
-    );
+  return {
+    ok: true as const,
+    intent,
+    message: t("ajustesRepaso.saved"),
+    levels: result.levels,
+  };
+}
 
-  return error
-    ? data(
-        { ok: false as const, intent, message: error.message },
-        { status: 400 },
-      )
-    : {
-        ok: true as const,
-        intent,
-        message: t("ajustesRepaso.saved"),
-        levels: (saved ?? []) as ReviewLevel[],
-      };
+/**
+ * Un fallo de acción, con su código.
+ *
+ * Salía nueve veces en este archivo, cada una con el mismo `data({ok:false},
+ * {status})` y solo cambiando el texto. La forma de la respuesta es un contrato:
+ * la pantalla lee `ok` y `message` de ahí, así que en un solo sitio.
+ */
+function fail(intent: string, message: string, status = 400) {
+  return data({ ok: false as const, intent, message }, { status });
 }
 
 export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
@@ -407,33 +239,11 @@ export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
     setLevels((current) => [...current, newLevel]);
   };
 
-  const levelName = (level: ReviewLevel) => {
-    if (level.system_key && DEFAULT_NAMES[level.system_key] === level.name) {
-      switch (level.system_key) {
-        case "difficult":
-          return tr("ajustesRepaso.level.difficult");
-        case "normal":
-          return tr("ajustesRepaso.level.normal");
-        case "easy":
-          return tr("ajustesRepaso.level.easy");
-        case "very_easy":
-          return tr("ajustesRepaso.level.veryEasy");
-      }
-    }
-    return level.name;
-  };
-
-  const intervalName = (level: ReviewLevel) => {
-    if (level.action === "retire") return tr("estudiar.noFurtherReviews");
-    if (level.interval_unit === "days" && level.interval_amount === 1)
-      return tr("estudiar.tomorrow");
-    const amount = level.interval_amount ?? 1;
-    if (level.interval_unit === "minutes")
-      return tr("estudiar.intervalMinutes", { amount });
-    if (level.interval_unit === "hours")
-      return tr("estudiar.intervalHours", { amount });
-    return tr("estudiar.intervalDays", { amount });
-  };
+  // Los nombres y los intervalos se resuelven con las mismas reglas que usa la
+  // pantalla de estudio: si divergieran, el mismo nivel se llamaría de una forma
+  // aquí y de otra allí.
+  const levelLabel = (level: ReviewLevel) => levelName(level, tr);
+  const intervalLabel = (level: ReviewLevel) => intervalName(level, tr);
 
   return (
     <Page>
@@ -491,7 +301,7 @@ export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
                         disabled={index === 0}
                         className="size-9 p-0"
                         aria-label={tr("ajustesRepaso.moveUp", {
-                          name: levelName(level),
+                          name: levelLabel(level),
                         })}
                         onClick={() => moveLevel(index, -1)}
                       >
@@ -503,7 +313,7 @@ export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
                         disabled={index === levels.length - 1}
                         className="size-9 p-0"
                         aria-label={tr("ajustesRepaso.moveDown", {
-                          name: levelName(level),
+                          name: levelLabel(level),
                         })}
                         onClick={() => moveLevel(index, 1)}
                       >
@@ -521,7 +331,7 @@ export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
                         id={`name-${level.id}`}
                         className={inputClass}
                         maxLength={40}
-                        value={levelName(level)}
+                        value={levelLabel(level)}
                         onChange={(event) =>
                           updateLevel(level.id, {
                             name: event.target.value,
@@ -632,7 +442,7 @@ export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
                           updateLevel(level.id, { color: event.target.value })
                         }
                       >
-                        {COLORS.map((color) => (
+                        {REVIEW_COLORS.map((color) => (
                           <option key={color} value={color}>
                             {tr(`ajustesRepaso.color.${color}`)}
                           </option>
@@ -722,9 +532,9 @@ export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
                       aria-hidden="true"
                       className="size-6 rounded-full bg-current opacity-35"
                     />
-                    <span className="font-medium">{levelName(level)}</span>
+                    <span className="font-medium">{levelLabel(level)}</span>
                     <span className="ml-auto text-sm">
-                      {intervalName(level)}
+                      {intervalLabel(level)}
                     </span>
                     <span className="sr-only">{index + 1}</span>
                   </div>
@@ -814,10 +624,3 @@ function RetiredCardRow({ card }: { card: RetiredReviewCard }) {
     </li>
   );
 }
-
-const DEFAULT_NAMES: Record<string, string> = {
-  difficult: "Difícil",
-  normal: "Normal",
-  easy: "Fácil",
-  very_easy: "Súper fácil",
-};
