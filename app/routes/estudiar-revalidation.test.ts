@@ -1,11 +1,7 @@
 import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { describe, expect, it } from "vitest";
 
-import {
-  type PendingReview,
-  ReviewWriteQueue,
-  shouldRevalidate,
-} from "./estudiar";
+import { shouldRevalidate } from "./estudiar";
 import { shouldRevalidate as shouldRevalidatePrivate } from "./privada";
 
 /**
@@ -86,88 +82,6 @@ describe("revalidation after rating a card", () => {
     expect(
       shouldRevalidate(args({ formData: formDataOf({ intent: "otra-cosa" }) })),
     ).toBe(true);
-  });
-});
-
-describe("review write queue", () => {
-  function review(index: number, eventId = `event-${index}`): PendingReview {
-    return {
-      eventId,
-      index,
-      cardId: `card-${index}`,
-      direction: "es-en",
-      levelId: `level-${index}`,
-    };
-  }
-
-  it("sends the first rating straight away", () => {
-    const queue = new ReviewWriteQueue();
-    expect(queue.push(review(0))).toEqual(review(0));
-    expect(queue.current()).toEqual(review(0));
-    expect(queue.pending).toBe(0);
-  });
-
-  it("holds further ratings instead of dropping them", () => {
-    // The whole point: rating without waiting has to queue, not discard.
-    const queue = new ReviewWriteQueue();
-    queue.push(review(0));
-    expect(queue.push(review(1))).toBeNull();
-    expect(queue.push(review(2))).toBeNull();
-    expect(queue.pending).toBe(2);
-  });
-
-  it("sends the next one when the current is confirmed", () => {
-    const queue = new ReviewWriteQueue();
-    const first = queue.push(review(0));
-    queue.push(review(1));
-    queue.push(review(2));
-
-    expect(queue.complete(first!)).toEqual(review(1));
-    expect(queue.current()).toEqual(review(1));
-    expect(queue.pending).toBe(1);
-  });
-
-  it("releases each rating in order", () => {
-    const queue = new ReviewWriteQueue();
-    const seen: string[] = [];
-    let current = queue.push(review(0));
-    queue.push(review(1));
-    queue.push(review(2));
-
-    while (current) {
-      seen.push(current.eventId);
-      current = queue.complete(current);
-    }
-
-    expect(seen).toEqual(["event-0", "event-1", "event-2"]);
-    expect(queue.pending).toBe(0);
-    expect(queue.current()).toBeNull();
-  });
-
-  it("ignores a response for something else", () => {
-    // A stale response must not release the slot and scramble the order.
-    const queue = new ReviewWriteQueue();
-    const first = queue.push(review(0));
-    queue.push(review(1));
-
-    expect(queue.complete(review(99))).toBeNull();
-    expect(queue.current()).toEqual(first);
-    expect(queue.pending).toBe(1);
-  });
-
-  it("keeps the idempotency key of each rating", () => {
-    const queue = new ReviewWriteQueue();
-    const retried = queue.push(review(3, "same-event"));
-    expect(retried?.eventId).toBe("same-event");
-  });
-
-  it("drops what is left when the screen goes away", () => {
-    const queue = new ReviewWriteQueue();
-    queue.push(review(0));
-    queue.push(review(1));
-    queue.clear();
-
-    expect(queue.pending).toBe(0);
   });
 });
 

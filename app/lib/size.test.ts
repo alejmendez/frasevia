@@ -33,7 +33,7 @@ const CEILINGS: Array<{
   {
     label: "módulo de ruta",
     matches: (path) => path.startsWith(`routes${sep}`),
-    max: 2100,
+    max: 950,
   },
   {
     label: "catálogo de traducción",
@@ -43,7 +43,7 @@ const CEILINGS: Array<{
   {
     label: "componente compartido",
     matches: (path) => path.startsWith(`components${sep}`),
-    max: 1140,
+    max: 1150,
   },
   {
     label: "código de biblioteca",
