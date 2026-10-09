@@ -54,7 +54,7 @@ values
   ('30000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000003', 'a public word', 'una palabra pública')
 on conflict (id) do nothing;
 
-select plan(24);
+select plan(25);
 
 -- ---------------------------------------------------------------------------
 -- Visitante (rol anon)
@@ -264,15 +264,26 @@ select is(
   'un acierto deja la tarjeta en "practicando"'
 );
 
+-- Esto va en dos sentencias y no en una por un motivo que cuesta ver.
+--
+-- `record_practice` escribe, y si la misma sentencia que la invoca vuelve a
+-- leer la tabla que toca, el `join` exterior no ve ese cambio: PostgreSQL fija
+-- la instantánea al empezar la sentencia, así que la fila que sale es la de
+-- antes del `update`. Metiendo la escritura en un `from` lateral el resultado
+-- es 'learning' siempre, y parece que la función está mal cuando no lo está.
+-- Por eso primero se guarda y en la siguiente sentencia se comprueba.
+select lives_ok(
+  $$select public.record_practice(
+       '[{"card_id":"30000000-0000-4000-8000-000000000001","attempts":1,"correct_count":1}]'::jsonb
+     )$$,
+  'el segundo acierto se guarda sin error'
+);
+
 select is(
   (select p.state::text
-     from (select public.record_practice(
-             '[{"card_id":"30000000-0000-4000-8000-000000000001","attempts":1,"correct_count":1}]'::jsonb
-           ) as saved) r
-     join public.user_card_progress p
-       on p.user_id = '10000000-0000-4000-8000-000000000001'
-      and p.card_id = '30000000-0000-4000-8000-000000000001'
-     where r.saved = 1),
+     from public.user_card_progress p
+    where p.user_id = '10000000-0000-4000-8000-000000000001'
+      and p.card_id = '30000000-0000-4000-8000-000000000001'),
   'mastered',
   'el segundo acierto marca la tarjeta como aprendida'
 );
