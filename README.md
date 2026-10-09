@@ -398,20 +398,67 @@ supabase test db
 
 ```
 app/
-├── components/        # UI compartida: botones, campos, avisos, diálogo de confirmación
+├── components/        # UI compartida, sin saber de dominio
+│   ├── ui/            # botones, campos, contenedores y avisos, por motivo
+│   ├── dialog.tsx     # el <dialog> modal, compartido por los dos que hay
+│   ├── navigation-skeleton/  # el esqueleto de carga, un archivo por pantalla
+│   └── site-chrome.tsx       # la barra y el pie
 ├── features/
-│   ├── ai/            # proveedores, claves en el navegador, prompt e interpretación
-│   ├── decks/         # tarjetas de mazo, previsualización del slug
-│   └── study/         # motor de estudio (puro) + sus pruebas
-├── lib/               # clientes de Supabase, sesión, consultas, tipos, CSP, formato
+│   ├── ai/            # proveedores, claves, prompt, modelo y sus hooks
+│   ├── decks/         # formularios de mazo, tarjetas y el menú rápido
+│   ├── library/       # la biblioteca y la tarjeta de mazo
+│   ├── reviews/       # los niveles de repaso
+│   └── study/         # motor de estudio (puro), repaso y prácticas
+├── lib/
+│   ├── decks/         # mazos: filas, lecturas, escrituras y rutas
+│   ├── reviews/       # repaso programado: lecturas y escrituras
+│   ├── locales/       # catálogos por pantalla, en español y en inglés
+│   └── *.ts           # sesión, tipos, formato, rutas, CSP
 ├── routes/            # un módulo por ruta
-├── root.tsx           # documento, navegación, CSP y estado de autenticación
+├── root.tsx           # documento, CSP y colocación de la cabecera
 └── routes.ts          # mapa de rutas
 supabase/
 ├── migrations/        # esquema, RLS y funciones seguras
 ├── tests/             # pruebas pgTAP de permisos
 └── seed.sql           # mazos oficiales
 ```
+
+### El tamaño de los archivos
+
+`app/lib/size.test.ts` pone un techo por zona. La idea es sencilla: un archivo
+tiene que tener **un motivo**, y si no cabe en el techo, es que le sobran dos
+motivos.
+
+| Zona | Techo |
+| --- | --- |
+| Un módulo de ruta | 130 |
+| Un `.tsx` o `.ts` de lo demás | 300 |
+| Un catálogo de traducción | 250 |
+
+Los valores que hay ahora en el test son más altos porque **el refactor no está
+terminado**. Quedan tres archivos por encima, y están anotados aquí para que no
+se pierdan de vista:
+
+| Archivo | Líneas | Lo que falta |
+| --- | --- | --- |
+| `routes/mazo-ia.tsx` | 822 | el formulario y sus dos paneles |
+| `components/selection-quick-add.tsx` | 527 | los formularios del diálogo |
+| `root.tsx` | 319 | `GoogleReturn` y `PendingMain` |
+
+Cuando se parto cada uno, se baja el techo correspondiente en el mismo commit.
+
+### Qué decide dónde vive cada cosa
+
+- **Una ruta** trae datos, guarda lo que se le manda y pinta. Nada más. Su
+  `clientLoader`, su `clientAction` y las dos funciones puras que los llevan están
+  en `features/`, y la ruta es una tabla de contenidos.
+- **Lo que sabe de mazos o de estudio** vive en `app/features/`, no en
+  `components/`.
+- **Lo que sabe de la base de datos** vive en `app/lib/`, en un módulo por
+  dominio (`decks/`, `reviews/`), con las lecturas y las escrituras separadas.
+- **La lógica pura** va en un archivo sin React y con sus pruebas al lado. Es lo
+  único que se puede probar sin navegador y sin base de datos, así que es donde
+  vive todo lo que se puede probar así.
 
 ### Un aviso sobre `redirect()` y `navigate()`
 
@@ -427,8 +474,18 @@ biblioteca. Ahora usa `navigate()`.
 
 Como el sitio se publica sin servidor, casi todo el trabajo ocurre en manejadores
 de evento y el patrón se copia de un archivo a otro con facilidad.
-`app/lib/navigation.test.ts` lo vigila: busca `throw redirect(` fuera de un
-`clientLoader` o `clientAction`, ignorando comentarios y cadenas.
+`app/lib/navigation.test.ts` lo vigila: busca `throw redirect(` en **todo
+`app/`**, fuera de un `clientLoader` o `clientAction`, ignorando comentarios y
+cadenas.
+
+Que recorra todo `app/` y no solo `app/routes/` es a propósito. Parte de la
+lógica que hay que proteger está en `lib/` y en `features/`, y por eso
+`requireSession()` —el único sitio donde tendría sentido centralizar el
+redirección— **no lanza**, sino que devuelve la ruta: el `throw` se queda en el
+cuerpo del loader, que es lo que el test comprueba. Si esa función lanzara, el
+fallo dejaría de estar el `throw` se queda en el
+cuerpo del loader, que es lo que el test comprueba. Si esa función lanzara, el
+fallo dejaría de estar cubierto por una prueba.
 
 ### El motor de estudio
 
@@ -457,11 +514,20 @@ el servidor— sus exportaciones llegan como `undefined` y la ruta responde 500 
 `TypeError: (void 0) is not a function`, sin que ni los tipos ni el lint
 avisiesten nada.
 
-Por eso los módulos compartidos se llaman `session.ts`, `decks.ts` y
-`supabase.ts`, y no con sufijo. `app/lib/naming.test.ts` falla si alguien vuelve a
-usar `.client.ts`. Ya no queda ningún `.server.ts`: sin servidor de por medio, el
+Por eso los módulos compartidos se llaman `session.ts`, `decks/` y `supabase.ts`,
+y no con sufijo. `app/lib/naming.test.ts` falla si alguien vuelve a usar
+`.client.ts`. Ya no queda ningún `.server.ts`: sin servidor de por medio, el
 código de servidor tendría que mudarse al cliente o desaparecer, y
 `app/lib/static.test.ts` vigila que no vuelvan los `loader` de servidor.
+
+### La tabla de rutas está en un solo sitio
+
+`app/lib/routes-paths.ts` declara cómo se llama cada pantalla, y tanto
+`app/routes.ts` como el esqueleto de carga la leen. Antes estaba en los dos sitios
+y añadir una ruta era acordarse de los dos; olvidar el segundo **no daba ningún
+error**: la pantalla nueva funcionaba, solo que durante la carga salía un
+rectángulo gris. `app/lib/routes-paths.test.ts` comprueba que las dos copias
+sigan de acuerdo.
 
 ## Scripts
 

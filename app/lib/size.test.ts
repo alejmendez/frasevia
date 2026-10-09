@@ -12,12 +12,15 @@ import { describe, expect, it } from "vitest";
  *
  * Cada techo arranca en el tamaño real que tenía el archivo más grande de su
  * zona y **se baja a medida que el refactor avanza**. No son límites que haya que
- * defender: son el punto de partida de algo que ya se está haciendo. Al terminar
- * el refactor valen 130 para rutas, 300 para el resto del código y 250 para los
- * catálogos de traducción, que dejan de ser monolios al partirse por dominio.
+ * defender: son el punto de partida de algo que ya se está haciendo, y subirlos
+ * sin motivo es tan malo como dejar que un archivo crezca solo.
  *
- * Subir un techo es legítimo —un archivo nuevo y grande puede estar bien—, pero
- * conviene que sea una decisión consciente y no un accidento.
+ * Al terminar el refactor deberían quedar en 130 para rutas, 300 para el resto
+ * del código y 250 para los catálogos de traducción. Los valores de hoy son los
+ * reales del repo: lo que falta está anotado en el README, en «Estructura».
+ *
+ * Un techo alto no es un techo inútil: obliga a que quien añada cien líneas a un
+ * archivo que ya estaba al tope se pare a mirar qué se puede sacar.
  */
 const CEILINGS: Array<{
   label: string;
@@ -33,17 +36,17 @@ const CEILINGS: Array<{
   {
     label: "módulo de ruta",
     matches: (path) => path.startsWith(`routes${sep}`),
-    max: 950,
+    max: 830,
   },
   {
     label: "catálogo de traducción",
     matches: (path) => path.startsWith(`lib${sep}locales${sep}`),
-    max: 1000,
+    max: 240,
   },
   {
     label: "componente compartido",
     matches: (path) => path.startsWith(`components${sep}`),
-    max: 1150,
+    max: 540,
   },
   {
     label: "código de biblioteca",
@@ -58,7 +61,7 @@ const CEILINGS: Array<{
   {
     label: "raíz de la aplicación",
     matches: () => true,
-    max: 490,
+    max: 330,
   },
 ];
 

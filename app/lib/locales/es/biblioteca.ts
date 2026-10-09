@@ -1,0 +1,100 @@
+import type { Messages } from "../types";
+
+/**
+ * Biblioteca, tarjetas de mazo y etiquetas.
+ */
+export const biblioteca = {
+  "biblioteca.metaTitle": "Mi biblioteca — Frasevia",
+  "biblioteca.eyebrow": "Un poco cada día",
+  "biblioteca.title": "Lo que aprendes, ficha a ficha",
+  "biblioteca.description": "Un pequeño repaso para seguir avanzando.",
+  "biblioteca.createWithAi": "Crear con IA",
+  "biblioteca.createDeck": "Crear un mazo",
+  "biblioteca.createWithAiLong": "Crear un mazo con IA",
+  "biblioteca.createManual": "Crear un mazo a mano",
+  "biblioteca.loadErrorTitle": "No se pudo cargar tu biblioteca",
+  "biblioteca.emptyTitle": "Tu biblioteca está vacía",
+  "biblioteca.emptyDescription":
+    "Crea un mazo de idiomas o de repaso general, o copia un mazo público para adaptarlo a ti.",
+  "biblioteca.noCards": "Sin tarjetas todavía",
+  "biblioteca.notPracticed": "Sin practicar todavía",
+  "biblioteca.progressAria":
+    "{learned} de {total} tarjetas aprendidas en {deck}",
+  "biblioteca.progressLine": [
+    "{learned} aprendida · {learning} practicando",
+    "{learned} aprendidas · {learning} practicando",
+  ],
+  "biblioteca.official": "Oficial",
+  "biblioteca.published": "Publicado",
+  "biblioteca.private": "Privado",
+  "biblioteca.copied": "Copiado",
+  "biblioteca.edit": "Editar",
+  "biblioteca.study": "Estudiar",
+  "biblioteca.todayReview": "Tu repaso de hoy",
+  "biblioteca.pendingHeadline": [
+    "{count} ficha lista para repasar",
+    "{count} fichas listas para repasar",
+  ],
+  "biblioteca.noPendingHeadline": "Hoy puedes avanzar a tu ritmo",
+  "biblioteca.pendingDescription":
+    "Empieza por las fichas que necesitan un poco más de práctica.",
+  "biblioteca.nextReviewSummary": "Tu próximo repaso es {date}.",
+  "biblioteca.noPendingDescription": [
+    "Tienes {count} ficha nueva por descubrir.",
+    "Tienes {count} fichas nuevas por descubrir.",
+  ],
+  "biblioteca.reviewPending": "Repasar pendientes",
+  "biblioteca.reviewSettings": "Ajustes de repaso",
+  "biblioteca.upcomingReviews": "Próximos repasos",
+  "biblioteca.noUpcoming": "Todavía no hay repasos programados.",
+  "biblioteca.today": "Hoy",
+  "biblioteca.tomorrow": "Mañana",
+  "biblioteca.cardCount": ["{count} ficha", "{count} fichas"],
+  "biblioteca.myDecks": "Mis mazos",
+  "biblioteca.deckCount": ["{count} mazo", "{count} mazos"],
+  "biblioteca.searchLabel": "Buscar mazos",
+  "biblioteca.searchPlaceholder": "Buscar un mazo…",
+  "biblioteca.filtersLabel": "Filtrar mazos",
+  "biblioteca.filter.all": "Todos",
+  "biblioteca.filter.private": "Privados",
+  "biblioteca.filter.public": "Públicos",
+  "biblioteca.noSearchResults": "No encontramos esos mazos",
+  "biblioteca.noSearchResultsHint":
+    "Prueba otra búsqueda o crea un mazo para empezar.",
+  "biblioteca.completeDescription": "Completar descripción",
+  "biblioteca.exploreCommunity": "Explorar mazos de la comunidad",
+  "biblioteca.reviewStatsUnavailable": "No se pudieron cargar los repasos.",
+  "biblioteca.reviewStatsUnavailableBody":
+    "Revisa en README.md las migraciones de repaso y aplícalas en Supabase para cargar las estadísticas y la cola.",
+  "biblioteca.upcomingUnavailable":
+    "No se pudo cargar el calendario de repasos.",
+  "biblioteca.dueCount": ["{count} pendiente", "{count} pendientes"],
+  "biblioteca.newCount": ["{count} nueva", "{count} nuevas"],
+  "biblioteca.scheduledCount": ["{count} programada", "{count} programadas"],
+  "biblioteca.reviewDeck": ["Repasar {count}", "Repasar {count}"],
+  "biblioteca.learnNew": [
+    "Aprender {count} ficha nueva",
+    "Aprender {count} fichas nuevas",
+  ],
+  "biblioteca.addCards": "Añadir fichas",
+  "biblioteca.viewDeck": "Ver mazo",
+  "biblioteca.lastReview": "Último repaso: {date}",
+  "biblioteca.lastPractice": "Última práctica: {date}",
+
+  "deck.noDescription": "Sin descripción.",
+  "deck.by": "Por {author}",
+
+  "label.visibility.private": "Privado",
+  "label.visibility.public": "Público",
+  "label.cardKind.word": "Palabra",
+  "label.cardKind.phrase": "Frase",
+  "label.cardKind.question": "Pregunta",
+  "label.cardKind.rule": "Regla",
+  "label.progress.new": "Nueva",
+  "label.progress.learning": "Practicando",
+  "label.progress.mastered": "Aprendida",
+  "format.cardCount": ["{count} tarjeta", "{count} tarjetas"],
+  "format.percent": "{value}%",
+  "time.noRecord": "sin registro",
+  "time.justNow": "recién",
+} satisfies Messages;

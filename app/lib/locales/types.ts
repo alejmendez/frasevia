@@ -21,5 +21,13 @@ export type MessageValue = string | readonly [singular: string, plural: string];
 /** Catálogo completo: clave → mensaje. */
 export type Messages = Record<string, MessageValue>;
 
+/**
+ * Un catálogo al que no le falta ninguna clave.
+ *
+ * Es lo que se le pide al inglés: si una clave está en el español y no aquí, el
+ * error sale al compilar y no como un texto vacío en pantalla.
+ */
+export type CompleteMessages = Record<string, MessageValue>;
+
 /** Valores que se pueden interpolar en un mensaje con `{nombre}`. */
 export type MessageParams = Record<string, string | number>;

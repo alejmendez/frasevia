@@ -1,5 +1,5 @@
 import { en } from "./locales/en";
-import { es, type SpanishKey } from "./locales/es";
+import { es, type SpanishKey, type SpanishMessages } from "./locales/es";
 import type { MessageParams, MessageValue } from "./locales/types";
 
 /**
@@ -48,8 +48,15 @@ export const DEFAULT_LOCALE: Locale = "es";
  */
 export const LOCALES: readonly Locale[] = ["es", "en"];
 
-/** Catálogos, ya tipados contra las claves del español. */
-const CATALOGS: Record<Locale, Record<MessageKey, MessageValue>> = { es, en };
+/**
+ * Catálogos, ya tipados contra las claves del español.
+ *
+ * El tipo es lo que avisa de que el inglés se quede sin una clave o le sobre una:
+ * el error sale al compilar, no como un texto vacío en pantalla. No lleva
+ * `as unknown as`: si el español cambiara de forma, esto tiene que dejar de
+ * compilar y hay que enterarse.
+ */
+const CATALOGS: Record<Locale, SpanishMessages> = { es, en };
 
 const STORAGE_KEY = "frasevia-locale";
 
