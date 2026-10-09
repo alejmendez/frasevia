@@ -49,7 +49,7 @@ export function StudySkeleton({
         <p className="mt-2 text-ink-soft">{tr("estudiar.recallSubtitle")}</p>
       </header>
       <section className="mx-auto max-w-6xl">
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-stretch">
           <div className="order-2 min-w-0 lg:order-1">
             <div className="mb-3 flex items-center justify-between gap-4">
               <Placeholder className="h-5 w-24" />
@@ -89,7 +89,7 @@ export function StudySkeleton({
               </span>
             </div>
           </div>
-          <aside className="order-1 rounded-card border border-line bg-paper-raised/80 p-4 lg:order-2">
+          <aside className="order-1 flex flex-col overflow-hidden rounded-card border border-line bg-paper-raised/80 p-4 lg:order-2 lg:min-h-0">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="font-display text-xl text-brand">
                 {tr(
@@ -105,7 +105,7 @@ export function StudySkeleton({
                 deckSession ? "estudiar.deckQueueHint" : "estudiar.queueHint",
               )}
             </p>
-            <ol className="mt-3 max-h-60 space-y-1 overflow-hidden pr-1 lg:max-h-none">
+            <ol className="mt-3 max-h-60 space-y-1 overflow-hidden pr-1 lg:max-h-none lg:flex-1 lg:[contain:size]">
               {ITEMS.map((item) => (
                 <li
                   key={item}

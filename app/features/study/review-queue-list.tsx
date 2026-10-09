@@ -51,7 +51,13 @@ export function ReviewQueueList({
   );
 
   return (
-    <aside className="order-1 rounded-card border border-line bg-paper-raised/80 p-4 lg:sticky lg:top-6 lg:order-2">
+    // En pantalla grande el panel toma la altura de la ficha, no al revés, y la
+    // lista se enrolla dentro en vez de estirar la fila de la rejilla. Para eso
+    // la lista declara `contain: size` —contención de tamaño, sin la cual la
+    // fila se mide por la lista entera y el panel crece con cada tarjeta— y el
+    // `aside` es una columna flexible que se estira (`items-stretch` en la
+    // rejilla) con `overflow-hidden`, para que nada lo empuje hacia abajo.
+    <aside className="order-1 flex flex-col overflow-hidden rounded-card border border-line bg-paper-raised/80 p-4 lg:order-2 lg:min-h-0">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-display text-xl text-brand">
           {tr(
@@ -69,7 +75,7 @@ export function ReviewQueueList({
         {tr(isDeckSession ? "estudiar.deckQueueHint" : "estudiar.queueHint")}
       </p>
 
-      <ol className="mt-3 max-h-60 space-y-1 overflow-y-auto pr-1 lg:max-h-[calc(100vh-13rem)]">
+      <ol className="mt-3 min-h-0 max-h-60 space-y-1 overflow-y-auto pr-1 lg:max-h-none lg:flex-1 lg:[contain:size]">
         {rows.map((row, rowIndex) => {
           const term = orientReviewCard(row.card, row.direction).sourceText;
           const sessionIndex = row.sessionIndex;

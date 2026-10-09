@@ -58,7 +58,7 @@ export function ReviewSessionView({
 
   return (
     <section className="mx-auto max-w-6xl">
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-stretch">
         <div className="order-2 min-w-0 lg:order-1">
           <CardTop
             index={session.index}
