@@ -1,8 +1,16 @@
 name: Publicar en GitHub Pages
 
 on:
-  push:
+  # La publicación cuelga de CI en vez de escuchar a `push: main` por su cuenta.
+  # Antes los dos workflows arrancaban a la vez en cuanto alguien subía un
+  # commit, así que un commit con el lint roto se publicaba igual mientras la CI
+  # se ponía roja. Ahora este workflow espera a que CI termine, y publica solo si
+  # terminó en verde: `conclusion` vale `success`, `failure` o `cancelled`, y
+  # tanto los dos últimos como un CI cancelado saltan el job.
+  workflow_run:
+    workflows: [CI]
     branches: [main]
+    types: [completed]
   # Permite publicar a mano desde la pestaña Actions, por si hace falta.
   workflow_dispatch:
 
@@ -19,10 +27,22 @@ permissions:
 jobs:
   build:
     name: Compilar el sitio
+    # Un `workflow_dispatch` no trae `conclusion`: el dispatch manual es siempre
+    # una orden explícita de publicar, así que se acepta sin comprobarla.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     steps:
+      # Con `workflow_run` hay que comprobar el commit exacto que pasó la CI, no
+      # la cabeza de `main`: entre medias alguien puede haber subido otro commit,
+      # y publicar ese sería publicar algo que nadie ha comprobado. En el
+      # dispatch manual no hay `workflow_run`, y `github.sha` es el commit que
+      # se eligió al pulsar el botón.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -39,7 +59,7 @@ jobs:
       # `scripts/prepare-pages.mjs` (para las rutas de los assets).
       - name: Calcular la ruta del sitio
         run: |
-          name="${{ github.event.repository.name }}"
+          name="${{ github.event.workflow_run.head_repository.name || github.event.repository.name }}"
           if [[ "$name" == *.github.io ]]; then
             echo "BASE_PATH=/" >> "$GITHUB_ENV"
           else
