@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, redirect, useNavigate } from "react-router";
 import {
   Alert,
@@ -122,29 +122,88 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
   // Permite cancelar una generación en curso: son varios segundos de espera, y
   // no hay otra forma de recuperar ese dinero ni de salir de la espera.
   const controller = useRef<AbortController | null>(null);
+  // El aviso de «copiado» se retira solo; se guarda para poder cancelarlo si se
+  // vuelve a copiar o si la pantalla se desmonta antes.
+  const copiedTimer = useRef<number | null>(null);
 
-  const loadModels = useCallback(async () => {
+  useEffect(
+    () => () => {
+      if (copiedTimer.current !== null) {
+        window.clearTimeout(copiedTimer.current);
+      }
+    },
+    [],
+  );
+
+  const loadModels = useCallback(async (signal?: AbortSignal) => {
     setLoadingModels(true);
     setModelsError(null);
     try {
-      setModels(await listModels());
+      setModels(await listModels(signal));
     } catch (cause) {
+      if (signal?.aborted) return;
       setModelsError(
         cause instanceof ModelListError
           ? cause.message
           : t("mazoIa.modelsLoadFailed"),
       );
     } finally {
-      setLoadingModels(false);
+      if (!signal?.aborted) {
+        setLoadingModels(false);
+      }
     }
   }, []);
 
   // El catálogo no necesita clave, así que se pide siempre al abrir: le sirve
   // igual a quien va a importar y a quien va a generar, y son unos 460 modelos
   // que no tiene sentido mantener escritos en el código.
+  //
+  // La petición se cancela al salir: si no, quien navega a otra pantalla antes
+  // de que responda sigue pagando la descarga y el filtrado de las casi 460
+  // entradas para un resultado que ya no se va a pintar.
   useEffect(() => {
-    void loadModels();
+    const controller = new AbortController();
+    void loadModels(controller.signal);
+    return () => controller.abort();
   }, [loadModels]);
+
+  /**
+   * Catálogo filtrado y prompt, ambos memorizados.
+   *
+   * Sin esto, cada tecla escrita en el concepto, en el modelo o en el JSON
+   * pegado volvía a filtrar el catálogo entero (hasta 200 modelos) y a construir
+   * el prompt, que son unas decenas de cadenas unidas. Como esta pantalla
+   * vuelve a renderizar en cada pulsación, ese trabajo se repetía por carácter.
+   *
+   * El prompt se arma con los campos sueltos en vez de con `request` porque ese
+   * objeto se reconstruye en cada render y nunca llegaría a la caché.
+   */
+  const prompt = useMemo(
+    () =>
+      buildStandalonePrompt({
+        studyMode,
+        concept,
+        cardCount,
+        sourceLanguage,
+        targetLanguage,
+        level,
+        withExtras,
+      }),
+    [
+      studyMode,
+      concept,
+      cardCount,
+      sourceLanguage,
+      targetLanguage,
+      level,
+      withExtras,
+    ],
+  );
+
+  const visibleModels = useMemo(
+    () => searchModels(models ?? [], modelQuery).slice(0, VISIBLE_MODELS),
+    [models, modelQuery],
+  );
 
   if (loaderData.status === "unconfigured") {
     return <ConfigNotice />;
@@ -330,9 +389,13 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
 
   async function copyPrompt() {
     try {
-      await navigator.clipboard.writeText(buildStandalonePrompt(request));
+      // `prompt` ya está calculado: es el mismo texto que se muestra en pantalla.
+      await navigator.clipboard.writeText(prompt);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      if (copiedTimer.current !== null) {
+        window.clearTimeout(copiedTimer.current);
+      }
+      copiedTimer.current = window.setTimeout(() => setCopied(false), 2500);
     } catch {
       setError(t("mazoIa.clipboardFailed"));
     }
@@ -372,11 +435,6 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
       </Page>
     );
   }
-
-  const visibleModels = searchModels(models ?? [], modelQuery).slice(
-    0,
-    VISIBLE_MODELS,
-  );
 
   return (
     <Page className="max-w-3xl">
@@ -591,7 +649,7 @@ export default function MazoIa({ loaderData }: Route.ComponentProps) {
           <ImportPanel
             concept={concept}
             hasConcept={hasConcept}
-            prompt={buildStandalonePrompt(request)}
+            prompt={prompt}
             copied={copied}
             onCopy={copyPrompt}
             imported={imported}

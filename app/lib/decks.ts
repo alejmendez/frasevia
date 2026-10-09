@@ -221,24 +221,22 @@ export async function listMyQuickAddDecks(
 ): Promise<{ decks: QuickAddDeck[]; error: string | null }> {
   const { data, error } = await supabase
     .from("decks")
-    .select("id, title, study_mode, source_language, target_language")
+    .select("id, title, source_language, target_language")
     .eq("author_id", userId)
     .eq("study_mode", "language")
+    // El par de idiomas se filtra en la base y no en JavaScript: es una
+    // condición sobre dos columnas, y bajarla entera para descartar filas aquí
+    // es trabajo que no hacía falta hacer en el cliente.
+    .or(
+      "and(source_language.eq.en,target_language.eq.es),and(source_language.eq.es,target_language.eq.en)",
+    )
     .order("title", { ascending: true });
 
   if (error) {
     return { decks: [], error: error.message };
   }
 
-  const decks = (data ?? []) as QuickAddDeck[];
-  return {
-    decks: decks.filter(
-      (deck) =>
-        (deck.source_language === "en" && deck.target_language === "es") ||
-        (deck.source_language === "es" && deck.target_language === "en"),
-    ),
-    error: null,
-  };
+  return { decks: (data ?? []) as QuickAddDeck[], error: null };
 }
 
 export async function getMyDeck(

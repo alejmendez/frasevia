@@ -39,6 +39,19 @@ interface UpcomingGroup {
   count: number;
 }
 
+/**
+ * Cada cuánto se vuelve a pedir la biblioteca al volver a la pestaña.
+ *
+ * Recalcular los contadores de cada mazo recorre todas sus tarjetas, así que no
+ * es una consulta barata. Quince segundos era un refresco por cada pausa breve
+ * —leer un mensaje, cambiar de ventana— y la mayoría de las veces no había
+ * cambiado nada. Un minuto mantiene la biblioteca al día sin castigar la espera.
+ */
+const REFRESH_INTERVAL = 60_000;
+
+/** Lista vacía compartida, para no crear una nueva en cada render. */
+const EMPTY_LIST: never[] = [];
+
 export function meta() {
   return [{ title: t("biblioteca.metaTitle") }];
 }
@@ -248,7 +261,7 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
     const refreshWhenVisible = () => {
       if (
         document.visibilityState === "visible" &&
-        Date.now() - lastRefresh > 15_000
+        Date.now() - lastRefresh > REFRESH_INTERVAL
       ) {
         lastRefresh = Date.now();
         revalidate();
@@ -262,8 +275,12 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
     };
   }, [revalidate]);
 
-  const decks = loaderData.status === "ready" ? loaderData.decks : [];
-  const upcoming = loaderData.status === "ready" ? loaderData.upcoming : [];
+  // Una misma lista vacía para todos los casos en que no hay datos: un `[]`
+  // escrito aquí sería un objeto distinto en cada render, y los `useMemo` de
+  // abajo nunca darían por hecho que el resultado sigue siendo válido.
+  const decks = loaderData.status === "ready" ? loaderData.decks : EMPTY_LIST;
+  const upcoming =
+    loaderData.status === "ready" ? loaderData.upcoming : EMPTY_LIST;
   const pendingCount =
     loaderData.status === "ready" ? loaderData.pendingCount : 0;
   const deckError = loaderData.status === "ready" ? loaderData.deckError : null;
@@ -273,18 +290,35 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
     loaderData.status === "ready" ? loaderData.scheduleError : null;
   const pendingError =
     loaderData.status === "ready" ? loaderData.pendingError : null;
-  const reviewStatsAvailable =
-    pendingError === null &&
-    reviewError === null &&
-    decks.every((deck) => deck.review !== null);
-  const newCount = decks.reduce(
-    (total, deck) => total + (deck.review?.new_count ?? 0),
-    0,
-  );
+  // Los tres recorridos de la lista en una sola pasada, y solo cuando cambian
+  // los mazos. Antes se hacían en cada render, junto a dos `useMemo` que sí
+  // estaban memorizados.
+  const { reviewStatsAvailable, newCount, nextNewDeck } = useMemo(() => {
+    let total = 0;
+    let firstWithNew: LibraryDeck | undefined;
+    let complete = true;
+
+    for (const deck of decks) {
+      if (deck.review === null) {
+        complete = false;
+        continue;
+      }
+
+      const pending = deck.review.new_count;
+      total += pending;
+      if (pending > 0 && !firstWithNew) {
+        firstWithNew = deck;
+      }
+    }
+
+    return {
+      reviewStatsAvailable:
+        pendingError === null && reviewError === null && complete,
+      newCount: total,
+      nextNewDeck: firstWithNew,
+    };
+  }, [decks, pendingError, reviewError]);
   const nextReview = upcoming[0];
-  const nextNewDeck = reviewStatsAvailable
-    ? decks.find((deck) => (deck.review?.new_count ?? 0) > 0)
-    : undefined;
   const groups = useMemo(() => groupUpcoming(upcoming), [upcoming]);
   const filteredDecks = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase(locale);

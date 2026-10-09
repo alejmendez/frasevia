@@ -1,4 +1,8 @@
-import { Outlet, redirect } from "react-router";
+import {
+  Outlet,
+  redirect,
+  type ShouldRevalidateFunctionArgs,
+} from "react-router";
 import { SelectionQuickAdd } from "~/components/selection-quick-add";
 import { ConfigNotice } from "~/components/ui";
 import { listMyQuickAddDecks } from "~/lib/decks";
@@ -48,6 +52,31 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     quickAddDeckError: error,
     sharedText,
   };
+}
+
+/**
+ * No recarga la lista de mazos al enviar algo desde una pantalla hija.
+ *
+ * Este agrupador está montado en todas las rutas privadas, así que cualquier
+ * acción de una de ellas (puntuar una ficha, guardar un mazo) lo hacía volver a
+ * pedir la lista de adición rápida aunque no hubiera cambiado. Aquí solo se
+ * recarga cuando cambia la URL, que es lo único que puede alterarla: entrar a
+ * otra pantalla, cambiar de mazo o volver de otra pestaña siguen recargando,
+ * porque el enrutador también recarga al cambiar los parámetros de ruta.
+ */
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs): boolean {
+  if (
+    currentUrl.pathname === nextUrl.pathname &&
+    currentUrl.search === nextUrl.search
+  ) {
+    return false;
+  }
+
+  return defaultShouldRevalidate;
 }
 
 export default function Privada({ loaderData }: Route.ComponentProps) {

@@ -6,7 +6,13 @@ import {
   SpeakerLowIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { data, Link, redirect, useFetcher } from "react-router";
+import {
+  data,
+  Link,
+  redirect,
+  type ShouldRevalidateFunctionArgs,
+  useFetcher,
+} from "react-router";
 import {
   Alert,
   Button,
@@ -311,6 +317,31 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   return { ok: true as const, message: t("estudiar.saved") };
 }
 
+/**
+ * No recarga los datos al terminar de puntuar una ficha.
+ *
+ * Guardar con `rate-review` (o con `results`, al cerrar una práctica) no cambia
+ * nada de lo que este `clientLoader` trae: la sesión de repaso lleva su propio
+ * estado y ya se pintó con datos frescos antes de enviar, y la práctica muestra
+ * un resumen construido en el navegador. Recargar aquí repetiría, en cada ficha
+ * puntuada, el mazo entero, el progreso de todas sus tarjetas y su estado de
+ * repaso: cuatro viajes de red que no cambian ni un solo píxel.
+ *
+ * El resto de casos —entrar a la pantalla, cambiar de mazo, volver de otra
+ * pestaña— siguen usando la decisión por defecto del enrutador, que sí recarga.
+ */
+export function shouldRevalidate({
+  formData,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs): boolean {
+  const intent = formData?.get("intent");
+  if (intent === "rate-review" || formData?.has("results")) {
+    return false;
+  }
+
+  return defaultShouldRevalidate;
+}
+
 const SESSION_SIZE = 10;
 
 export default function Estudiar({ loaderData }: Route.ComponentProps) {
@@ -430,6 +461,98 @@ function nextPendingReviewIndex(
     if (!reviewed.has(candidate)) return candidate;
   }
   return null;
+}
+
+/**
+ * Zona horaria del navegador, leída una sola vez.
+ *
+ * `Intl.DateTimeFormat().resolvedOptions()` es una construcción de objeto
+ * relativamente costosa y el valor no cambia dentro de una sesión, así que se
+ * resuelve la primera vez que hace falta y se reutiliza.
+ */
+let cachedTimeZone: string | null = null;
+
+function clientTimeZone(): string {
+  cachedTimeZone ??= Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  return cachedTimeZone;
+}
+
+/**
+ * Una puntuación que se está enviando o esperando confirmación.
+ *
+ * `eventId` es también la clave de idempotencia que usa `record_card_review`: si
+ * el guardado falla y la persona reintenta, se reutiliza el mismo `eventId` para
+ * que la base no cuente dos veces el mismo repaso.
+ */
+export interface PendingReview {
+  eventId: string;
+  index: number;
+  cardId: string;
+  direction: string;
+  levelId: string;
+}
+
+/**
+ * Cola de puntuaciones del repaso.
+ *
+ * Un `fetcher` solo admite un envío vivo —mandar otro cancela el anterior—, así
+ * que con una sola puntuación cada vez la persona tenía que esperar a la red
+ * entre tarjeta y tarjeta. Con una cola, puntuar avanza al instante y el envío
+ * va detrás; como mucho se pierde la que siga en vuelo al salir de la pantalla,
+ * y para eso cada una lleva su `eventId` como clave de idempotencia.
+ *
+ * Vive fuera del componente para poder probarla sin montar la pantalla entera.
+ */
+export class ReviewWriteQueue {
+  private queue: PendingReview[] = [];
+  private inFlight: PendingReview | null = null;
+
+  /** Encola una puntuación y devuelve la que toca enviar, si había hueco. */
+  push(review: PendingReview): PendingReview | null {
+    this.queue.push(review);
+    return this.take();
+  }
+
+  /** La puntuación en vuelo, si la hay. */
+  current(): PendingReview | null {
+    return this.inFlight;
+  }
+
+  /**
+   * Libera la que estaba en vuelo y devuelve la siguiente.
+   *
+   * `completed` tiene que ser la que estaba en vuelo: es lo que evita que una
+   * respuesta vieja se confunda con la que toca.
+   */
+  complete(completed: PendingReview): PendingReview | null {
+    if (this.inFlight !== completed) {
+      return null;
+    }
+
+    // Se libera el hueco antes de pedir la siguiente: `take` no vuelve a tomar
+    // si ya hay una en vuelo, y sin esta línea la cola se quedaba atascada
+    // detrás de la primera respuesta.
+    this.inFlight = null;
+    return this.take();
+  }
+
+  /** Descarta todo, para cuando la pantalla se desmonta. */
+  clear(): void {
+    this.queue = [];
+  }
+
+  get pending(): number {
+    return this.queue.length;
+  }
+
+  private take(): PendingReview | null {
+    if (this.inFlight) {
+      return null;
+    }
+    const next = this.queue.shift() ?? null;
+    this.inFlight = next;
+    return next;
+  }
 }
 
 function PronunciationControls({
@@ -553,33 +676,40 @@ function MemoryReviewSession({
     [levels],
   );
   const [items] = useState(() => buildReviewSession(cards, states, direction));
-  const sessionKeys = new Set(
-    items.map((entry) => `${entry.card.id}:${entry.direction}`),
+  // La sesión está congelada en `items`, así que el índice de estados y la lista
+  // de la cola solo dependen de lo que recibe el componente. Sin memorizarlos se
+  // reconstruían en cada render —y esta pantalla vuelve a renderizar en cada
+  // pulsación de teclado— para acabar en lo mismo.
+  const statesByKey = useMemo(
+    () =>
+      new Map(
+        states.map((state) => [`${state.card_id}:${state.direction}`, state]),
+      ),
+    [states],
   );
-  const statesByKey = new Map(
-    states.map((state) => [`${state.card_id}:${state.direction}`, state]),
-  );
-  const queueItems = [
-    ...items.map((entry, sessionIndex) => ({ ...entry, sessionIndex })),
-    ...cards.flatMap((card) => {
-      const cardDirection = direction ?? card.direction;
-      if (!cardDirection) return [];
-      const key = `${card.id}:${cardDirection}`;
-      if (sessionKeys.has(key)) return [];
-      const status = reviewStatus(statesByKey.get(key), cardDirection);
-      if (status !== "scheduled" && status !== "retired") return [];
-      return [{ card, direction: cardDirection, status, sessionIndex: null }];
-    }),
-  ];
+  const queueItems = useMemo(() => {
+    const sessionKeys = new Set(
+      items.map((entry) => `${entry.card.id}:${entry.direction}`),
+    );
+    return [
+      ...items.map((entry, sessionIndex) => ({ ...entry, sessionIndex })),
+      ...cards.flatMap((card) => {
+        const cardDirection = direction ?? card.direction;
+        if (!cardDirection) return [];
+        const key = `${card.id}:${cardDirection}`;
+        if (sessionKeys.has(key)) return [];
+        const status = reviewStatus(statesByKey.get(key), cardDirection);
+        if (status !== "scheduled" && status !== "retired") return [];
+        return [{ card, direction: cardDirection, status, sessionIndex: null }];
+      }),
+    ];
+  }, [cards, direction, items, statesByKey]);
   const [index, setIndex] = useState(0);
   const [reviewed, setReviewed] = useState<Set<number>>(() => new Set());
   const [revealed, setRevealed] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const activeReview = useRef<{ eventId: string; index: number } | null>(null);
   const transitionTimeout = useRef<number | null>(null);
   const frontHeadingRef = useRef<HTMLHeadingElement>(null);
   const backHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -589,52 +719,84 @@ function MemoryReviewSession({
     ? statesByKey.get(`${item.card.id}:${item.direction}`)
     : undefined;
 
-  const rate = useCallback(
-    (level: ReviewLevel) => {
-      if (
-        !item ||
-        saving ||
-        isTransitioning ||
-        reviewed.has(index) ||
-        (activeReview.current && activeReview.current.index !== index)
-      ) {
-        return;
-      }
-      setSaving(true);
-      setSavingIndex(index);
-      setError(null);
-      setNotice("");
-      const eventId =
-        activeReview.current?.index === index
-          ? activeReview.current.eventId
-          : crypto.randomUUID();
-      activeReview.current = { eventId, index };
+  /**
+   * Escrituras de repaso y su cola.
+   *
+   * La cola vive en un `ref` porque `rate` se llama desde un manejador y necesita
+   * encolar y arrancar en el mismo tick, sin esperar a un render. El estado solo
+   * guarda los índices para poder marcar en la lista qué ficha se está guardando.
+   *
+   * Un único `fetcher` solo admite un envío vivo: meter dos seguidos haría que el
+   * enrutador cancelara el primero. Encolar es lo que permite repassar sin
+   * esperar —la pantalla avanza al instante y la red va detrás— sin que una
+   * puntuación se pierda por el camino.
+   */
+  const writes = useRef(new ReviewWriteQueue());
+  const retryEventIds = useRef(new Map<number, string>());
+  const [savingIndices, setSavingIndices] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
+  const saving = savingIndices.size > 0;
 
-      const timezone =
-        Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  /** Manda una puntuación por el `fetcher` de la ruta. */
+  const send = useCallback(
+    (review: PendingReview) => {
       void fetcher.submit(
         {
           intent: "rate-review",
-          cardId: item.card.id,
-          direction: item.direction,
-          levelId: level.id,
-          eventId,
-          timezone,
+          cardId: review.cardId,
+          direction: review.direction,
+          levelId: review.levelId,
+          eventId: review.eventId,
+          timezone: clientTimeZone(),
         },
         { method: "post" },
       );
+    },
+    [fetcher],
+  );
 
-      const nextIndex = nextPendingReviewIndex(items.length, index, reviewed);
+  const rate = useCallback(
+    (level: ReviewLevel) => {
+      if (!item || isTransitioning || error !== null || reviewed.has(index)) {
+        return;
+      }
+
+      // Consulta optimista: la ficha cuenta como repasada y la pantalla avanza
+      // ya, sin esperar a la red. Si el guardado falla, el efecto que escucha
+      // `fetcher.data` la devuelve a la cola, salta a esa ficha y avisa, y el
+      // mismo `eventId` sirve para reintentar sin duplicar el repaso.
+      const optimistic = new Set(reviewed).add(index);
+      setReviewed(optimistic);
+      setSavingIndices((current) => new Set(current).add(index));
+      setError(null);
+      setNotice("");
+
+      // Se reutiliza el `eventId` del intento anterior si esta ficha ya falló una vez,
+      // para que `record_card_review` no la cuente dos veces al reintentar.
+      const eventId = retryEventIds.current.get(index) ?? crypto.randomUUID();
+      const toSend = writes.current.push({
+        eventId,
+        index,
+        cardId: item.card.id,
+        direction: item.direction,
+        levelId: level.id,
+      });
+      if (toSend) {
+        send(toSend);
+      }
+
+      const nextIndex = nextPendingReviewIndex(items.length, index, optimistic);
       if (nextIndex !== null) {
         setIndex(nextIndex);
         setRevealed(false);
       }
     },
-    [fetcher, index, isTransitioning, item, items, reviewed, saving],
+    [error, index, isTransitioning, item, items.length, reviewed, send],
   );
 
   const reveal = useCallback(() => {
-    if (revealed || (saving && savingIndex === index)) return;
+    if (revealed) return;
     if (transitionTimeout.current !== null) {
       window.clearTimeout(transitionTimeout.current);
       transitionTimeout.current = null;
@@ -649,82 +811,149 @@ function MemoryReviewSession({
       transitionTimeout.current = null;
       setIsTransitioning(false);
     }, 480);
-  }, [index, revealed, saving, savingIndex]);
+  }, [revealed]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    return () => {
       if (transitionTimeout.current !== null) {
         window.clearTimeout(transitionTimeout.current);
       }
-    },
-    [],
-  );
+      // Vaciar la cola al desmontar es solo hygiene: no se mandan las
+      // puntuaciones que quedaron sin enviar. Enviar una acción desde un
+      // componente que ya no está montado solo puede competir con la navegación
+      // que lo está sustituyendo.
+      writes.current.clear();
+    };
+  }, []);
+
+  // Lleva el final de la sesión a un estado aparte del componente. Al terminar,
+  // el resto de la pantalla sobra y no tiene sentido seguir montada: aquí puede
+  // haber hasta cientos de filas de la cola de repaso, más los dos controles de
+  // pronunciación por cara de la ficha. Montarla mientras se guarda lo último
+  // mantiene todo eso vivo sin que se vea, y en la práctica se notaba en las
+  // pantallas largas.
+  //
+  // La sesión solo se da por terminada cuando cada ficha está guardada de verdad,
+  // no solo puntuada: si queda algo en vuelo o en la cola se espera. Al revés, la
+  // pantalla de fin aparecería mientras la última escritura sigue en la red, y si
+  // esa fallara ya no habría desde dónde reintentar.
+  const [sessionFinished, setSessionFinished] = useState(false);
+  const sessionComplete = items.length > 0 && reviewed.size === items.length;
+  // `savingIndices` lleva la cuenta de lo guardado, así que también es lo que
+  // avisa de que la cola se está vaciando: `writes.current` es un ref y no
+  // dispara renders por sí mismo.
+  const savingCount = savingIndices.size;
+
+  useEffect(() => {
+    if (sessionComplete && !error && savingCount === 0) {
+      setSessionFinished(true);
+    }
+  }, [error, savingCount, sessionComplete]);
 
   useEffect(() => {
     if (!cardFocusKey) return;
     (revealed ? backHeadingRef.current : frontHeadingRef.current)?.focus();
   }, [cardFocusKey, revealed]);
 
+  /**
+   * Concilia cada respuesta con lo que la pantalla ya mostró.
+   *
+   * La ficha se contó como repasada en el momento de puntuarla, así que aquí solo
+   * hay que confirmar o deshacer: si el guardado fue bien, se anuncia la próxima
+   * fecha y se sigue mandando lo que quede en cola; si falló, se deshace el
+   * conteo, la ficha vuelve a la lista y se salta a ella para reintentar.
+   *
+   * La cola sigue mandando aunque esta puntuación falle: lo que falló es una
+   * escritura concreta, no el resto. Parar aquí dejaría las siguientes sin
+   * enviar aunque el problema ya no estuviera.
+   */
   useEffect(() => {
-    if (
-      fetcher.state !== "idle" ||
-      !fetcher.data ||
-      fetcher.data.eventId !== activeReview.current?.eventId
-    ) {
+    if (fetcher.state !== "idle" || !fetcher.data) {
       return;
     }
 
-    const activeReviewData = activeReview.current;
-    if (!activeReviewData) return;
-    const completedIndex = activeReviewData.index;
-    setSaving(false);
-    setSavingIndex(null);
-    if (!fetcher.data.ok) {
-      setError(fetcher.data.message ?? tr("estudiar.saveFailedGeneric"));
-      setIndex(completedIndex);
-      setRevealed(false);
+    const completed = writes.current.current();
+    // `fetcher.data` sigue teniendo la respuesta anterior mientras se manda la
+    // siguiente: el `eventId` es lo que dice si esta es la que tocaba.
+    if (!completed || fetcher.data.eventId !== completed.eventId) {
       return;
     }
 
-    const nextAt = fetcher.data.saved?.next_review_at;
-    setNotice(
-      fetcher.data.saved?.retired
-        ? tr("estudiar.retiredConfirmation")
-        : nextAt
-          ? tr("estudiar.nextReview", {
-              date: new Date(nextAt).toLocaleString(
-                locale === "es" ? "es-CL" : "en-US",
-                {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                },
-              ),
-            })
-          : tr("estudiar.saved"),
-    );
-    activeReview.current = null;
-    setError(null);
-    setReviewed((current) => new Set(current).add(completedIndex));
-    if (index === completedIndex) {
-      const nextIndex = nextPendingReviewIndex(
-        items.length,
-        completedIndex,
-        reviewed,
+    const saved = fetcher.data.ok ? fetcher.data.saved : undefined;
+    const failedMessage = fetcher.data.ok
+      ? null
+      : (fetcher.data.message ?? tr("estudiar.saveFailedGeneric"));
+    const nextAt = saved?.next_review_at;
+
+    if (saved?.retired) {
+      setNotice(tr("estudiar.retiredConfirmation"));
+    } else if (nextAt) {
+      setNotice(
+        tr("estudiar.nextReview", {
+          date: new Date(nextAt).toLocaleString(
+            locale === "es" ? "es-CL" : "en-US",
+            { dateStyle: "medium", timeStyle: "short" },
+          ),
+        }),
       );
-      if (nextIndex !== null) {
-        setIndex(nextIndex);
-        setRevealed(false);
-      }
+    } else if (fetcher.data.ok) {
+      setNotice(tr("estudiar.saved"));
     }
-    setIsTransitioning(false);
+
+    if (failedMessage) {
+      // Se conserva el `eventId` para que el reintento no cuente dos veces el
+      // mismo repaso: `record_card_review` lo trata como clave de idempotencia.
+      retryEventIds.current.set(completed.index, completed.eventId);
+      setReviewed((current) => {
+        if (!current.has(completed.index)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.delete(completed.index);
+        return next;
+      });
+      setSavingIndices((current) => {
+        if (!current.has(completed.index)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.delete(completed.index);
+        return next;
+      });
+      setNotice("");
+      setError(failedMessage);
+      setIndex(completed.index);
+      setRevealed(false);
+      setIsTransitioning(false);
+    } else {
+      retryEventIds.current.delete(completed.index);
+      setSavingIndices((current) => {
+        if (!current.has(completed.index)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.delete(completed.index);
+        return next;
+      });
+      setError(null);
+    }
+
     if (transitionTimeout.current !== null) {
       window.clearTimeout(transitionTimeout.current);
       transitionTimeout.current = null;
     }
-  }, [fetcher.data, fetcher.state, index, items, locale, reviewed, tr]);
 
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
+    const nextToSend = writes.current.complete(completed);
+    if (nextToSend) {
+      send(nextToSend);
+    }
+  }, [fetcher.data, fetcher.state, locale, send, tr]);
+
+  // Se declara antes del efecto de las teclas porque el atajo no debe cambiar de
+  // identidad en cada render: el listener se vuelve a poner y quitar por cada
+  // pulsación, y eso es trabajo en el hilo principal por cada tecla.
+  const handleKey = useCallback(
+    (event: KeyboardEvent) => {
       const target = event.target;
       if (
         target instanceof HTMLElement &&
@@ -750,11 +979,14 @@ function MemoryReviewSession({
           rate(level);
         }
       }
-    };
+    },
+    [activeLevels, isTransitioning, item, rate, reveal, revealed],
+  );
 
+  useEffect(() => {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [activeLevels, isTransitioning, item, rate, reveal, revealed]);
+  }, [handleKey]);
 
   function levelName(level: ReviewLevel) {
     if (
@@ -790,7 +1022,11 @@ function MemoryReviewSession({
     return tr("estudiar.intervalDays", { amount });
   }
 
-  if (items.length > 0 && reviewed.size === items.length) {
+  // La sesión se da por terminada cuando cada ficha está guardada, no solo
+  // puntuada: si queda algo en vuelo o en la cola, se espera. Sin esto la
+  // pantalla de fin aparecía mientras la última escritura seguía en la red, y si
+  // esa fallaba ya no había pantalla desde la que reintentar.
+  if (sessionFinished) {
     return (
       <Card className="mx-auto max-w-4xl p-8 text-center sm:p-12">
         <h2 className="font-display text-3xl text-brand">
@@ -1066,7 +1302,7 @@ function MemoryReviewSession({
               const sessionIndex = entry.sessionIndex;
               const isSessionCard = sessionIndex !== null;
               const isReviewed = isSessionCard && reviewed.has(sessionIndex);
-              const isSaving = isSessionCard && savingIndex === sessionIndex;
+              const isSaving = isSessionCard && savingIndices.has(sessionIndex);
               const isCurrent = isSessionCard && index === sessionIndex;
               const status = !isSessionCard
                 ? tr(
@@ -1170,7 +1406,7 @@ function MemoryReviewSession({
               <button
                 type="button"
                 key={level.id}
-                disabled={saving || isTransitioning}
+                disabled={isTransitioning}
                 onClick={() => rate(level)}
                 aria-keyshortcuts={
                   levelIndex < 9 ? String(levelIndex + 1) : undefined

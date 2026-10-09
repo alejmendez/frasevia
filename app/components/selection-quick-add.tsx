@@ -12,6 +12,7 @@ import {
 } from "~/features/ai/generate";
 import { hasKey } from "~/features/ai/keys";
 import type { QuickAddDeck } from "~/lib/decks";
+import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession } from "~/lib/session";
 import { Alert, Button, Field, inputClass, Select } from "./ui";
@@ -45,6 +46,21 @@ export function SelectionQuickAdd({
   useEffect(() => setAvailableDecks(decks), [decks]);
 
   useEffect(() => {
+    /**
+     * Coloca el menú junto a la selección.
+     *
+     * Se agrupa con `requestAnimationFrame` porque los tres eventos que la
+     * disparan llegan mucho más rápido que los cuadros: `scroll` se escucha en
+     * fase de captura, así que se dispara desde todos los contenedores
+     * desplazables de la pantalla, a sesenta por segundo. Sin agrupar, cada
+     * evento medía la caja de la selección —que obliga al navegador a
+     * recalcular el diseño antes de seguir— y pintaba estado nuevo.
+     */
+    let frame = 0;
+    function run() {
+      frame = 0;
+      updateSelection();
+    }
     function updateSelection() {
       const selection = window.getSelection();
       const text = selection?.toString().trim().replace(/\s+/g, " ");
@@ -80,29 +96,47 @@ export function SelectionQuickAdd({
 
       const menuWidth = 300;
       const desiredTop = rect.top > 76 ? rect.top - 58 : rect.bottom + 10;
-      setAnchor({
-        text,
-        left: Math.max(
-          12,
-          Math.min(
-            rect.left + rect.width / 2 - menuWidth / 2,
-            window.innerWidth - menuWidth - 12,
-          ),
+      const left = Math.max(
+        12,
+        Math.min(
+          rect.left + rect.width / 2 - menuWidth / 2,
+          window.innerWidth - menuWidth - 12,
         ),
-        top: Math.min(
-          Math.max(12, desiredTop),
-          Math.max(12, window.innerHeight - 68),
-        ),
-      });
+      );
+      const top = Math.min(
+        Math.max(12, desiredTop),
+        Math.max(12, window.innerHeight - 68),
+      );
+
+      // Se reutiliza el objeto anterior cuando el menú no se movería. React
+      // compara por identidad, así que un objeto nuevo obligaría a repintar toda
+      // la pantalla aunque el texto y la posición fueran los mismos.
+      setAnchor((previous) =>
+        previous &&
+        previous.text === text &&
+        previous.left === left &&
+        previous.top === top
+          ? previous
+          : { text, left, top },
+      );
     }
 
-    document.addEventListener("selectionchange", updateSelection);
-    window.addEventListener("resize", updateSelection);
-    window.addEventListener("scroll", updateSelection, true);
+    function schedule() {
+      if (frame === 0) {
+        frame = window.requestAnimationFrame(run);
+      }
+    }
+
+    document.addEventListener("selectionchange", schedule);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
     return () => {
-      document.removeEventListener("selectionchange", updateSelection);
-      window.removeEventListener("resize", updateSelection);
-      window.removeEventListener("scroll", updateSelection, true);
+      document.removeEventListener("selectionchange", schedule);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+      if (frame !== 0) {
+        window.cancelAnimationFrame(frame);
+      }
     };
   }, []);
 
@@ -282,7 +316,7 @@ function QuickAddDialog({
         setSuggestionError(
           error instanceof GenerationError
             ? error.message
-            : tr("selection.translationSuggestionFailed"),
+            : t("selection.translationSuggestionFailed"),
         );
       });
 
@@ -290,7 +324,11 @@ function QuickAddDialog({
       active = false;
       controller.abort();
     };
-  }, [selectedLanguage, text, tr]);
+    // `tr` no entra: su identidad cambia con el idioma, y depender de él
+    // abortaba la petición al cambiar de idioma y la volvía a lanzar. Traducir
+    // la sugerencia cuesta dinero, así que solo se relanza si cambian el texto o
+    // los idiomas, que es lo único que la afecta.
+  }, [selectedLanguage, text]);
 
   function close() {
     if (!dialogRef.current?.open) return;

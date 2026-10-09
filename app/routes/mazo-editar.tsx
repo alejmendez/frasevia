@@ -318,21 +318,30 @@ async function saveCards(
     return actionFail(t("mazoEditar.cardsNeedFields"));
   }
 
-  // RLS impide tocar tarjetas de mazos ajenos, así que si algo falla es porque
-  // ese id no es editable; se informa sin exponer más detalles.
-  const results = await Promise.all(
-    [...updates.entries()].map(([cardId, card]) =>
-      supabase
-        .from("cards")
-        .update(card)
-        .eq("id", cardId)
-        .eq("deck_id", deckId),
-    ),
-  );
+  // Un solo viaje para todas las tarjetas, en vez de uno por tarjeta. Además de
+  // la latencia, esto evita el guardado a medias: antes, si una petición fallaba
+  // las demás ya estaban escritas y el mazo quedaba en un estado que nadie había
+  // pedido. `update_deck_cards` comprueba de una vez que el mazo sea editable y
+  // que cada tarjeta pertenezca a él.
+  const { error } = await supabase.rpc("update_deck_cards", {
+    p_deck_id: deckId,
+    // Solo los campos que la base espera. Se listan uno a uno en vez de
+    // mandar el objeto entero, para que la forma del RPC no dependa de una
+    // conversión implícita y para que un campo nuevo no se cuele por accidente.
+    p_cards: [...updates.entries()].map(([cardId, card]) => ({
+      card_id: cardId,
+      kind: card.kind,
+      term: card.term,
+      meaning_es: card.meaning_es,
+      example_en: card.example_en,
+      example_es: card.example_es,
+      usage_note: card.usage_note,
+      tags: card.tags,
+    })),
+  });
 
-  const failure = results.find((result) => result.error);
-  if (failure?.error) {
-    return actionFail(failure.error.message);
+  if (error) {
+    return actionFail(error.message);
   }
 
   return actionOk(t("mazoEditar.cardsSaved"));

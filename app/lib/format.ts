@@ -1,4 +1,4 @@
-import { activeLocale, t } from "./locale";
+import { activeLocale, type Locale, t } from "./locale";
 import type { CardKind, DeckVisibility, ProgressState } from "./types";
 
 /**
@@ -34,6 +34,37 @@ const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["minute", 60],
 ];
 
+/**
+ * Formateadores de `Intl`, guardados por idioma.
+ *
+ * Construir un objeto `Intl` es de lo más caro que hace una pantalla en un
+ * bucle: no es una operación cualquiera de la biblioteca estándar. Estas
+ * funciones se llaman desde el render, y `formatRelativeTime` se ejecuta una vez
+ * por fila en `/progreso` y una vez por mazo en la biblioteca, así que crear uno
+ * nuevo en cada llamada se notaba. Hay solo dos idiomas, así que dos entradas
+ * bastan y no hace falta ninguna estructura más elaborada.
+ */
+const relativeFormatters = new Map<Locale, Intl.RelativeTimeFormat>();
+const dateFormatters = new Map<Locale, Intl.DateTimeFormat>();
+
+function relativeFormatter(locale: Locale): Intl.RelativeTimeFormat {
+  let formatter = relativeFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+    relativeFormatters.set(locale, formatter);
+  }
+  return formatter;
+}
+
+function dateFormatter(locale: Locale): Intl.DateTimeFormat {
+  let formatter = dateFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { dateStyle: "long" });
+    dateFormatters.set(locale, formatter);
+  }
+  return formatter;
+}
+
 /** "hace 3 días", "in 2 hours", "sin registro" / "not recorded". */
 export function formatRelativeTime(
   isoDate: string | null | undefined,
@@ -49,9 +80,7 @@ export function formatRelativeTime(
   }
 
   const seconds = Math.round((target.getTime() - now.getTime()) / 1000);
-  const formatter = new Intl.RelativeTimeFormat(activeLocale(), {
-    numeric: "auto",
-  });
+  const formatter = relativeFormatter(activeLocale());
 
   for (const [unit, unitSeconds] of RELATIVE_UNITS) {
     if (Math.abs(seconds) >= unitSeconds) {
@@ -72,9 +101,7 @@ export function formatDate(isoDate: string | null | undefined): string {
     return "—";
   }
 
-  return new Intl.DateTimeFormat(activeLocale(), {
-    dateStyle: "long",
-  }).format(date);
+  return dateFormatter(activeLocale()).format(date);
 }
 
 /** "3 tarjetas" / "1 tarjeta"; "3 cards" / "1 card". */

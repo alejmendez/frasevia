@@ -105,13 +105,32 @@ export interface ScheduledReviewDate {
   deck_title: string;
 }
 
+/**
+ * Cuántas tarjetas caben en una tanda de repaso.
+ *
+ * La sesión enseña una ficha a la vez, así que bajar la cola entera solo servía
+ * para gastar ancho de banda en fichas que no se van a ver. El tope deja la
+ * pantalla de repaso siempre igual de rápida por muchas que haya pendientes.
+ */
+export const REVIEW_QUEUE_LIMIT = 200;
+
+/** Cuántas fechas futuras se piden para el resumen de la biblioteca. */
+export const REVIEW_SCHEDULE_LIMIT = 200;
+
+/** Cuántas tarjetas retiradas se muestran en los ajustes de repaso. */
+export const RETIRED_CARDS_LIMIT = 100;
+
+const PENDING_REVIEW_COLUMNS =
+  "card_id, direction, last_reviewed_at, next_review_at, review_count, last_level_id, deck_id, kind, term, meaning_es, example_en, example_es, usage_note, deck_title, study_mode, source_language, target_language";
+
 export async function listPendingReviewCards(
   supabase: SupabaseClient,
 ): Promise<{ cards: PendingReviewCard[]; error: string | null }> {
   const { data, error } = await supabase
     .from("my_review_queue")
-    .select("*")
-    .order("next_review_at", { ascending: true });
+    .select(PENDING_REVIEW_COLUMNS)
+    .order("next_review_at", { ascending: true })
+    .limit(REVIEW_QUEUE_LIMIT);
   return {
     cards: (data ?? []) as PendingReviewCard[],
     error: error?.message ?? null,
@@ -133,7 +152,8 @@ export async function listScheduledReviewDates(
   const { data, error } = await supabase
     .from("my_review_schedule")
     .select("card_id, direction, next_review_at, deck_id, deck_title")
-    .order("next_review_at", { ascending: true });
+    .order("next_review_at", { ascending: true })
+    .limit(REVIEW_SCHEDULE_LIMIT);
   return {
     dates: (data ?? []) as ScheduledReviewDate[],
     error: error?.message ?? null,
@@ -148,7 +168,8 @@ export async function listRetiredReviewCards(
     .select(
       "card_id, direction, last_reviewed_at, review_count, term, meaning_es, deck_id, deck_title, deck_slug, deck_visibility",
     )
-    .order("last_reviewed_at", { ascending: false });
+    .order("last_reviewed_at", { ascending: false })
+    .limit(RETIRED_CARDS_LIMIT);
 
   return {
     cards: (data ?? []) as RetiredReviewCard[],
