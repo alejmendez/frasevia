@@ -183,8 +183,23 @@ select is(
   'la tarjeta reactivada queda pendiente'
 );
 
+-- Ojo con el reloj, que aqui hay tres y no son lo mismo:
+--
+--   now()                 -> inicio de la TRANSACCION. Estas pruebas viven
+--                             dentro de un `begin`, asi que es anterior a
+--                             cualquier llamada de la prueba y no sirve para
+--                             comparar nada de lo que se acaba de guardar.
+--   clock_timestamp()     -> el reloj real. Es el que usa
+--                             `reactivate_card_review` al fijar la fecha.
+--   statement_timestamp() -> inicio de la SENTENCIA. Es el que usan las vistas
+--                             de la cola para decidir que ya venció.
+--
+-- La comprobacion tiene que usar el de las vistas, porque es el contrato de
+-- verdad: si una fecha guardada con `clock_timestamp()` no sale como vencida
+-- segun `statement_timestamp()`, tampoco aparecería en `my_review_queue`, que es
+-- lo que importa. Con `now()` esta comprobacion no puede salir cierta nunca.
 select ok(
-  (select not retired and next_review_at <= now()
+  (select not retired and next_review_at <= statement_timestamp()
      from public.user_card_review_state
     where card_id = '33000000-0000-4000-8000-000000000003'
       and direction = 'es-en'),
