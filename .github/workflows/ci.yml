@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# La CI solo lee el repositorio. El despliegue tiene su propio workflow, con los
+# permisos que Pages necesita.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Lint, tipos, pruebas y build
@@ -38,3 +43,33 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  database:
+    name: Permisos y RLS (pgTAP)
+    runs-on: ubuntu-latest
+    # Levantar el Postgres de Supabase descarga varias imágenes. Es la parte
+    # lenta de la CI, y conviene que falle antes de gastar veinte minutos.
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Las reglas de acceso viven en la base de datos, no en los componentes:
+      # la única forma de comprobar que se sostienen es ejecutar las políticas
+      # contra el Postgres real. `supabase start` lo levanta en Docker, y el
+      # runner de ubuntu-latest ya lo trae.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # El chequeo de salud que trae la CLI espera una base migrada y da error
+      # en una recién arrancada. Lo que se comprueba aquí es el `db reset` de
+      # abajo, que sí aplica las migraciones y el seed desde cero.
+      - name: Levantar la base de datos local
+        run: supabase start --ignore-health-check
+
+      - name: Aplicar migraciones y seed
+        run: supabase db reset
+
+      - name: Pruebas de permisos
+        run: supabase test db

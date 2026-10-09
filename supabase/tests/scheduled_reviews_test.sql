@@ -1,5 +1,10 @@
 -- Repaso programado: preferencias, calendario, idempotencia, RLS y mazos públicos.
 -- Se ejecuta junto con las demás pruebas pgTAP mediante `supabase test db`.
+--
+-- Cada `set_config` va seguido de `set local role`: el primero dice quién es la
+-- persona y el segundo enciende la RLS. Sin el segundo, la conexión sigue siendo
+-- de `postgres`, que tiene `BYPASSRLS`, y las políticas no se evalúan. La regla
+-- completa está explicada en `frasevia_policies_test.sql`.
 
 begin;
 
@@ -30,6 +35,7 @@ select set_config(
   '{"role":"authenticated","sub":"11000000-0000-4000-8000-000000000003","email":"reviewer@frasevia.test"}',
   true
 );
+set local role authenticated;
 
 select is(
   (select count(*)::integer from public.review_levels),
@@ -255,6 +261,7 @@ select set_config(
   '{"role":"authenticated","sub":"11000000-0000-4000-8000-000000000004","email":"publisher@frasevia.test"}',
   true
 );
+set local role authenticated;
 
 select is(
   (select count(*)::integer from public.user_card_review_state
@@ -268,6 +275,7 @@ select set_config(
   '{"role":"authenticated","sub":"11000000-0000-4000-8000-000000000003","email":"reviewer@frasevia.test"}',
   true
 );
+set local role authenticated;
 
 select throws_ok(
   $$select public.record_card_review(

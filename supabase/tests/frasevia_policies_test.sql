@@ -11,6 +11,19 @@
 -- Simulan tres sesiones distintas: `anon` (visitante), `user_one` y
 -- `user_two`. Verifican que las reglas viven en la base de datos y no en la
 -- interfaz: aunque alguien manipule la aplicación, la base no lo permite.
+--
+-- Cada cambio de identidad son DOS sentencias, y el orden importa:
+--
+--     select set_config('request.jwt.claims', …, true);
+--     set local role anon;              -- o `authenticated`
+--
+-- `set_config` solo escribe el JWT en la sesión: dice QUIÉN es la persona, pero
+-- no cambia el rol con el que PostgreSQL evalúa las políticas. Sin el
+-- `set local role`, estas pruebas siguen conectando como `postgres`, que es
+-- superusuario y tiene `BYPASSRLS`: las políticas no se aplican, `auth.uid()`
+-- devuelve `null` y las comprobaciones de permisos pasarían por el motivo
+-- equivocado, o directamente no pasarían. El `set local role` es lo que
+-- enciende la RLS.
 -- ===========================================================================
 
 begin;
@@ -48,6 +61,7 @@ select plan(24);
 -- ---------------------------------------------------------------------------
 
 select set_config('request.jwt.claims', '{"role":"anon","sub":null}', true);
+set local role anon;
 
 -- Los mazos oficiales del seed también cuentan como públicos.
 select is(
@@ -96,6 +110,7 @@ select set_config(
   '{"role":"authenticated","sub":"10000000-0000-4000-8000-000000000001","email":"one@frasevia.test"}',
   true
 );
+set local role authenticated;
 
 select is(
   (select count(*)::integer
