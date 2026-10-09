@@ -98,15 +98,6 @@ export default function AjustesIa() {
           {storageError ? <Alert variant="error">{storageError}</Alert> : null}
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={forget}
-              disabled={!key.saved}
-            >
-              {tr("ajustesIa.forget")}
-            </Button>
-
             <a
               href={PROVIDER.keyUrl}
               target="_blank"

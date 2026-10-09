@@ -1,24 +1,21 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  PlusIcon,
-} from "@phosphor-icons/react/dist/ssr";
-import { useEffect, useState } from "react";
 import { data, Link, redirect, useFetcher } from "react-router";
 import {
   Alert,
   Button,
   ButtonLink,
   Card,
-  Field,
-  inputClass,
+  ConfigNotice,
   Page,
   PageHeader,
-  Select,
 } from "~/components/ui";
+import {
+  AddLevelButton,
+  ReviewLevelList,
+} from "~/features/reviews/review-level-list";
+import { useReviewLevelsDraft } from "~/features/reviews/use-review-levels-draft";
 import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
-import { intervalName, levelName, REVIEW_COLORS } from "~/lib/review-levels";
+import { intervalName, levelName } from "~/lib/review-levels";
 import type { RetiredReviewCard } from "~/lib/reviews";
 import {
   listRetiredReviewCards,
@@ -28,11 +25,7 @@ import {
   saveReviewLevels,
 } from "~/lib/reviews";
 import { getSession, loginPath } from "~/lib/session";
-import type {
-  ReviewAction,
-  ReviewIntervalUnit,
-  ReviewLevel,
-} from "~/lib/types";
+import type { ReviewLevel } from "~/lib/types";
 import type { Route } from "./+types/ajustes-repaso";
 
 type SettingsActionResult = {
@@ -174,55 +167,19 @@ function fail(intent: string, message: string, status = 400) {
 export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
   const tr = useT();
   const fetcher = useFetcher<SettingsActionResult>();
-  const [levels, setLevels] = useState<ReviewLevel[]>(
+  const draft = useReviewLevelsDraft(
     loaderData.status === "ready" ? loaderData.levels : [],
+    fetcher.data?.levels,
   );
-
-  useEffect(() => {
-    if (fetcher.data?.levels) {
-      setLevels(
-        [...fetcher.data.levels].sort((a, b) => a.position - b.position),
-      );
-    }
-  }, [fetcher.data]);
+  const { levels } = draft;
 
   if (loaderData.status === "unconfigured") {
-    return (
-      <Page>
-        <Alert variant="warning" title={tr("configNotice.title")}>
-          {tr("configNotice.body")}
-        </Alert>
-      </Page>
-    );
+    return <ConfigNotice />;
   }
 
-  const updateLevel = (id: string, updates: Partial<ReviewLevel>) => {
-    setLevels((current) =>
-      current.map((level) =>
-        level.id === id ? { ...level, ...updates } : level,
-      ),
-    );
-  };
-
-  const moveLevel = (index: number, offset: number) => {
-    setLevels((current) => {
-      const target = index + offset;
-      if (target < 0 || target >= current.length) return current;
-      const reordered = [...current];
-      [reordered[index], reordered[target]] = [
-        reordered[target],
-        reordered[index],
-      ];
-      return reordered.map((level, position) => ({
-        ...level,
-        position: position + 1,
-      }));
-    });
-  };
-
-  const addLevel = () => {
+  function addLevel() {
     const now = new Date().toISOString();
-    const newLevel: ReviewLevel = {
+    draft.add({
       id: crypto.randomUUID(),
       user_id: loaderData.userId,
       system_key: null,
@@ -230,14 +187,12 @@ export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
       action: "review",
       interval_amount: 1,
       interval_unit: "days",
-      position: levels.length + 1,
       color: "blue",
       active: true,
       created_at: now,
       updated_at: now,
-    };
-    setLevels((current) => [...current, newLevel]);
-  };
+    });
+  }
 
   // Los nombres y los intervalos se resuelven con las mismas reglas que usa la
   // pantalla de estudio: si divergieran, el mismo nivel se llamaría de una forma
@@ -283,211 +238,13 @@ export default function AjustesRepaso({ loaderData }: Route.ComponentProps) {
           <fetcher.Form method="post">
             <input type="hidden" name="intent" value="save" />
             <input type="hidden" name="levels" value={JSON.stringify(levels)} />
-            <ol className="divide-y divide-line">
-              {levels.map((level, index) => (
-                <li
-                  key={level.id}
-                  className="grid gap-4 py-5 lg:grid-cols-[auto_1fr_1fr_auto] lg:items-start"
-                >
-                  <div className="flex items-center gap-2 lg:pt-7">
-                    <span
-                      aria-hidden="true"
-                      className={`size-7 rounded-full rating-level--${level.color}`}
-                    />
-                    <div className="flex flex-col">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        disabled={index === 0}
-                        className="size-9 p-0"
-                        aria-label={tr("ajustesRepaso.moveUp", {
-                          name: levelLabel(level),
-                        })}
-                        onClick={() => moveLevel(index, -1)}
-                      >
-                        <ArrowUpIcon aria-hidden size={17} />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        disabled={index === levels.length - 1}
-                        className="size-9 p-0"
-                        aria-label={tr("ajustesRepaso.moveDown", {
-                          name: levelLabel(level),
-                        })}
-                        onClick={() => moveLevel(index, 1)}
-                      >
-                        <ArrowDownIcon aria-hidden size={17} />
-                      </Button>
-                    </div>
-                  </div>
+            <ReviewLevelList
+              levels={levels}
+              onUpdate={draft.update}
+              onMove={draft.move}
+            />
 
-                  <div className="space-y-4">
-                    <Field
-                      label={tr("ajustesRepaso.name")}
-                      htmlFor={`name-${level.id}`}
-                    >
-                      <input
-                        id={`name-${level.id}`}
-                        className={inputClass}
-                        maxLength={40}
-                        value={levelLabel(level)}
-                        onChange={(event) =>
-                          updateLevel(level.id, {
-                            name: event.target.value,
-                            system_key: null,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field
-                      label={tr("ajustesRepaso.action")}
-                      htmlFor={`action-${level.id}`}
-                    >
-                      <Select
-                        id={`action-${level.id}`}
-                        value={level.action}
-                        onChange={(event) => {
-                          const action = event.target.value as ReviewAction;
-                          updateLevel(
-                            level.id,
-                            action === "retire"
-                              ? {
-                                  action,
-                                  interval_amount: null,
-                                  interval_unit: null,
-                                }
-                              : {
-                                  action,
-                                  interval_amount: 1,
-                                  interval_unit: "days",
-                                },
-                          );
-                        }}
-                      >
-                        <option value="review">
-                          {tr("ajustesRepaso.actionReview")}
-                        </option>
-                        <option value="retire">
-                          {tr("ajustesRepaso.actionRetire")}
-                        </option>
-                      </Select>
-                    </Field>
-                  </div>
-
-                  <div className="space-y-4">
-                    {level.action === "review" ? (
-                      <div className="grid grid-cols-[minmax(5rem,0.55fr)_1fr] gap-2">
-                        <Field
-                          label={tr("ajustesRepaso.amount")}
-                          htmlFor={`amount-${level.id}`}
-                        >
-                          <input
-                            id={`amount-${level.id}`}
-                            type="number"
-                            min={1}
-                            max={level.interval_unit === "days" ? 3650 : 525600}
-                            required
-                            className={inputClass}
-                            value={level.interval_amount ?? 1}
-                            onChange={(event) =>
-                              updateLevel(level.id, {
-                                interval_amount: Math.max(
-                                  1,
-                                  Number(event.target.value),
-                                ),
-                              })
-                            }
-                          />
-                        </Field>
-                        <Field
-                          label={tr("ajustesRepaso.unit")}
-                          htmlFor={`unit-${level.id}`}
-                        >
-                          <Select
-                            id={`unit-${level.id}`}
-                            value={level.interval_unit ?? "days"}
-                            onChange={(event) =>
-                              updateLevel(level.id, {
-                                interval_unit: event.target
-                                  .value as ReviewIntervalUnit,
-                              })
-                            }
-                          >
-                            <option value="minutes">
-                              {tr("ajustesRepaso.minutes")}
-                            </option>
-                            <option value="hours">
-                              {tr("ajustesRepaso.hours")}
-                            </option>
-                            <option value="days">
-                              {tr("ajustesRepaso.days")}
-                            </option>
-                          </Select>
-                        </Field>
-                      </div>
-                    ) : (
-                      <p className="rounded-lg bg-paper-sunken px-3 py-3 text-sm text-ink-soft">
-                        {tr("ajustesRepaso.retireHint")}
-                      </p>
-                    )}
-                    <Field
-                      label={tr("ajustesRepaso.color")}
-                      htmlFor={`color-${level.id}`}
-                    >
-                      <Select
-                        id={`color-${level.id}`}
-                        value={level.color}
-                        onChange={(event) =>
-                          updateLevel(level.id, { color: event.target.value })
-                        }
-                      >
-                        {REVIEW_COLORS.map((color) => (
-                          <option key={color} value={color}>
-                            {tr(`ajustesRepaso.color.${color}`)}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant={level.active ? "secondary" : "ghost"}
-                    className="min-h-11 lg:mt-7"
-                    aria-pressed={level.active}
-                    onClick={() =>
-                      updateLevel(level.id, { active: !level.active })
-                    }
-                  >
-                    {tr(
-                      level.active
-                        ? "ajustesRepaso.deactivate"
-                        : "ajustesRepaso.activate",
-                    )}
-                  </Button>
-                </li>
-              ))}
-            </ol>
-
-            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-5">
-              <Button
-                type="button"
-                variant="secondary"
-                className="min-h-11"
-                disabled={levels.length >= 30}
-                onClick={addLevel}
-              >
-                <PlusIcon aria-hidden size={18} />
-                {tr("ajustesRepaso.addLevel")}
-              </Button>
-              <span className="text-xs text-ink-faint">
-                {tr("ajustesRepaso.timezone", {
-                  timezone:
-                    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-                })}
-              </span>
-            </div>
+            <AddLevelButton levels={levels} onAdd={addLevel} />
 
             <div className="mt-5 flex flex-wrap gap-3">
               <Button
