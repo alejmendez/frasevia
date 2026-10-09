@@ -94,13 +94,23 @@ En el panel de Supabase, abre el **SQL Editor** y ejecuta:
 4. `supabase/migrations/20261007090000_general_review_decks.sql` — añade el tipo
    de estudio, conserva los mazos existentes como idiomas y adapta copia, cola,
    agenda y guardado de repasos generales.
-5. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
+5. `supabase/migrations/20261008120000_bulk_card_updates_and_indexes.sql` —
+   añade la función `update_deck_cards`, que guarda todas las tarjetas de un
+   mazo en una sola llamada, y los índices de búsqueda y de catálogo.
+6. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
+
+El orden importa: la quinta migración usa el tipo de estudio que crea la
+cuarta, y sin ella el guardado del editor de mazos falla con
+`42883 function does not exist`, porque `app/lib/decks/write.ts` llama a
+`update_deck_cards` sin condición.
 
 El seed es idempotente (identificadores fijos y `on conflict do nothing`), así
 que se puede volver a aplicar sin duplicar nada.
 
-En una instalación existente aplica la migración del 7 de octubre antes de
-publicar el frontend actualizado. No vuelve a crear tarjetas ni borra progreso.
+En una instalación existente aplica las migraciones del 7 y del 8 de octubre
+antes de publicar el frontend actualizado. No vuelven a crear tarjetas ni borran
+progreso. La del 7 de octubre es la que añade el tipo de estudio; la del 8 solo
+añade una función y unos índices, y es la que necesita el editor de mazos.
 El tipo se elige por mazo para mantener coherentes sus formularios y prácticas;
 puede cambiarse en el editor. El historial se conserva, y la cola muestra solo
 las direcciones del tipo actual. El repaso general usa la dirección `general`.
@@ -360,6 +370,8 @@ por RLS simplemente no se puede leer ni escribir.
 | Los mazos oficiales son de solo lectura | `author_id` nulo + políticas de escritura |
 | El progreso es privado por persona | políticas `progress_*` |
 | No se copia ni se estudia nada ajeno | funciones `copy_deck` y `record_practice` |
+| Editar un mazo entero es una sola llamada autorizada | función `update_deck_cards` |
+| Programar un repaso solo sobre lo que ya se puede ver | funciones `record_card_review` y `reactivate_card_review` |
 
 Detalles que importan:
 
@@ -480,10 +492,8 @@ cadenas.
 
 Que recorra todo `app/` y no solo `app/routes/` es a propósito. Parte de la
 lógica que hay que proteger está en `lib/` y en `features/`, y por eso
-`requireSession()` —el único sitio donde tendría sentido centralizar el
+`requireSession()` —el único sitio donde tendría sentido centralizar la
 redirección— **no lanza**, sino que devuelve la ruta: el `throw` se queda en el
-cuerpo del loader, que es lo que el test comprueba. Si esa función lanzara, el
-fallo dejaría de estar el `throw` se queda en el
 cuerpo del loader, que es lo que el test comprueba. Si esa función lanzara, el
 fallo dejaría de estar cubierto por una prueba.
 
