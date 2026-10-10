@@ -57,16 +57,6 @@ describe("revalidation after rating a card", () => {
     expect(shouldReload).toBe(false);
   });
 
-  it("does not reload after saving a practice session", () => {
-    const shouldReload = shouldRevalidate(
-      args({
-        formData: formDataOf({ results: "[]" }),
-      }),
-    );
-
-    expect(shouldReload).toBe(false);
-  });
-
   it("follows the router's default on a normal navigation", () => {
     // No formData at all: this is entering the screen, not answering an action.
     expect(shouldRevalidate(args())).toBe(true);

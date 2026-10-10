@@ -44,8 +44,6 @@ export const comun = {
   "general.aiExtras": "Pedir ejemplo y explicación en cada tarjeta",
   "general.recallHint": "Piensa en la respuesta antes de girar.",
   "general.reviewHint": "Intenta recordar la respuesta antes de revelarla.",
-  "general.otherPractices":
-    "Explorar las tarjetas, elegir una respuesta o repasar a tu ritmo.",
   "general.choiceMode": "Elegir la respuesta",
   "general.chooseAnswer": "Elige la respuesta correcta.",
   "general.modeDescription.elegir":

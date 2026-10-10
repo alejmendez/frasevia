@@ -73,8 +73,6 @@ export const comun = {
   "general.aiExtras": "Include an example and explanation on each card",
   "general.recallHint": "Think of the answer before flipping.",
   "general.reviewHint": "Try to recall the answer before revealing it.",
-  "general.otherPractices":
-    "Explore your cards, choose an answer or review at your own pace.",
   "general.choiceMode": "Choose the answer",
   "general.chooseAnswer": "Choose the correct answer.",
   "general.modeDescription.elegir":

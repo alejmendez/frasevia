@@ -16,9 +16,6 @@ export const estudiar = {
   "estudiar.pendingTitle": "Pending review",
   "estudiar.recallTitle": "Recall it before you look",
   "estudiar.recallSubtitle": "Think of the answer. Then flip the card.",
-  "estudiar.otherPractices": "Other practice modes",
-  "estudiar.otherPracticesHint":
-    "Explore, choose an answer or fill in a phrase.",
   "estudiar.pendingLabel": "Due",
   "estudiar.newLabel": "New",
   "estudiar.direction": "{source} → {target}",

@@ -5,8 +5,8 @@ exploran mazos, se crean los propios y se programa el próximo repaso.
 
 - **Interfaz en español e inglés**. Cada mazo elige entre **Idiomas** (palabras,
   frases y traducciones) y **Repaso general** (preguntas, conceptos y respuestas).
-- Cuatro formas de practicar: explorar, elegir significado, completar la frase y
-  repaso.
+- Una sola forma de practicar: repaso por memoria, con la ficha oculta hasta que
+  la persona la recuerda.
 - Sesiones cortas, sin rachas obligatorias.
 - Los mazos de repaso general usan un solo idioma de contenido, ejemplos y notas
   opcionales. Comparten el calendario y la cola de pendientes con los de idiomas.
@@ -369,7 +369,7 @@ por RLS simplemente no se puede leer ni escribir.
 | Nadie marca un mazo como oficial | `with check (... and not is_official)` |
 | Los mazos oficiales son de solo lectura | `author_id` nulo + políticas de escritura |
 | El progreso es privado por persona | políticas `progress_*` |
-| No se copia ni se estudia nada ajeno | funciones `copy_deck` y `record_practice` |
+| No se copia ni se estudia nada ajeno | funciones `copy_deck` y `record_card_review` |
 | Editar un mazo entero es una sola llamada autorizada | función `update_deck_cards` |
 | Programar un repaso solo sobre lo que ya se puede ver | funciones `record_card_review` y `reactivate_card_review` |
 
@@ -381,8 +381,10 @@ Detalles que importan:
 - Copiar un mazo lo hace la función `copy_deck`, que valida `auth.uid()` a mano
   (es `SECURITY DEFINER`, así que no puede confiar en RLS) y crea filas con
   identificadores nuevos: editar la copia nunca toca el original.
-- El progreso se escribe por `record_practice`, que recibe los deltas de la
-  sesión y los acumula. Así dos sesiones simultáneas no se pisan.
+- El progreso se escribe por `record_card_review`, que es la que usa el repaso por
+  memoria. `record_practice` sigue existiendo y con los mismos permisos, pero ya
+  no la llama el frontend: era la que guardaba los resultados de las prácticas
+  alternativas que se quitaron.
 - Ambas funciones tienen `revoke ... from public` y `grant` solo a
   `authenticated`.
 - Las vistas de resumen usan `security_invoker = on`, así que respetan el RLS de
@@ -420,7 +422,7 @@ app/
 │   ├── decks/         # formularios de mazo, tarjetas y el menú rápido
 │   ├── library/       # la biblioteca y la tarjeta de mazo
 │   ├── reviews/       # los niveles de repaso
-│   └── study/         # motor de estudio (puro), repaso y prácticas
+│   └── study/         # la sesión de repaso y sus piezas
 ├── lib/
 │   ├── decks/         # mazos: filas, lecturas, escrituras y rutas
 │   ├── reviews/       # repaso programado: lecturas y escrituras
@@ -497,24 +499,21 @@ redirección— **no lanza**, sino que devuelve la ruta: el `throw` se queda en 
 cuerpo del loader, que es lo que el test comprueba. Si esa función lanzara, el
 fallo dejaría de estar cubierto por una prueba.
 
-### El motor de estudio
+### El repaso por memoria
 
-`app/features/study/engine.ts` es JavaScript puro, sin React ni Supabase. Ahí
-decide qué se muestra y si una respuesta escrita es correcta, lo que permite
-probarla sin navegador ni base de datos. Las rutas solo pintan lo que el motor
-devuelve.
+`/estudiar` y `/estudiar/:deckId` pintan una sola cosa: la ficha oculta, el
+botón de girarla y la valoración. No hay motor de práctica detrás.
 
-Cosas que resuelve y que están cubiertas por pruebas:
+Hubo además elegir significado, completar la frase y explorar, debajo de un
+`<details>` en la pantalla de mazo. Se quitaron porque costaban dos gestos para
+llegar a ellas y el repaso por memoria ya cubría el mismo contenido con menos
+pasos. La única parte que se conservó es la lógica pura de la sesión de repaso,
+que vive en `use-review-session.ts` y `schedule.ts` y sigue probándose sin
+navegador.
 
-- Normaliza mayúsculas, comillas tipográficas y puntuación final, y acepta
-  responder sin el artículo inicial (`good fit` vale por `a good fit`).
-- **Nunca** usa una tarjeta como alternativa correcta de sí misma ni repite su
-  propio significado entre las opciones.
-- Si el mazo tiene pocas tarjetas para crear alternativas, o si ningún ejemplo
-  contiene el término, cambia a un modo que sí funciona con ese contenido y lo
-  explica en pantalla.
-- Las sesiones son reproducibles: el barajado usa una semilla, no
-  `Math.random`.
+La tabla `user_card_progress` y la función `record_practice` quedan en la base sin
+que nada las escriba: las prácticas eran su único consumidor. Se conservan para no
+tocar el historial de quien ya estudió, y borrarlas es una migración aparte.
 
 ### Un aviso sobre los nombres de archivo
 

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { data } from "react-router";
 
-import { getMyDeck, getProgressForCards } from "~/lib/decks";
+import { getMyDeck } from "~/lib/decks";
 import { t } from "~/lib/locale";
 import {
   listCardReviewStates,
@@ -9,7 +9,6 @@ import {
   listReviewLevels,
 } from "~/lib/reviews";
 import type {
-  CardProgress,
   CardReviewState,
   Deck,
   ReviewLevel,
@@ -24,11 +23,14 @@ import { reviewDirection } from "./schedule";
  * Es lo mismo en los dos casos —con mazo o sin mazo— y solo cambia de dónde salen
  * las fichas: de un mazo concreto o de la cola global. Por eso se devuelve siempre
  * la misma forma y la ruta no tiene dos ramas que montar.
+ *
+ * No trae el progreso por tarjeta (`user_card_progress`): era para el contador de
+ * aciertos de las prácticas alternativas, que ya no están. Pedirlo aquí era una
+ * consulta de más en cada carga de la pantalla.
  */
 export interface StudySessionData {
   deck: Deck | null;
   cards: StudyCard[];
-  progress: CardProgress[];
   reviewStates: CardReviewState[];
   reviewLevels: ReviewLevel[];
   /** La dirección de repaso, o `null` si cada ficha trae la suya. */
@@ -61,14 +63,13 @@ export async function loadGlobalQueue(
   return {
     deck: null,
     cards: toQueueCards(queueResult.cards),
-    progress: [],
     reviewStates: toReviewStates(queueResult.cards),
     reviewLevels: levelsResult.levels,
     direction: null,
   };
 }
 
-/** Una sesión de un mazo concreto: sus tarjetas, su progreso y su cola de repaso. */
+/** Una sesión de un mazo concreto: sus tarjetas y su cola de repaso. */
 export async function loadDeckSession(
   supabase: SupabaseClient,
   deckId: string,
@@ -95,21 +96,14 @@ export async function loadDeckSession(
   );
 
   const cardIds = cards.map((card) => card.id);
-  const [progressResult, reviewResult, levelsResult] = await Promise.all([
-    getProgressForCards(supabase, cardIds),
+  const [reviewResult, levelsResult] = await Promise.all([
     listCardReviewStates(supabase, cardIds, direction),
     listReviewLevels(supabase),
   ]);
 
-  if (progressResult.error || reviewResult.error || levelsResult.error) {
+  if (reviewResult.error || levelsResult.error) {
     throw data(
-      {
-        message:
-          progressResult.error ??
-          reviewResult.error ??
-          levelsResult.error ??
-          "",
-      },
+      { message: reviewResult.error ?? levelsResult.error ?? "" },
       { status: 500 },
     );
   }
@@ -117,7 +111,6 @@ export async function loadDeckSession(
   return {
     deck,
     cards: toDeckCards(cards, deck, direction),
-    progress: progressResult.progress,
     reviewStates: reviewResult.states,
     reviewLevels: levelsResult.levels,
     direction,

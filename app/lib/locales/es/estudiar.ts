@@ -16,9 +16,6 @@ export const estudiar = {
   "estudiar.pendingTitle": "Repaso pendiente",
   "estudiar.recallTitle": "Recuerda antes de mirar",
   "estudiar.recallSubtitle": "Piensa en la respuesta. Después gira la ficha.",
-  "estudiar.otherPractices": "Otras prácticas",
-  "estudiar.otherPracticesHint":
-    "Explorar, elegir una respuesta o completar una frase.",
   "estudiar.pendingLabel": "Pendiente",
   "estudiar.newLabel": "Nueva",
   "estudiar.direction": "{source} → {target}",
