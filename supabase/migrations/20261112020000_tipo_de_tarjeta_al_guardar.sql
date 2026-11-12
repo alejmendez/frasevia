@@ -8,10 +8,6 @@
 -- Aqui el tipo se convierte de forma explicita y, antes de escribir nada, se
 -- comprueba que los tipos que llegan existan: un tipo desconocido es un error
 -- de quien escribio el JSON, no de la base, y tiene su propio codigo.
---
--- El cuerpo va con una etiqueta dollar propia y sin una sola comilla doble:
--- las otras migraciones de este repositorio tampoco las tienen, y es lo que
--- hace que el editor de SQL las ejecute sin tocar el texto.
 
 begin;
 
@@ -23,7 +19,7 @@ returns integer
 language plpgsql
 security definer
 set search_path = ''
-as $fn$
+as $$
 declare
   v_uid uuid := (select auth.uid());
   v_count integer;
@@ -31,29 +27,30 @@ begin
   if v_uid is null then
     raise exception 'Debes iniciar sesión para guardar tarjetas'
       using errcode = '42501';
-  end;
+  end if;
 
   if not public.is_deck_editable(p_deck_id) then
     raise exception 'Ese mazo no se puede editar'
       using errcode = '42501';
-  end;
+  end if;
 
   if p_cards is null or jsonb_typeof(p_cards) <> 'array' then
     raise exception 'La lista de tarjetas no tiene un formato válido'
       using errcode = '22023';
-  end;
+  end if;
 
   if exists (
     select 1
     from jsonb_to_recordset(p_cards) as r (card_id uuid, kind text)
     where r.kind is not null
       and r.kind not in (
-        select e::text from pg_catalog.enum_range(null::public.card_kind) e
+        select e::text
+        from pg_catalog.unnest(pg_catalog.enum_range(null::public.card_kind)) e
       )
   ) then
     raise exception 'Ese tipo de tarjeta no existe'
       using errcode = '22023';
-  end;
+  end if;
 
   update public.cards c
   set
@@ -81,7 +78,7 @@ begin
 
   return v_count;
 end;
-$fn$;
+$$;
 
 revoke all on function public.update_deck_cards(uuid, jsonb) from public;
 grant execute on function public.update_deck_cards(uuid, jsonb) to authenticated;
