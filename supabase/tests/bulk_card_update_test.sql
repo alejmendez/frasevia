@@ -42,7 +42,7 @@ values
   ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', 'word', 'another private term', 'otro término privado')
 on conflict (id) do nothing;
 
-select plan(6);
+select plan(7);
 
 select set_config('request.jwt.claims', '{"role":"authenticated","sub":"10000000-0000-4000-8000-000000000001"}', true);
 set local role authenticated;

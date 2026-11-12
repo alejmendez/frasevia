@@ -40,15 +40,17 @@ select plan(4);
 -- Añadir una tarjeta
 -- ---------------------------------------------------------------------------
 
+-- La columna de la tabla temporal no puede llamarse `ctid`: es el nombre de
+-- una columna del sistema y Postgres no deja crear la tabla.
 create temporary table deck_ctid_before as
-  select ctid::text as ctid from public.decks where id = '20000000-0000-4000-8000-000000000001';
+  select ctid::text as fila from public.decks where id = '20000000-0000-4000-8000-000000000001';
 
 insert into public.cards (id, deck_id, term, meaning_es)
 values ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', 'otro término', 'otro término');
 
 select isnt(
   (select d.ctid::text from public.decks d where d.id = '20000000-0000-4000-8000-000000000001'),
-  (select b.ctid from deck_ctid_before b),
+  (select b.fila from deck_ctid_before b),
   'añadir una tarjeta toca el mazo'
 );
 
@@ -57,7 +59,7 @@ select isnt(
 -- ---------------------------------------------------------------------------
 
 create temporary table deck_ctid_after_insert as
-  select ctid::text as ctid from public.decks where id = '20000000-0000-4000-8000-000000000001';
+  select ctid::text as fila from public.decks where id = '20000000-0000-4000-8000-000000000001';
 
 update public.cards
    set term = 'término corregido'
@@ -65,7 +67,7 @@ update public.cards
 
 select isnt(
   (select d.ctid::text from public.decks d where d.id = '20000000-0000-4000-8000-000000000001'),
-  (select b.ctid from deck_ctid_after_insert b),
+  (select b.fila from deck_ctid_after_insert b),
   'editar una tarjeta toca el mazo y con ella su fecha de edición'
 );
 
