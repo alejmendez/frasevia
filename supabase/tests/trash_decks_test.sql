@@ -48,7 +48,20 @@ values
   ('30000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000003', 'a public phrase', 'una frase pública')
 on conflict (id) do nothing;
 
-select plan(21);
+-- Un repaso general pendiente detecta si las vistas vuelven a tratar todos los
+-- mazos como traducciones. Las fechas fijas evitan depender del reloj del test.
+update public.decks set study_mode = 'general'
+where id = '20000000-0000-4000-8000-000000000001';
+
+insert into public.user_card_review_state (
+  user_id, card_id, direction, last_reviewed_at, next_review_at, review_count
+) values (
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  'general', '2020-01-01 00:00:00+00', '2020-01-02 00:00:00+00', 1
+);
+
+select plan(25);
 
 -- ---------------------------------------------------------------------------
 -- Ladueña del mazo privado
@@ -56,6 +69,21 @@ select plan(21);
 
 select set_config('request.jwt.claims', '{"role":"authenticated","sub":"10000000-0000-4000-8000-000000000001"}', true);
 set local role authenticated;
+
+select is(
+  (select due_count from public.my_deck_review_summary
+    where deck_id = '20000000-0000-4000-8000-000000000001'),
+  1,
+  'el resumen cuenta los repasos generales pendientes'
+);
+
+select is(
+  (select study_mode from public.my_review_queue
+    where card_id = '30000000-0000-4000-8000-000000000001'
+      and last_reviewed_at = '2020-01-01 00:00:00+00'),
+  'general',
+  'la cola conserva el modo y la fecha del último repaso'
+);
 
 -- El progreso se registra antes de mandar el mazo a la papelera: después, sus
 -- tarjetas dejan de ser visibles y no se puede escribir en ellas.
@@ -83,8 +111,15 @@ select is(
   (select count(*)::integer
      from public.cards
     where deck_id = '20000000-0000-4000-8000-000000000001'),
-  2,
-  'las tarjetas no se borran al mandar el mazo a la papelera'
+  0,
+  'RLS oculta las tarjetas de la papelera incluso al dueño'
+);
+
+select is(
+  (select count(*)::integer from public.my_review_queue
+    where deck_id = '20000000-0000-4000-8000-000000000001'),
+  0,
+  'la cola no incluye los repasos de un mazo en la papelera'
 );
 
 select is(
@@ -137,6 +172,13 @@ select is(
     where deck_id = '20000000-0000-4000-8000-000000000001'),
   2,
   'las tarjetas siguen ahí después de devolver el mazo'
+);
+
+select is(
+  (select due_count from public.my_deck_review_summary
+    where deck_id = '20000000-0000-4000-8000-000000000001'),
+  1,
+  'el resumen vuelve a contar los repasos al restaurar el mazo'
 );
 
 -- Se vuelve a mandar a la papelera para comprobar que el progreso tampoco
@@ -218,11 +260,13 @@ select throws_ok(
   'un mazo en la papelera no se puede copiar'
 );
 
-select is(
-  (select count(*)::integer
-     from delete from public.decks
+with deleted as (
+  delete from public.decks
     where id = '20000000-0000-4000-8000-000000000001'
-    returning id),
+    returning id
+)
+select is(
+  (select count(*)::integer from deleted),
   1,
   'el dueño sí puede borrar para siempre su mazo en la papelera'
 );
@@ -236,3 +280,4 @@ select is(
 );
 
 select * from finish();
+rollback;

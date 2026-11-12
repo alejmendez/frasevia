@@ -328,7 +328,8 @@ as
   left join public.user_card_review_state s
     on s.card_id = c.id
     and s.user_id = (select auth.uid())
-    and s.direction = d.source_language || '-' || d.target_language
+    and s.direction = case when d.study_mode = 'general' then 'general'
+      else d.source_language || '-' || d.target_language end
   where d.author_id = (select auth.uid())
     and d.deleted_at is null
   group by d.id;
@@ -339,6 +340,7 @@ as
   select
     s.card_id,
     s.direction,
+    s.last_reviewed_at,
     s.next_review_at,
     s.review_count,
     s.last_level_id,
@@ -351,7 +353,8 @@ as
     c.usage_note,
     d.title as deck_title,
     d.source_language,
-    d.target_language
+    d.target_language,
+    d.study_mode
   from public.user_card_review_state s
   join public.cards c on c.id = s.card_id
   join public.decks d on d.id = c.deck_id
@@ -360,6 +363,13 @@ as
     and s.next_review_at <= statement_timestamp()
     and d.deleted_at is null
     and (d.visibility = 'public' or d.author_id = (select auth.uid()))
+    and (
+      (d.study_mode = 'general' and s.direction = 'general')
+      or (d.study_mode = 'language' and s.direction in (
+        d.source_language || '-' || d.target_language,
+        d.target_language || '-' || d.source_language
+      ))
+    )
   order by s.next_review_at asc;
 
 create or replace view public.my_retired_review_cards
@@ -383,6 +393,13 @@ as
     and s.retired
     and d.deleted_at is null
     and (d.visibility = 'public' or d.author_id = (select auth.uid()))
+    and (
+      (d.study_mode = 'general' and s.direction = 'general')
+      or (d.study_mode = 'language' and s.direction in (
+        d.source_language || '-' || d.target_language,
+        d.target_language || '-' || d.source_language
+      ))
+    )
   order by s.last_reviewed_at desc;
 
 create or replace view public.my_review_schedule
@@ -402,6 +419,13 @@ as
     and s.next_review_at is not null
     and s.next_review_at > statement_timestamp()
     and d.deleted_at is null
-    and (d.visibility = 'public' or d.author_id = (select auth.uid()));
+    and (d.visibility = 'public' or d.author_id = (select auth.uid()))
+    and (
+      (d.study_mode = 'general' and s.direction = 'general')
+      or (d.study_mode = 'language' and s.direction in (
+        d.source_language || '-' || d.target_language,
+        d.target_language || '-' || d.source_language
+      ))
+    );
 
 commit;
