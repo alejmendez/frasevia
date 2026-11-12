@@ -106,14 +106,20 @@ En el panel de Supabase, abre el **SQL Editor** y ejecuta:
 7. `supabase/migrations/20261112010000_fecha_de_edicion_del_mazo.sql` — hace que
    la fecha de última edición del mazo se mueva cuando se toca una de sus
    tarjetas, que es lo que muestra la biblioteca.
-8. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
+8. `supabase/migrations/20261112020000_tipo_de_tarjeta_al_guardar.sql` — arregla
+   el guardado masivo de tarjetas: el tipo de tarjeta es un enum y se guardaba
+   como texto, así que la base lo rechazaba siempre.
+9. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
 
 El orden importa: la quinta migración usa el tipo de estudio que crea la
 cuarta, y sin ella el guardado del editor de mazos falla con
 `42883 function does not exist`, porque `app/lib/decks/write.ts` llama a
 `update_deck_cards` sin condición. La sexta es aditiva: no borra nada de lo
 que ya está, y sin ella la papelera no funciona (`42883 function does not
-exist` también, pero por `trash_deck` y `restore_deck`).
+exist` también, pero por `trash_deck` y `restore_deck`). La octava
+sustituye una función que ya existe, así que se puede aplicar sola: sin ella,
+guardar las tarjetas de un mazo falla con `column "kind" is of type
+public.card_kind but expression is of type text`.
 
 El seed es idempotente (identificadores fijos y `on conflict do nothing`), así
 que se puede volver a aplicar sin duplicar nada.
