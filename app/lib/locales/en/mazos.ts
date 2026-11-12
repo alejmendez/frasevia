@@ -195,7 +195,7 @@ export const mazos = {
   "mazoEditar.fieldExampleEs": "Translation of the example",
   "mazoEditar.fieldUsageNote": "Usage note",
   "mazoEditar.addCardSubmit": "Add card",
-  "mazoEditar.createdOn": "Card created on {date}",
+  "mazoEditar.cardDates": "Created on {created} · Updated on {updated}",
 
   "deckField.title": "Title",
   "deckField.description": "Description",

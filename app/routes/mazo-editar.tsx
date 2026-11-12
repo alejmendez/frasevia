@@ -35,7 +35,7 @@ import {
   trashDeck,
   updateDeckCards,
 } from "~/lib/decks";
-import { formatDate } from "~/lib/format";
+import { formatDate, formatDateTime } from "~/lib/format";
 import { t } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { getSession, loginPath } from "~/lib/session";
@@ -492,7 +492,10 @@ function CardEditor({
   return (
     <fieldset className="rounded-card border border-line bg-paper-raised p-5">
       <legend className="px-1 text-xs text-ink-faint">
-        {tr("mazoEditar.createdOn", { date: formatDate(card.created_at) })}
+        {tr("mazoEditar.cardDates", {
+          created: formatDate(card.created_at),
+          updated: formatDateTime(card.updated_at),
+        })}
       </legend>
 
       <div className="mt-2">

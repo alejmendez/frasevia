@@ -41,11 +41,12 @@ const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
  * bucle: no es una operación cualquiera de la biblioteca estándar. Estas
  * funciones se llaman desde el render, y `formatRelativeTime` se ejecuta una vez
  * por fila en `/progreso` y una vez por mazo en la biblioteca, así que crear uno
- * nuevo en cada llamada se notaba. Hay solo dos idiomas, así que dos entradas
- * bastan y no hace falta ninguna estructura más elaborada.
+ * nuevo en cada llamada se notaba. Hay solo dos idiomas, así que unas pocas
+ * entradas bastan y no hace falta ninguna estructura más elaborada.
  */
 const relativeFormatters = new Map<Locale, Intl.RelativeTimeFormat>();
 const dateFormatters = new Map<Locale, Intl.DateTimeFormat>();
+const dateTimeFormatters = new Map<Locale, Intl.DateTimeFormat>();
 
 function relativeFormatter(locale: Locale): Intl.RelativeTimeFormat {
   let formatter = relativeFormatters.get(locale);
@@ -102,6 +103,36 @@ export function formatDate(isoDate: string | null | undefined): string {
   }
 
   return dateFormatter(activeLocale()).format(date);
+}
+
+/**
+ * "11 nov 2026, 21:45" / "Nov 11, 2026, 9:45 PM": la fecha con su hora.
+ *
+ * La fecha sola no dice cuándo se tocó algo por última vez: entre "hoy" y
+ * "ayer" hay veinte horas que no aparecen en ninguna parte. El estilo es
+ * "medium" y no "long" porque la hora ya ocupa sitio, y en una línea de
+ * metadatos la fecha larga roba el sitio del dato que importa.
+ */
+export function formatDateTime(isoDate: string | null | undefined): string {
+  if (!isoDate) {
+    return "—";
+  }
+
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  let formatter = dateTimeFormatters.get(activeLocale());
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(activeLocale(), {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    dateTimeFormatters.set(activeLocale(), formatter);
+  }
+
+  return formatter.format(date);
 }
 
 /** "3 tarjetas" / "1 tarjeta"; "3 cards" / "1 card". */
