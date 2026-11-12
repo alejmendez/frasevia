@@ -16,6 +16,7 @@
 import { ajustes } from "./es/ajustes";
 import { biblioteca } from "./es/biblioteca";
 import { comun } from "./es/comun";
+import { edicionMasiva } from "./es/edicion-masiva";
 import { estudiar } from "./es/estudiar";
 import { explorar } from "./es/explorar";
 import { mazos } from "./es/mazos";
@@ -30,6 +31,7 @@ export const es = {
   ...ajustes,
   ...biblioteca,
   ...comun,
+  ...edicionMasiva,
   ...estudiar,
   ...explorar,
   ...mazos,

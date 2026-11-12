@@ -8,6 +8,9 @@ exploran mazos, se crean los propios y se programa el próximo repaso.
 - Una sola forma de practicar: repaso por memoria, con la ficha oculta hasta que
   la persona la recuerda.
 - Sesiones cortas, sin rachas obligatorias.
+- **Edición masiva con JSON**: el editor lleva las tarjetas de un mazo a un
+  modelo de lenguaje y guarda lo que devuelva. Ver
+  [Edición masiva con JSON](#edición-masiva-con-json).
 - Los mazos de repaso general usan un solo idioma de contenido, ejemplos y notas
   opcionales. Comparten el calendario y la cola de pendientes con los de idiomas.
 
@@ -386,6 +389,29 @@ de datos** antes de insertar. Si un significado pasara de los 400 caracteres, el
 
 Tarjeta sin término o sin traducción: se descarta y se sigue. Si al final no queda
 ninguna, se explica en pantalla en vez de guardar un mazo vacío.
+
+## Edición masiva con JSON
+
+El editor de un mazo tiene un botón **Edición masiva con JSON**, que abre las
+tarjetas del mazo como una lista JSON. El ida y vuelta es el mismo que en la
+generación, pero al revés: copiar, pegar lo que devuelva un modelo de lenguaje y
+guardar. Sirve para lo que el editor de una por una no puede —reescribir veinte
+tarjetas que comparten la misma estructura, o rellenar los huecos que alguien
+dejó entre corchetes—.
+
+Dos reglas, y son las que hacen que el ida y vuelta sea seguro:
+
+- Las tarjetas que **no** aparecen en el JSON se quedan como estaban. El JSON
+  dice qué cambiar, no qué mazo es.
+- Una entrada **sin `card_id`** es una tarjeta nueva, y se agrega al final del
+  mazo.
+
+Si el JSON trae un `card_id` que no es de este mazo, no se guarda nada y se
+avisa: un identificador equivocado significa que el modelo se equivocó de mazo,
+y aplicarlo a ciegas tocaría tarjetas que nadie pidió tocar.
+
+El botón **Copiar para la IA** copia las instrucciones y el JSON juntos. Pegar por
+partes es donde el modelo empieza a devolver cosas que no son tarjetas.
 
 ## Seguridad
 

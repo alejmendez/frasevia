@@ -13,6 +13,11 @@ import {
   Tag,
   textareaClass,
 } from "~/components/ui";
+import {
+  type BulkErrorReason,
+  parseBulkCards,
+} from "~/features/decks/bulk-cards";
+import { BulkCardsDialog } from "~/features/decks/bulk-editor";
 import { CardFields } from "~/features/decks/form/card-fields";
 import {
   LanguageFields,
@@ -103,6 +108,36 @@ function actionOk(message: string) {
 
 function actionFail(message: string, status = 400) {
   return data<ActionResult>({ ok: false, message }, { status });
+}
+
+/**
+ * El mensaje de un JSON que no se pudo leer.
+ *
+ * Cada motivo tiene su propia clave, porque no son el mismo problema: "esto no
+ * es un JSON" y "la tarjeta 7 no es de este mazo" piden acciones distintas de
+ * quien pega el JSON, y un único "algo va mal" le dejaría sin saber qué
+ * corregir. El switch es exhaustivo a propósito: si mañana aparece un motivo
+ * nuevo, el compilador avisa de que falta su mensaje.
+ */
+function bulkError(reason: BulkErrorReason, index?: number, cardId?: string) {
+  switch (reason) {
+    case "invalid-json":
+      return t("edicionMasiva.error.invalidJson");
+    case "not-a-list":
+      return t("edicionMasiva.error.notAList");
+    case "empty":
+      return t("edicionMasiva.error.empty");
+    case "not-a-card":
+      return t("edicionMasiva.error.notACard", { index: index ?? 0 });
+    case "missing-fields":
+      return t("edicionMasiva.error.missingFields", { index: index ?? 0 });
+    case "too-long":
+      return t("edicionMasiva.error.tooLong", { index: index ?? 0 });
+    case "bad-kind":
+      return t("edicionMasiva.error.badKind", { index: index ?? 0 });
+    case "unknown-card":
+      return t("edicionMasiva.error.unknownCard", { cardId: cardId ?? "" });
+  }
 }
 
 /**
@@ -212,6 +247,67 @@ export async function clientAction({
       return error ? actionFail(error) : actionOk(t("mazoEditar.cardDeleted"));
     }
 
+    case "bulk-cards": {
+      const text = String(formData.get("json") ?? "");
+
+      // Las tarjetas que hay ahora son las que se pueden tocar: el JSON dice
+      // qué cambiar, y un identificador que no esté en esta lista no es de este
+      // mazo. Se pregunta por el dueño para que la respuesta sea la misma que
+      // en la pantalla: lo que no es tuyo, no se edita.
+      const {
+        deck,
+        cards,
+        error: deckError,
+      } = await getMyDeck(session.supabase, deckId, session.userId);
+
+      if (deckError) {
+        return actionFail(deckError);
+      }
+
+      if (!deck) {
+        return actionFail(t("estudiar.deckNotFound"));
+      }
+
+      const parsed = parseBulkCards(
+        text,
+        cards.map((card) => card.id),
+      );
+
+      if (!parsed.ok) {
+        return actionFail(
+          bulkError(parsed.reason, parsed.index, parsed.cardId),
+        );
+      }
+
+      const updated = Object.keys(parsed.updates).length;
+      const created = parsed.creates.length;
+
+      // Primero las que ya existían, en un solo viaje: el RPC comprueba de una
+      // vez que el mazo sea editable y que las tarjetas sean suyas.
+      if (updated > 0) {
+        const { error } = await updateDeckCards(
+          session.supabase,
+          deckId,
+          parsed.updates,
+        );
+
+        if (error) {
+          return actionFail(error);
+        }
+      }
+
+      // Y después las nuevas, una a una y al final del mazo.
+      for (const draft of parsed.creates) {
+        const { error } = await appendCard(session.supabase, deckId, draft);
+
+        if (error) {
+          return actionFail(error);
+        }
+      }
+
+      return actionOk(t("edicionMasiva.applied", { updated, created }));
+    }
+
     case "trash-deck": {
       const { error } = await trashDeck(session.supabase, deckId);
 
@@ -240,6 +336,7 @@ export default function MazoEditar({
   const [isPublic, setIsPublic] = useState(
     loaderData.deck?.visibility === "public",
   );
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   if (loaderData.status === "unconfigured") {
     return <ConfigNotice />;
@@ -346,7 +443,12 @@ export default function MazoEditar({
             <input type="hidden" name="intent" value="save-deck" />
             <StudyModeField value={studyMode} onChange={setStudyMode} />
 
-            <Field label={tr("deckField.title")} htmlFor="title" required>
+            <Field
+              label={tr("deckField.title")}
+              htmlFor="title"
+              required
+              hint={tr("mazoNuevo.url", { slug: slugPreview(deck.title) })}
+            >
               <input
                 id="title"
                 name="title"
@@ -355,9 +457,6 @@ export default function MazoEditar({
                 maxLength={120}
                 className={inputClass}
               />
-              <p className="text-xs text-ink-faint">
-                {tr("mazoNuevo.url", { slug: slugPreview(deck.title) })}
-              </p>
             </Field>
 
             <Field
@@ -411,9 +510,18 @@ export default function MazoEditar({
         {/* Tarjetas                                                        */}
         {/* -------------------------------------------------------------- */}
         <section>
-          <h2 className="font-display text-xl text-ink">
-            {tr("mazoEditar.cardsHeading", { count: cards.length })}
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-xl text-ink">
+              {tr("mazoEditar.cardsHeading", { count: cards.length })}
+            </h2>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setBulkOpen(true)}
+            >
+              {tr("edicionMasiva.button")}
+            </Button>
+          </div>
 
           <AddCardForm studyMode={deck.study_mode} />
 
@@ -450,6 +558,10 @@ export default function MazoEditar({
           </div>
         </section>
       </div>
+
+      {bulkOpen ? (
+        <BulkCardsDialog cards={cards} onClose={() => setBulkOpen(false)} />
+      ) : null}
     </Page>
   );
 }
