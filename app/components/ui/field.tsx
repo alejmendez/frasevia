@@ -8,6 +8,16 @@ import { cx } from "./layout";
  * `Field` es solo la etiqueta y su ayuda: el control va como hijo, para que cada
  * pantalla pueda poner un `<input>`, un `<select>` o algo composed sin que este
  * archivo tenga que saber de todos ellos.
+ *
+ * La anatomía es siempre la misma: etiqueta, control, error y ayuda. La ayuda va
+ * **debajo** del control y no entre la etiqueta y el input, porque ahí se lee
+ * mientras se escribe y porque es donde ya estaba el texto auxiliar del campo
+ * «Título» (la URL que se va a generar). Con la ayuda arriba, «Nivel
+ * aproximado» y «Título» mostraban la misma pieza en sitios distintos: pegada a
+ * la etiqueta la una y bajo el input la otra, y un formulario se lee como dos.
+ *
+ * El error va antes que la ayuda porque manda más: si algo está mal hay que
+ * saberlo antes que leer la explicación de cómo se usa el campo.
  */
 
 /** Las clases de un campo de texto, por si hay que aplicarlas a algo raro. */
@@ -45,13 +55,13 @@ export function Field({
           </span>
         ) : null}
       </label>
-      {hint ? <p className="text-xs text-ink-faint">{hint}</p> : null}
       {children}
       {error ? (
         <p role="alert" className="text-xs font-medium text-danger">
           {error}
         </p>
       ) : null}
+      {hint ? <p className="text-xs text-ink-faint">{hint}</p> : null}
     </div>
   );
 }

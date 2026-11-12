@@ -149,6 +149,11 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
           label={tr("deckField.title")}
           htmlFor="title"
           required
+          hint={
+            title.trim()
+              ? tr("mazoNuevo.url", { slug: slugPreview(title) })
+              : undefined
+          }
           error={errors.title}
         >
           <input
@@ -165,11 +170,6 @@ export default function MazoNuevo({ loaderData }: Route.ComponentProps) {
             )}
             className={inputClass}
           />
-          {title.trim() ? (
-            <p className="text-xs text-ink-faint">
-              {tr("mazoNuevo.url", { slug: slugPreview(title) })}
-            </p>
-          ) : null}
         </Field>
 
         <Field

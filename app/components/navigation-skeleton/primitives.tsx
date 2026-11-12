@@ -84,13 +84,15 @@ export function SkeletonField({
   multiline?: boolean;
   required?: boolean;
 }) {
+  // La ayuda va debajo del control, como en `Field`: el esqueleto tiene que
+  // parecerse a la pantalla que va a aparecer, y si la pista cambia de sitio el
+  // texto salta al cargar.
   return (
     <div className="space-y-1.5">
       <p className="text-sm font-medium text-ink">
         {label}
         {required ? <span className="ml-1 text-accent">*</span> : null}
       </p>
-      {hint ? <p className="text-xs text-ink-faint">{hint}</p> : null}
       {multiline ? (
         <div className="min-h-24 rounded-lg border border-line-strong bg-paper-raised px-3 py-2.5">
           <TextLines />
@@ -98,6 +100,7 @@ export function SkeletonField({
       ) : (
         <Control />
       )}
+      {hint ? <p className="text-xs text-ink-faint">{hint}</p> : null}
     </div>
   );
 }

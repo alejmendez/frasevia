@@ -89,6 +89,21 @@ export function Button({ variant = "primary", className, ...props }
 - `memo`, `useMemo` y `useCallback` se justifican con un comentario sobre el coste concreto que evitan.
 - Todo componente exportado abre con su bloque de comentario.
 
+### Campos de formulario
+
+Un campo tiene siempre la misma anatomía: **etiqueta, control, error y ayuda**.
+La ayuda va **debajo** del control, nunca entre la etiqueta y el input, y el error
+va antes que la ayuda porque manda más.
+
+- Todo campo con etiqueta pasa por `Field` (`~/components/ui`). No escribas la
+  etiqueta, el input y el texto de ayuda a mano: se distribuyen de forma distinta
+  y el formulario deja de leerse como una sola cosa.
+- El texto auxiliar que acompaña al control (la URL que se va a generar, una
+  pista de formato) va en el `hint` de `Field`, no como un `<p>` suelto dentro
+  de los hijos.
+- El esqueleto de carga (`SkeletonField`) replica la misma anatomía: si no, el
+  texto salta de sitio al cargar.
+
 ### Estilos
 
 - **Nunca escribas un color literal.** Siempre un token de `@theme` (`bg-paper`, `text-ink`, `border-line`, `text-brand`, `bg-brand-solid`…).
