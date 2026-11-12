@@ -69,7 +69,7 @@ export function LibrarySkeleton() {
       />
       <section className="mb-10 grid gap-4 lg:grid-cols-[1.55fr_0.95fr]">
         <div className="relative overflow-hidden rounded-2xl bg-brand px-6 py-7 text-on-solid shadow-[0_20px_38px_-28px_var(--color-brand)] sm:px-9 sm:py-9">
-          <p className="text-xs font-semibold tracking-[0.17em] text-[#f3bba4] uppercase">
+          <p className="text-xs font-semibold tracking-[0.17em] text-brand-accent uppercase">
             {tr("biblioteca.todayReview")}
           </p>
           <Placeholder className="mt-3 h-9 w-4/5 bg-on-solid/20 sm:h-11" />

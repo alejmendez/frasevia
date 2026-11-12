@@ -100,7 +100,10 @@ En el panel de Supabase, abre el **SQL Editor** y ejecuta:
 6. `supabase/migrations/20261111120000_borrado_logico_decks.sql` — el borrado
    lógico: la columna `deleted_at`, la papelera, las funciones `trash_deck` y
    `restore_deck`, y las vistas que dejan de contar los mazos borrados.
-7. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
+7. `supabase/migrations/20261112010000_fecha_de_edicion_del_mazo.sql` — hace que
+   la fecha de última edición del mazo se mueva cuando se toca una de sus
+   tarjetas, que es lo que muestra la biblioteca.
+8. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
 
 El orden importa: la quinta migración usa el tipo de estudio que crea la
 cuarta, y sin ella el guardado del editor de mazos falla con

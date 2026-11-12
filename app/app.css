@@ -49,6 +49,13 @@
   --color-accent-muted: #f8e5dc;
   --color-lime: #a2b54e;
   --color-lime-muted: #eef2d8;
+
+  /* El acento cálido del rótulo del hero de la biblioteca.
+     El fondo de marca es oscuro en el modo luz y claro en el modo noche, así que
+     el acento tiene que cambiar con él: un coral claro sobre el verde oscuro y
+     un tono oscuro sobre el verde claro. Con un solo color, el rótulo se queda
+     sin contraste en uno de los dos temas. */
+  --color-brand-accent: #f3bba4;
   --color-blue: #466b83;
   --color-blue-muted: #e3edf2;
 
@@ -115,6 +122,10 @@
     --color-accent-muted: #3f2a23;
     --color-lime: #c4d66c;
     --color-lime-muted: #343c23;
+
+    /* Sobre el verde claro del modo noche, el acento tiene que ser oscuro: el
+       mismo coral del modo luz sobre este fondo no se leía. */
+    --color-brand-accent: #6b3a2a;
     --color-blue: #92bad2;
     --color-blue-muted: #263843;
 

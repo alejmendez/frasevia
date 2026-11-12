@@ -309,7 +309,7 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
 
       <section className="mb-10 grid gap-4 lg:grid-cols-[1.55fr_0.95fr]">
         <div className="relative overflow-hidden rounded-2xl bg-brand px-6 py-7 text-on-solid shadow-[0_20px_38px_-28px_var(--color-brand)] sm:px-9 sm:py-9">
-          <p className="text-xs font-semibold tracking-[0.17em] text-[#f3bba4] uppercase">
+          <p className="text-xs font-semibold tracking-[0.17em] text-brand-accent uppercase">
             {tr("biblioteca.todayReview")}
           </p>
           <h2 className="mt-3 max-w-2xl font-display text-3xl leading-tight sm:text-4xl">
@@ -355,7 +355,7 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
             <ButtonLink
               to="/ajustes/repaso"
               variant="ghost"
-              className="min-h-12 text-on-solid hover:bg-white/10 hover:text-white"
+              className="min-h-12 text-on-solid hover:bg-on-solid/10 hover:text-on-solid"
             >
               {tr("biblioteca.reviewSettings")}
             </ButtonLink>

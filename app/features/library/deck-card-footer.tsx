@@ -3,7 +3,7 @@ import { ArrowRightIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr";
 import { ConfirmSubmit } from "~/components/confirm";
 import { ButtonLink, Tag } from "~/components/ui";
 import { deckEditHref, deckHref, type LibraryDeck } from "~/lib/decks";
-import { formatRelativeTime } from "~/lib/format";
+import { formatDateTime, formatRelativeTime } from "~/lib/format";
 import type { MessageKey, MessageParams } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
 import { ROUTE_PATTERNS } from "~/lib/routes-paths";
@@ -144,29 +144,39 @@ export function deckAction(
   return { to: destination, label: tr("biblioteca.viewDeck"), primary: false };
 }
 
-/** Cuándo se repaso o se estudió por última vez. */
+/**
+ * Cuándo se repaso, se estudió o se editó por última vez.
+ *
+ * La última edición va con fecha y hora, y no como "hace tres días": es el
+ * momento exacto en que se tocó el mazo, que es lo que sirve para saber cuál
+ * de los mazos de la biblioteca se tocó por última vez.
+ */
 function LastActivity({ deck }: { deck: LibraryDeck }) {
   const tr = useT();
   const reviewed = deck.review?.last_reviewed_at;
   const studied = deck.progress?.last_studied_at;
 
-  if (reviewed) {
-    return (
-      <p className="text-xs text-ink-faint">
-        {tr("biblioteca.lastReview", { date: formatRelativeTime(reviewed) })}
-      </p>
-    );
-  }
+  return (
+    <>
+      {reviewed ? (
+        <p className="text-xs text-ink-faint">
+          {tr("biblioteca.lastReview", { date: formatRelativeTime(reviewed) })}
+        </p>
+      ) : null}
 
-  if (studied) {
-    return (
-      <p className="text-xs text-ink-faint">
-        {tr("biblioteca.lastPractice", { date: formatRelativeTime(studied) })}
-      </p>
-    );
-  }
+      {studied ? (
+        <p className="text-xs text-ink-faint">
+          {tr("biblioteca.lastPractice", { date: formatRelativeTime(studied) })}
+        </p>
+      ) : null}
 
-  return null;
+      <p className="text-xs text-ink-faint">
+        {tr("biblioteca.lastUpdated", {
+          date: formatDateTime(deck.updated_at),
+        })}
+      </p>
+    </>
+  );
 }
 
 /** Si el mazo es oficial, o si está publicado. */

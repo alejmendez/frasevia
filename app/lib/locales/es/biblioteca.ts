@@ -80,6 +80,7 @@ export const biblioteca = {
   "biblioteca.viewDeck": "Ver mazo",
   "biblioteca.lastReview": "Último repaso: {date}",
   "biblioteca.lastPractice": "Última práctica: {date}",
+  "biblioteca.lastUpdated": "Última edición: {date}",
   "biblioteca.trash": "Papelera",
   "biblioteca.openTrash": "Ver la papelera",
   "biblioteca.trashDeckTitle": "¿Mandar «{title}» a la papelera?",
