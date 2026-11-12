@@ -1,3 +1,5 @@
+import type { ChangeEvent } from "react";
+
 import { Field, inputClass, Select } from "~/components/ui";
 import { deckLanguages } from "~/lib/languages";
 import type { MessageKey } from "~/lib/locale";
@@ -54,13 +56,7 @@ export function LanguageFields({
         <Select
           id={names.source}
           name={names.source}
-          value={source}
-          onChange={
-            onSourceChange
-              ? (event) => onSourceChange(event.target.value)
-              : undefined
-          }
-          defaultValue={onSourceChange ? undefined : source}
+          {...selectProps(source, onSourceChange)}
         >
           {languages.map((language) => (
             <option key={language.code} value={language.code}>
@@ -77,13 +73,7 @@ export function LanguageFields({
           <Select
             id={names.target}
             name={names.target}
-            value={target}
-            onChange={
-              onTargetChange
-                ? (event) => onTargetChange(event.target.value)
-                : undefined
-            }
-            defaultValue={onTargetChange ? undefined : target}
+            {...selectProps(target, onTargetChange)}
           >
             {languages.map((language) => (
               <option key={language.code} value={language.code}>
@@ -121,11 +111,7 @@ export function LevelField({
       <input
         id={name}
         name={name}
-        value={value ?? ""}
-        onChange={
-          onChange ? (event) => onChange(event.target.value) : undefined
-        }
-        defaultValue={onChange ? undefined : (value ?? "")}
+        {...inputProps(value ?? "", onChange)}
         placeholder={tr(
           general ? "general.levelPlaceholder" : "mazoNuevo.levelPlaceholder",
         )}
@@ -133,6 +119,49 @@ export function LevelField({
       />
     </Field>
   );
+}
+
+/**
+ * Las props de un campo, según quién lo controla.
+ *
+ * React avisa cuando un campo trae `value` y `defaultValue` a la vez, y tiene
+ * razón: un campo no puede estar controlado y sin controlar al mismo tiempo.
+ * Lo decide el `onChange`: si está, el campo es controlado y lleva `value`; si
+ * no, lo gestiona el navegador y lleva `defaultValue`. La pantalla de creación
+ * de mazos usa lo segundo, porque sus valores cambian mientras se escribe.
+ */
+function inputProps(
+  value: string,
+  onChange?: (value: string) => void,
+):
+  | { value: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void }
+  | { defaultValue: string } {
+  return onChange
+    ? {
+        value,
+        onChange: (event: ChangeEvent<HTMLInputElement>) =>
+          onChange(event.target.value),
+      }
+    : { defaultValue: value };
+}
+
+/** Lo mismo, para un desplegable. */
+function selectProps(
+  value: string,
+  onChange?: (value: string) => void,
+):
+  | {
+      value: string;
+      onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+    }
+  | { defaultValue: string } {
+  return onChange
+    ? {
+        value,
+        onChange: (event: ChangeEvent<HTMLSelectElement>) =>
+          onChange(event.target.value),
+      }
+    : { defaultValue: value };
 }
 
 /** Quién puede ver el mazo. */
@@ -149,15 +178,7 @@ export function VisibilityField({
 
   return (
     <Field label={tr("deckField.visibility")} htmlFor={name}>
-      <Select
-        id={name}
-        name={name}
-        value={value}
-        onChange={
-          onChange ? (event) => onChange(event.target.value) : undefined
-        }
-        defaultValue={onChange ? undefined : value}
-      >
+      <Select id={name} name={name} {...selectProps(value, onChange)}>
         <option value="private">{tr("visibility.option.private")}</option>
         <option value="public">{tr("visibility.option.public")}</option>
       </Select>
