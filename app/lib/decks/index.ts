@@ -5,26 +5,30 @@
  * propios y progreso— sin ninguna escritura, porque las escrituras vivían
  * dentro de las pantallas. Ahora cada archivo tiene un motivo:
  *
- * - `read.ts`  : consultas. Lo que se pide.
- * - `write.ts` : inserciones, Updates y borrados. Lo que se cambia.
- * - `rows.ts`  : la forma exacta de una fila y sus reglas.
- * - `paths.ts` : a dónde lleva cada mazo.
+ * - `catalog.ts` : el catálogo público. Lo que cualquiera puede leer.
+ * - `read.ts`    : la biblioteca. Lo que es tuyo, y la papelera.
+ * - `progress.ts`: el progreso de las tarjetas que ya estudiaste.
+ * - `write.ts`   : inserciones, updates y borrados. Lo que se cambia.
+ * - `rows.ts`    : la forma exacta de una fila y sus reglas.
+ * - `paths.ts`   : a dónde lleva cada mazo.
  *
  * Quien importa algo de aquí lo hace desde el barril, así que las rutas siguen
  * diciendo `~/lib/decks` y no tienen que saber en qué archivo está cada cosa.
  */
 
-export { deckEditHref, deckHref, deckPublicHref } from "./paths";
 export {
-  getMyDeck,
-  getProgressForCards,
   getPublicDeckBySlug,
-  type LibraryDeck,
-  listMyDecks,
-  listMyProgress,
-  listMyQuickAddDecks,
   listPublicDecks,
   type PublicDeck,
+} from "./catalog";
+export { deckEditHref, deckHref, deckPublicHref } from "./paths";
+export { getProgressForCards, listMyProgress } from "./progress";
+export {
+  getMyDeck,
+  type LibraryDeck,
+  listMyDecks,
+  listMyQuickAddDecks,
+  listMyTrashedDecks,
   type QuickAddDeck,
 } from "./read";
 export {
@@ -52,6 +56,8 @@ export {
   deleteDeck,
   discardDeck,
   nextCardPosition,
+  restoreDeck,
+  trashDeck,
   updateDeck,
   updateDeckCards,
 } from "./write";

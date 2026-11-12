@@ -14,6 +14,10 @@ import type { Messages } from "../types";
  * in English.
  */
 export const comun = {
+  // The reply when an action gets an `intent` it doesn't know. The same error
+  // shows up on several screens, so it lives here instead of being repeated.
+  "action.unknown": "We couldn't tell what you asked for.",
+
   "common.loading": "Loading…",
   "common.cancel": "Cancel",
   "common.done": "Done",

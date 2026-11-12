@@ -156,7 +156,6 @@ export const mazos = {
   "mazoEditar.cardNeedsFields": "Completa las dos caras de la tarjeta.",
   "mazoEditar.cardAdded": "Tarjeta agregada.",
   "mazoEditar.cardDeleted": "Tarjeta eliminada.",
-  "mazoEditar.unknownAction": "Acción no reconocida.",
   "mazoEditar.nothingToSave": "No había cambios que guardar.",
   "mazoEditar.cardsNeedFields":
     "Cada tarjeta necesita contenido en las dos caras.",
@@ -168,6 +167,9 @@ export const mazos = {
     "El contenido oficial lo mantiene el equipo de Frasevia. Si quieres cambiarlo,",
   "mazoEditar.makeCopy": "haz una copia",
   "mazoEditar.officialTail": "y edítala en tu biblioteca.",
+  "mazoEditar.notOwnerTitle": "Este mazo es de otra persona",
+  "mazoEditar.notOwnerBody":
+    "Puedes estudiarlo, pero no editarlo ni borrarlo. Si quieres cambiarlo, cópialo a tu biblioteca.",
   "mazoEditar.deckData": "Datos del mazo",
   "mazoEditar.publicNotice":
     "Mientras sea público, cualquiera con el enlace puede leerlo y copiarlo a su biblioteca.",
@@ -176,11 +178,11 @@ export const mazos = {
   "mazoEditar.noCardsYet":
     "Este mazo todavía no tiene tarjetas. Agrega la primera con el formulario de arriba.",
   "mazoEditar.saveCards": "Guardar tarjetas",
-  "mazoEditar.deleteDeckTitle": "¿Eliminar «{title}»?",
-  "mazoEditar.deleteDeckBody":
-    "Se borra el mazo, sus tarjetas y el progreso que registraste en ellas. No se puede deshacer.",
-  "mazoEditar.deleteDeckConfirm": "Eliminar el mazo",
-  "mazoEditar.deleteDeckTrigger": "Eliminar este mazo",
+  "mazoEditar.trashDeckTitle": "¿Mandar «{title}» a la papelera?",
+  "mazoEditar.trashDeckBody":
+    "El mazo sale de tu biblioteca y del catálogo, pero no se borra: queda en la papelera y puedes devolverlo cuando quieras.",
+  "mazoEditar.trashDeckConfirm": "Mandar a la papelera",
+  "mazoEditar.trashDeckTrigger": "Mandar este mazo a la papelera",
   "mazoEditar.deleteCardTitle": "¿Eliminar esta tarjeta?",
   "mazoEditar.deleteCardBody":
     "Se borra la tarjeta y el progreso que registraste en ella.",

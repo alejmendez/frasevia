@@ -75,6 +75,14 @@ export const biblioteca = {
   "biblioteca.viewDeck": "View deck",
   "biblioteca.lastReview": "Last review: {date}",
   "biblioteca.lastPractice": "Last practice: {date}",
+  "biblioteca.trash": "Trash",
+  "biblioteca.openTrash": "Open the trash",
+  "biblioteca.trashDeckTitle": "Send «{title}» to the trash?",
+  "biblioteca.trashDeckBody":
+    "The deck leaves your library and the catalog, but it isn't deleted: it stays in the trash and you can bring it back whenever you want.",
+  "biblioteca.trashDeckConfirm": "Send to the trash",
+  "biblioteca.trashDeckTrigger": "Send this deck to the trash",
+  "biblioteca.deckTrashed": "The deck was sent to the trash.",
 
   "deck.noDescription": "No description.",
   "deck.by": "By {author}",

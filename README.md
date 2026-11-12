@@ -97,12 +97,17 @@ En el panel de Supabase, abre el **SQL Editor** y ejecuta:
 5. `supabase/migrations/20261008120000_bulk_card_updates_and_indexes.sql` —
    añade la función `update_deck_cards`, que guarda todas las tarjetas de un
    mazo en una sola llamada, y los índices de búsqueda y de catálogo.
-6. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
+6. `supabase/migrations/20261111120000_borrado_logico_decks.sql` — el borrado
+   lógico: la columna `deleted_at`, la papelera, las funciones `trash_deck` y
+   `restore_deck`, y las vistas que dejan de contar los mazos borrados.
+7. `supabase/seed.sql` — los dos mazos oficiales con su contenido.
 
 El orden importa: la quinta migración usa el tipo de estudio que crea la
 cuarta, y sin ella el guardado del editor de mazos falla con
 `42883 function does not exist`, porque `app/lib/decks/write.ts` llama a
-`update_deck_cards` sin condición.
+`update_deck_cards` sin condición. La sexta es aditiva: no borra nada de lo
+que ya está, y sin ella la papelera no funciona (`42883 function does not
+exist` también, pero por `trash_deck` y `restore_deck`).
 
 El seed es idempotente (identificadores fijos y `on conflict do nothing`), así
 que se puede volver a aplicar sin duplicar nada.
@@ -246,6 +251,30 @@ Dos detalles de Pages que conviene tener presentes:
   No se arregla con `base` de Vite porque, en modo SPA, ese valor hace que
   React Router no llegue a escribir `index.html` (react-router#15350). Si algún
   día el sitio se publica en la raíz del dominio, el script no hace nada.
+
+### 4. Mantener actividad en Supabase Free
+
+`.github/workflows/supabase-keepalive.yml` consulta el identificador de un mazo
+público cada seis horas. La lectura pasa por RLS, no modifica datos y no necesita
+una clave `service_role`. Reutiliza `VITE_SUPABASE_URL` y
+`VITE_SUPABASE_PUBLISHABLE_KEY` de las variables o secretos de Actions que ya usa
+el despliegue de Pages.
+
+Para activarlo:
+
+1. Publica el workflow en la rama principal del repositorio.
+2. En **Actions → Mantener actividad en Supabase**, pulsa **Run workflow** y
+   comprueba que termine correctamente. Si faltan variables, el job lo indica.
+3. Si el proyecto ya estaba pausado, reactívalo primero desde Supabase Dashboard.
+
+Supabase indica que unas pocas consultas diarias suelen evitar la pausa por baja
+actividad; no es una garantía de disponibilidad ni elimina los límites del plan.
+En repositorios públicos, GitHub desactiva las tareas programadas después de
+60 días sin actividad en el repositorio. Para dejar una demo sin mantenimiento
+durante meses, conviene programar la misma petición desde un servicio externo.
+
+Referencias: [pausa de proyectos en Supabase](https://supabase.com/docs/guides/platform/free-project-pausing)
+y [tareas programadas de GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
 ## Generación con IA
 

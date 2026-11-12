@@ -210,3 +210,43 @@ export function ProgressSkeleton() {
     </Page>
   );
 }
+
+/**
+ * El esqueleto de la papelera.
+ *
+ * No reutiliza el de la biblioteca: allí lo que se ve es una rejilla de
+ * tarjetas con un resumen grande arriba, y aquí lo que hay son filas con una
+ * fecha y dos botones. Un esqueleto que no se parece a lo que va a aparecer es
+ * un salto visual al cargar.
+ */
+export function TrashSkeleton() {
+  const tr = useT();
+  return (
+    <Page>
+      <PageHeader
+        eyebrow={tr("papelera.eyebrow")}
+        title={tr("papelera.title")}
+        description={tr("papelera.description")}
+        actions={
+          <SkeletonButton variant="ghost">{tr("papelera.back")}</SkeletonButton>
+        }
+      />
+      <ul className="space-y-2">
+        {ITEMS.slice(0, 3).map((item) => (
+          <li key={item}>
+            <Card className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div className="space-y-2 py-1">
+                <Placeholder className="h-4 w-48" />
+                <Placeholder className="h-3 w-36" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Placeholder className="h-9 w-28 rounded-lg" />
+                <Placeholder className="h-9 w-32 rounded-lg" />
+              </div>
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </Page>
+  );
+}

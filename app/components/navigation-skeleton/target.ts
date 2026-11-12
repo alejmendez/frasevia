@@ -20,6 +20,7 @@ export type SkeletonKind =
   | "inicio"
   | "explorar"
   | "biblioteca"
+  | "papelera"
   | "progreso"
   | "mazo-publico"
   | "mazo-nuevo"
@@ -56,6 +57,7 @@ const EXACT: Array<[string, SkeletonKind]> = [
   [ROUTE_PATTERNS.inicio, "inicio"],
   [ROUTE_PATTERNS.explorar, "explorar"],
   [ROUTE_PATTERNS.biblioteca, "biblioteca"],
+  [ROUTE_PATTERNS.papelera, "papelera"],
   [ROUTE_PATTERNS.progreso, "progreso"],
   [ROUTE_PATTERNS.mazoNuevo, "mazo-nuevo"],
   [ROUTE_PATTERNS.mazoNuevoIa, "mazo-nuevo-ia"],

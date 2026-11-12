@@ -1,10 +1,12 @@
-import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRightIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr";
 
+import { ConfirmSubmit } from "~/components/confirm";
 import { ButtonLink, Tag } from "~/components/ui";
 import { deckEditHref, deckHref, type LibraryDeck } from "~/lib/decks";
 import { formatRelativeTime } from "~/lib/format";
 import type { MessageKey, MessageParams } from "~/lib/locale";
 import { useT } from "~/lib/locale-context";
+import { ROUTE_PATTERNS } from "~/lib/routes-paths";
 
 import { ReviewStats } from "./review-stats";
 
@@ -38,9 +40,39 @@ export function DeckCardFooter({ deck }: { deck: LibraryDeck }) {
           >
             {tr("biblioteca.edit")}
           </ButtonLink>
+          <TrashDeckButton deck={deck} />
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * El botón que manda el mazo a la papelera.
+ *
+ * Vive en la tarjeta de la biblioteca y no solo en el editor porque la
+ * biblioteca es donde están los mazos: una opción que está a dos pantallas de
+ * distancia es una opción que no existe para quien no la busca.
+ *
+ * No borra nada. El mazo queda en la papelera, y el borrado de verdad —que sí
+ * no tiene vuelta atrás— está allí, en la papelera, y también es del dueño.
+ */
+function TrashDeckButton({ deck }: { deck: LibraryDeck }) {
+  const tr = useT();
+
+  return (
+    <ConfirmSubmit
+      action={ROUTE_PATTERNS.biblioteca}
+      intent="trash-deck"
+      fields={{ deckId: deck.id }}
+      title={tr("biblioteca.trashDeckTitle", { title: deck.title })}
+      description={tr("biblioteca.trashDeckBody")}
+      confirmLabel={tr("biblioteca.trashDeckConfirm")}
+      triggerClassName="inline-flex size-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-danger-muted hover:text-danger"
+    >
+      <TrashIcon aria-hidden size={18} />
+      <span className="sr-only">{tr("biblioteca.trashDeckTrigger")}</span>
+    </ConfirmSubmit>
   );
 }
 

@@ -155,7 +155,6 @@ export const mazos = {
   "mazoEditar.cardNeedsFields": "Fill in both sides of the card.",
   "mazoEditar.cardAdded": "Card added.",
   "mazoEditar.cardDeleted": "Card deleted.",
-  "mazoEditar.unknownAction": "Unrecognised action.",
   "mazoEditar.nothingToSave": "There were no changes to save.",
   "mazoEditar.cardsNeedFields": "Every card needs content on both sides.",
   "mazoEditar.cardsSaved": "Cards saved.",
@@ -166,6 +165,9 @@ export const mazos = {
     "The official content is maintained by the Frasevia team. If you want to change it,",
   "mazoEditar.makeCopy": "make a copy",
   "mazoEditar.officialTail": "and edit it in your library.",
+  "mazoEditar.notOwnerTitle": "This deck belongs to someone else",
+  "mazoEditar.notOwnerBody":
+    "You can study it, but you can't edit it or delete it. If you want to change it, copy it to your library.",
   "mazoEditar.deckData": "Deck details",
   "mazoEditar.publicNotice":
     "While it's public, anyone with the link can read it and copy it to their library.",
@@ -174,11 +176,11 @@ export const mazos = {
   "mazoEditar.noCardsYet":
     "This deck doesn't have any cards yet. Add the first one with the form above.",
   "mazoEditar.saveCards": "Save cards",
-  "mazoEditar.deleteDeckTitle": "Delete «{title}»?",
-  "mazoEditar.deleteDeckBody":
-    "The deck, its cards and the progress you recorded on them are all deleted. This can't be undone.",
-  "mazoEditar.deleteDeckConfirm": "Delete the deck",
-  "mazoEditar.deleteDeckTrigger": "Delete this deck",
+  "mazoEditar.trashDeckTitle": "Send «{title}» to the trash?",
+  "mazoEditar.trashDeckBody":
+    "The deck leaves your library and the catalog, but it isn't deleted: it stays in the trash and you can bring it back whenever you want.",
+  "mazoEditar.trashDeckConfirm": "Send to the trash",
+  "mazoEditar.trashDeckTrigger": "Send this deck to the trash",
   "mazoEditar.deleteCardTitle": "Delete this card?",
   "mazoEditar.deleteCardBody":
     "The card and the progress you recorded on it are both deleted.",

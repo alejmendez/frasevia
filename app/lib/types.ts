@@ -32,6 +32,8 @@ export interface Deck {
   card_count: number;
   created_at: string;
   updated_at: string;
+  /** Cuándo se mandó a la papelera. `null` significa que el mazo sigue vivo. */
+  deleted_at: string | null;
 }
 
 export interface Card {

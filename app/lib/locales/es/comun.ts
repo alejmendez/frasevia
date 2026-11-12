@@ -13,6 +13,10 @@ import type { Messages } from "../types";
  * contenido. En un libro en español las citas en inglés siguen en inglés.
  */
 export const comun = {
+  // Lo que se responde cuando un action recibe un `intent` que no conoce. Es
+  // el mismo error en varias pantallas, así que vive aquí y no repetido.
+  "action.unknown": "No se entiende qué se pidió hacer.",
+
   "studyMode.label": "¿Qué quieres estudiar?",
   "studyMode.language": "Idiomas",
   "studyMode.general": "Repaso general",

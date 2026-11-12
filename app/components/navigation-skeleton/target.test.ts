@@ -16,6 +16,7 @@ describe("qué esqueleto corresponde a cada ruta", () => {
     ["/", "inicio"],
     ["/explorar", "explorar"],
     ["/biblioteca", "biblioteca"],
+    ["/biblioteca/papelera", "papelera"],
     ["/progreso", "progreso"],
     ["/biblioteca/mazos/nuevo", "mazo-nuevo"],
     ["/biblioteca/mazos/nuevo-ia", "mazo-nuevo-ia"],

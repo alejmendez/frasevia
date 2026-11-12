@@ -31,8 +31,8 @@ import {
   appendCard,
   type CardDraft,
   deleteCard,
-  deleteDeck,
   getMyDeck,
+  trashDeck,
   updateDeckCards,
 } from "~/lib/decks";
 import { formatDate } from "~/lib/format";
@@ -77,7 +77,15 @@ export async function clientLoader({
     throw data({ message: t("estudiar.deckNotFound") }, { status: 404 });
   }
 
-  return { status: "ready" as const, deck, cards };
+  // Si el mazo no es de quien lo abrió, se puede ver pero no tocar. El editor
+  // lo deja en solo lectura en vez de pintar un formulario que la base va a
+  // rechazar: es la misma diferencia que hay entre un mazo oficial y uno ajeno.
+  return {
+    status: "ready" as const,
+    deck,
+    cards,
+    owned: deck.author_id === session.userId,
+  };
 }
 
 type ActionResult =
@@ -204,19 +212,20 @@ export async function clientAction({
       return error ? actionFail(error) : actionOk(t("mazoEditar.cardDeleted"));
     }
 
-    case "delete-deck": {
-      const { error } = await deleteDeck(session.supabase, deckId);
+    case "trash-deck": {
+      const { error } = await trashDeck(session.supabase, deckId);
 
       if (error) {
         return actionFail(error);
       }
 
-      // Las tarjetas caen en cascada y el progreso asociado también.
+      // El mazo no se borra: se marca y espera en la papelera. Sus tarjetas y
+      // el progreso se quedan donde estaban, por eso esto se puede deshacer.
       return redirect("/biblioteca");
     }
 
     default:
-      return actionFail(t("mazoEditar.unknownAction"));
+      return actionFail(t("action.unknown"));
   }
 }
 
@@ -236,57 +245,83 @@ export default function MazoEditar({
     return <ConfigNotice />;
   }
 
-  const { deck, cards } = loaderData;
+  const { deck, cards, owned } = loaderData;
   if (!deck) {
     return null;
   }
 
   const message = actionData ?? null;
 
-  return (
-    <Page>
-      <PageHeader
-        eyebrow={tr("mazoNuevo.eyebrow")}
-        title={deck.title}
-        description={
-          <span className="flex flex-wrap items-center gap-2">
-            {deck.is_official ? (
-              <Tag tone="brand">{tr("biblioteca.official")}</Tag>
-            ) : null}
-            {deck.source_deck_id ? <Tag>{tr("mazoEditar.copyTag")}</Tag> : null}
-            <span className="text-sm">/mazos/{deck.slug}</span>
-          </span>
-        }
-        actions={
-          <>
-            <ButtonLink to={`/estudiar/${deck.id}`} variant="secondary">
-              {tr("biblioteca.study")}
+  const header = (
+    <PageHeader
+      eyebrow={tr("mazoNuevo.eyebrow")}
+      title={deck.title}
+      description={
+        <span className="flex flex-wrap items-center gap-2">
+          {deck.is_official ? (
+            <Tag tone="brand">{tr("biblioteca.official")}</Tag>
+          ) : null}
+          {deck.source_deck_id ? <Tag>{tr("mazoEditar.copyTag")}</Tag> : null}
+          <span className="text-sm">/mazos/{deck.slug}</span>
+        </span>
+      }
+      actions={
+        <>
+          <ButtonLink to={`/estudiar/${deck.id}`} variant="secondary">
+            {tr("biblioteca.study")}
+          </ButtonLink>
+          {deck.visibility === "public" ? (
+            <ButtonLink to={`/mazos/${deck.slug}`} variant="ghost">
+              {tr("mazoEditar.publicPage")}
             </ButtonLink>
-            {deck.visibility === "public" ? (
-              <ButtonLink to={`/mazos/${deck.slug}`} variant="ghost">
-                {tr("mazoEditar.publicPage")}
-              </ButtonLink>
-            ) : null}
-          </>
-        }
-      />
+          ) : null}
+        </>
+      }
+    />
+  );
 
-      {message ? (
-        <div className="mb-6">
-          <Alert variant={message.ok ? "success" : "error"}>
-            {message.message}
-          </Alert>
-        </div>
-      ) : null}
+  // Un mazo que no es tuyo se puede ver, pero ni tocar ni borrar. El editor se
+  // queda en la cabecera y el aviso, sin los formularios que la base iba a
+  // rechazar: los mazos oficiales y los públicos de otra persona son de solo
+  // lectura, y decirlo es más claro que dejar un formulario que no guarda.
+  if (!owned) {
+    return (
+      <Page>
+        {header}
 
-      {deck.is_official ? (
-        <div className="mb-6">
+        {message ? (
+          <div className="mb-6">
+            <Alert variant={message.ok ? "success" : "error"}>
+              {message.message}
+            </Alert>
+          </div>
+        ) : null}
+
+        {deck.is_official ? (
           <Alert variant="info" title={tr("mazoEditar.officialTitle")}>
             {tr("mazoEditar.officialBody")}{" "}
             <Link to="/mazos/ingles-desde-las-bases" className="underline">
               {tr("mazoEditar.makeCopy")}
             </Link>{" "}
             {tr("mazoEditar.officialTail")}
+          </Alert>
+        ) : (
+          <Alert variant="info" title={tr("mazoEditar.notOwnerTitle")}>
+            {tr("mazoEditar.notOwnerBody")}
+          </Alert>
+        )}
+      </Page>
+    );
+  }
+
+  return (
+    <Page>
+      {header}
+
+      {message ? (
+        <div className="mb-6">
+          <Alert variant={message.ok ? "success" : "error"}>
+            {message.message}
           </Alert>
         </div>
       ) : null}
@@ -380,43 +415,39 @@ export default function MazoEditar({
             {tr("mazoEditar.cardsHeading", { count: cards.length })}
           </h2>
 
-          {deck.is_official ? null : (
-            <>
-              <AddCardForm studyMode={deck.study_mode} />
+          <AddCardForm studyMode={deck.study_mode} />
 
-              {cards.length > 0 ? (
-                <Form method="post" className="mt-6 space-y-4">
-                  <input type="hidden" name="intent" value="save-cards" />
-                  {cards.map((card) => (
-                    <CardEditor
-                      key={card.id}
-                      card={card}
-                      studyMode={deck.study_mode}
-                    />
-                  ))}
-                  <Button type="submit">{tr("mazoEditar.saveCards")}</Button>
-                </Form>
-              ) : (
-                <p className="mt-4 text-sm text-ink-soft">
-                  {tr("mazoEditar.noCardsYet")}
-                </p>
-              )}
-
-              <div className="mt-8 border-t border-line pt-6">
-                <ConfirmSubmit
-                  intent="delete-deck"
-                  title={tr("mazoEditar.deleteDeckTitle", {
-                    title: deck.title,
-                  })}
-                  description={tr("mazoEditar.deleteDeckBody")}
-                  confirmLabel={tr("mazoEditar.deleteDeckConfirm")}
-                  triggerClassName="text-sm text-danger hover:underline"
-                >
-                  {tr("mazoEditar.deleteDeckTrigger")}
-                </ConfirmSubmit>
-              </div>
-            </>
+          {cards.length > 0 ? (
+            <Form method="post" className="mt-6 space-y-4">
+              <input type="hidden" name="intent" value="save-cards" />
+              {cards.map((card) => (
+                <CardEditor
+                  key={card.id}
+                  card={card}
+                  studyMode={deck.study_mode}
+                />
+              ))}
+              <Button type="submit">{tr("mazoEditar.saveCards")}</Button>
+            </Form>
+          ) : (
+            <p className="mt-4 text-sm text-ink-soft">
+              {tr("mazoEditar.noCardsYet")}
+            </p>
           )}
+
+          <div className="mt-8 border-t border-line pt-6">
+            <ConfirmSubmit
+              intent="trash-deck"
+              title={tr("mazoEditar.trashDeckTitle", {
+                title: deck.title,
+              })}
+              description={tr("mazoEditar.trashDeckBody")}
+              confirmLabel={tr("mazoEditar.trashDeckConfirm")}
+              triggerClassName="text-sm text-danger hover:underline"
+            >
+              {tr("mazoEditar.trashDeckTrigger")}
+            </ConfirmSubmit>
+          </div>
         </section>
       </div>
     </Page>

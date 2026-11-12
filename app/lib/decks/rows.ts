@@ -16,7 +16,7 @@ import type { CardKind, DeckStudyMode, DeckVisibility } from "../types";
 
 /** Columnas de `decks`, tal cual. */
 export const DECK_COLUMNS =
-  "id, author_id, title, slug, description, study_mode, source_language, target_language, level, visibility, is_official, source_deck_id, card_count, created_at, updated_at";
+  "id, author_id, title, slug, description, study_mode, source_language, target_language, level, visibility, is_official, source_deck_id, card_count, created_at, updated_at, deleted_at";
 
 /** Columnas de `cards`, tal cual. */
 export const CARD_COLUMNS =

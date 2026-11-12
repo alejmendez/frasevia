@@ -80,6 +80,14 @@ export const biblioteca = {
   "biblioteca.viewDeck": "Ver mazo",
   "biblioteca.lastReview": "Último repaso: {date}",
   "biblioteca.lastPractice": "Última práctica: {date}",
+  "biblioteca.trash": "Papelera",
+  "biblioteca.openTrash": "Ver la papelera",
+  "biblioteca.trashDeckTitle": "¿Mandar «{title}» a la papelera?",
+  "biblioteca.trashDeckBody":
+    "El mazo sale de tu biblioteca y del catálogo, pero no se borra: queda en la papelera y puedes devolverlo cuando quieras.",
+  "biblioteca.trashDeckConfirm": "Mandar a la papelera",
+  "biblioteca.trashDeckTrigger": "Mandar este mazo a la papelera",
+  "biblioteca.deckTrashed": "El mazo se mandó a la papelera.",
 
   "deck.noDescription": "Sin descripción.",
   "deck.by": "Por {author}",

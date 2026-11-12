@@ -4,9 +4,10 @@ import {
   ClockIcon,
   MagnifyingGlassIcon,
   SparkleIcon,
+  TrashIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useMemo, useState } from "react";
-import { Link, redirect, useRevalidator } from "react-router";
+import { data, Link, redirect, useRevalidator } from "react-router";
 import {
   Alert,
   ButtonLink,
@@ -16,13 +17,11 @@ import {
   inputClass,
   Page,
   PageHeader,
-  Tag,
 } from "~/components/ui";
 import { DeckTile } from "~/features/decks/deck-tile";
 import { DeckCardFooter } from "~/features/library/deck-card-footer";
 import type { LibraryDeck } from "~/lib/decks";
-import { listMyDecks } from "~/lib/decks";
-import { formatRelativeTime } from "~/lib/format";
+import { listMyDecks, trashDeck } from "~/lib/decks";
 import { t } from "~/lib/locale";
 import { useLocale, useT } from "~/lib/locale-context";
 import {
@@ -30,6 +29,7 @@ import {
   listScheduledReviewDates,
   type ScheduledReviewDate,
 } from "~/lib/reviews";
+import { ROUTE_PATTERNS } from "~/lib/routes-paths";
 import { getSession, loginPath } from "~/lib/session";
 import type { Route } from "./+types/biblioteca";
 
@@ -92,6 +92,42 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     scheduleError: scheduleResult.error,
     pendingError: pendingResult.error,
   };
+}
+
+/**
+ * Las acciones de la biblioteca.
+ *
+ * Ahora solo hay una: mandar un mazo a la papelera. La regla de quién puede
+ * hacerlo no está aquí —la función `trash_deck` de la base solo acepta al
+ * dueño del mazo—, así que esta parte solo traduce el error a un mensaje.
+ */
+export async function clientAction({ request }: Route.ClientActionArgs) {
+  const formData = await request.formData();
+  const intent = formData.get("intent");
+
+  const session = await getSession();
+  if (session.status === "unconfigured") {
+    return data(
+      { ok: false, message: t("common.noSupabaseEnv") },
+      { status: 503 },
+    );
+  }
+  if (session.status === "anonymous") {
+    throw redirect(loginPath(request));
+  }
+
+  switch (intent) {
+    case "trash-deck": {
+      const deckId = String(formData.get("deckId") ?? "");
+      const { error } = await trashDeck(session.supabase, deckId);
+
+      return error
+        ? data({ ok: false, message: error }, { status: 400 })
+        : data({ ok: true, message: t("biblioteca.deckTrashed") });
+    }
+    default:
+      return data({ ok: false, message: t("action.unknown") }, { status: 400 });
+  }
 }
 
 function groupUpcoming(schedule: ScheduledReviewDate[]): UpcomingGroup[] {
@@ -246,6 +282,10 @@ export default function Biblioteca({ loaderData }: Route.ComponentProps) {
         description={tr("biblioteca.description")}
         actions={
           <>
+            <ButtonLink to={ROUTE_PATTERNS.papelera} variant="ghost">
+              <TrashIcon aria-hidden size={17} />
+              {tr("biblioteca.trash")}
+            </ButtonLink>
             <ButtonLink to="/biblioteca/mazos/nuevo-ia" variant="secondary">
               <SparkleIcon aria-hidden size={17} />
               {tr("biblioteca.createWithAi")}

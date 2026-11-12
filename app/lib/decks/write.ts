@@ -13,7 +13,9 @@ import { CARD_EDITABLE_FIELDS, toCardRow, toCardRows, toDeckRow } from "./rows";
  * llama solo tiene que decir qué es una tarjeta y qué un mazo.
  *
  * La seguridad no cambia: RLS sigue decidiendo y `decks.author_id` sigue siendo
- * el que impide escribir en el mazo de otra persona.
+ * el que impide escribir en el mazo de otra persona. La papelera tampoco es una
+ * excepción: mandarla y devolverla son funciones de la base que comprueban el
+ * dueño, porque el botón que las llama puede ser el que sea.
  */
 
 export type DeckWriteResult =
@@ -156,12 +158,47 @@ export async function deleteCard(
   return { error: error?.message ?? null };
 }
 
-/** Borra un mazo entero. Las tarjetas y el progreso caen en cascada. */
+/**
+ * Borra un mazo entero. Las tarjetas y el progreso caen en cascada.
+ *
+ * Es el borrado definitivo, y solo se usa desde la papelera: cuando alguien
+ * pide llevar un mazo a la papelera no se llama a esto, sino a `trashDeck`.
+ */
 export async function deleteDeck(
   supabase: SupabaseClient,
   deckId: string,
 ): Promise<{ error: string | null }> {
   const { error } = await supabase.from("decks").delete().eq("id", deckId);
+  return { error: error?.message ?? null };
+}
+
+/**
+ * Manda un mazo a la papelera.
+ *
+ * No es un borrado: el mazo sigue en la base con sus tarjetas y su progreso, y
+ * solo lleva la fecha de borrado. Que solo el dueño pueda hacerlo lo decide la
+ * función `trash_deck` de la base, no esta llamada: aquí solo se traduce el
+ * error a un mensaje.
+ */
+export async function trashDeck(
+  supabase: SupabaseClient,
+  deckId: string,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("trash_deck", { p_deck_id: deckId });
+  return { error: error?.message ?? null };
+}
+
+/**
+ * Saca un mazo de la papelera.
+ *
+ * Vuelve tal cual estaba: las tarjetas y el progreso nunca se tocaron, por eso
+ * el borrado lógico no tiene que guardar nada más que una fecha.
+ */
+export async function restoreDeck(
+  supabase: SupabaseClient,
+  deckId: string,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("restore_deck", { p_deck_id: deckId });
   return { error: error?.message ?? null };
 }
 

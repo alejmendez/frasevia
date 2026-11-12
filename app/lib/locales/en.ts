@@ -15,6 +15,7 @@ import { comun } from "./en/comun";
 import { estudiar } from "./en/estudiar";
 import { explorar } from "./en/explorar";
 import { mazos } from "./en/mazos";
+import { papelera } from "./en/papelera";
 import { portada } from "./en/portada";
 import { progreso } from "./en/progreso";
 import { seleccion } from "./en/seleccion";
@@ -28,6 +29,7 @@ export const en = {
   ...estudiar,
   ...explorar,
   ...mazos,
+  ...papelera,
   ...portada,
   ...progreso,
   ...seleccion,

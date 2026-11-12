@@ -2,7 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
 import type { CardDraft, DeckBrief } from "./rows";
-import { appendCard, createDeckWithCards, discardDeck } from "./write";
+import {
+  appendCard,
+  createDeckWithCards,
+  discardDeck,
+  restoreDeck,
+  trashDeck,
+} from "./write";
 
 /**
  * Un cliente de Supabase de mentira.
@@ -25,6 +31,8 @@ interface Call {
 interface Failures {
   insertDeck?: string;
   insertCards?: string;
+  /** El error que devuelve una función de la base, como `trash_deck`. */
+  rpc?: string;
 }
 
 /** Lo que devuelven las consultas: la misma forma que da Supabase. */
@@ -146,6 +154,16 @@ function fakeClient(
   return {
     calls,
     from: (table: string) => new Query(calls, table, failures),
+    // Las funciones de la base van aparte de `from()`: son la puerta de
+    // entrada a la papelera, y lo que interesa es a quién se le llama y con
+    // qué identificador.
+    rpc: (name: string, args: unknown) => {
+      calls.push({ table: "rpc", op: name, payload: args });
+      return Promise.resolve({
+        data: null,
+        error: failures.rpc ? { message: failures.rpc } : null,
+      });
+    },
   } as unknown as SupabaseClient & { calls: Call[] };
 }
 
@@ -224,6 +242,47 @@ describe("deshacer un mazo a medio crear", () => {
     expect(supabase.calls).toContainEqual({
       table: "decks",
       op: "delete",
+    });
+  });
+});
+
+describe("mandar un mazo a la papelera", () => {
+  it("pide a la base que lo marque, no que lo borre", async () => {
+    // El borrado lógico lo decide la base, que es la que sabe de quién es el
+    // mazo. Aquí solo se le pregunta.
+    const supabase = fakeClient();
+
+    const { error } = await trashDeck(supabase, "deck-1");
+
+    expect(error).toBeNull();
+    expect(supabase.calls).toContainEqual({
+      table: "rpc",
+      op: "trash_deck",
+      payload: { p_deck_id: "deck-1" },
+    });
+  });
+
+  it("no borra nada por su cuenta cuando la base lo rechaza", async () => {
+    const supabase = fakeClient({ rpc: "Ese mazo no es tuyo o no existe" });
+
+    const { error } = await trashDeck(supabase, "deck-1");
+
+    expect(error).toBe("Ese mazo no es tuyo o no existe");
+    expect(supabase.calls.some((call) => call.op === "delete")).toBe(false);
+  });
+});
+
+describe("devolver un mazo de la papelera", () => {
+  it("pide a la base que le quite la fecha de borrado", async () => {
+    const supabase = fakeClient();
+
+    const { error } = await restoreDeck(supabase, "deck-1");
+
+    expect(error).toBeNull();
+    expect(supabase.calls).toContainEqual({
+      table: "rpc",
+      op: "restore_deck",
+      payload: { p_deck_id: "deck-1" },
     });
   });
 });

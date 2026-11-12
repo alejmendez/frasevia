@@ -77,10 +77,10 @@ describe("los patrones de las rutas", () => {
     }
   });
 
-  it("las ocho rutas privadas siguen siendo ocho", () => {
+  it("las nueve rutas privadas siguen siendo nueve", () => {
     // Este número es el contrato entre `routes.ts` y `privada.tsx`: cambiarla
     // tiene que ser a conciencia.
-    expect(PRIVATE_ROUTES).toHaveLength(8);
+    expect(PRIVATE_ROUTES).toHaveLength(9);
   });
 
   it("la pantalla de inicio es la raíz", () => {

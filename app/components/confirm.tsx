@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 
 import { useT } from "~/lib/locale-context";
@@ -37,6 +37,15 @@ export function ConfirmSubmit({
   const fetcher = useFetcher<ConfirmActionResult>();
   const [open, setOpen] = useState(false);
   const t = useT();
+
+  // El diálogo se cierra solo cuando la operación sale bien. Dejarlo abierto
+  // después de mandar un mazo a la papelera hace creer que no pasó nada, y es
+  // justo el momento en que la persona está mirando el resultado.
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok === true) {
+      setOpen(false);
+    }
+  }, [fetcher.state, fetcher.data]);
 
   return (
     <>

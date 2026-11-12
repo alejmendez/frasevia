@@ -6,7 +6,12 @@ import type { Deck } from "~/lib/types";
 import { AuthSkeleton } from "./auth";
 import { AiDeckSkeleton, DeckFormSkeleton } from "./deck-form";
 import { PublicDeckSkeleton } from "./decks";
-import { ExploreSkeleton, LibrarySkeleton, ProgressSkeleton } from "./library";
+import {
+  ExploreSkeleton,
+  LibrarySkeleton,
+  ProgressSkeleton,
+  TrashSkeleton,
+} from "./library";
 import { Placeholder } from "./primitives";
 import { AiSettingsSkeleton, ReviewSettingsSkeleton } from "./settings";
 import { StudySkeleton } from "./study";
@@ -72,6 +77,8 @@ function content(
       return <ExploreSkeleton search={search} />;
     case "biblioteca":
       return <LibrarySkeleton />;
+    case "papelera":
+      return <TrashSkeleton />;
     case "progreso":
       return <ProgressSkeleton />;
     case "mazo-publico":

@@ -14,6 +14,8 @@ export const ROUTE_PATTERNS = {
   inicio: "/",
   explorar: "/explorar",
   biblioteca: "/biblioteca",
+  /** Los mazos que se mandaron a la papelera, para poder devolverlos. */
+  papelera: "/biblioteca/papelera",
   progreso: "/progreso",
   /** Un mazo público, por su nombre legible. */
   mazoPublico: "/mazos/:slug",
@@ -32,6 +34,7 @@ export const ROUTE_PATTERNS = {
 /** Las rutas que exigen sesión y devuelven a la persona al acceso si no la tiene. */
 export const PRIVATE_ROUTES = [
   ROUTE_PATTERNS.biblioteca,
+  ROUTE_PATTERNS.papelera,
   ROUTE_PATTERNS.mazoNuevo,
   ROUTE_PATTERNS.mazoNuevoIa,
   ROUTE_PATTERNS.mazoEditar,

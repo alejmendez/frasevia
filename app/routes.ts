@@ -35,6 +35,7 @@ export default [
   // Privado
   layout("routes/privada.tsx", [
     route("biblioteca", "routes/biblioteca.tsx"),
+    route(strip(ROUTE_PATTERNS.papelera), "routes/biblioteca-papelera.tsx"),
     route(strip(ROUTE_PATTERNS.mazoNuevo), "routes/mazo-nuevo.tsx"),
     route(strip(ROUTE_PATTERNS.mazoNuevoIa), "routes/mazo-ia.tsx"),
     route(strip(ROUTE_PATTERNS.mazoEditar), "routes/mazo-editar.tsx"),
